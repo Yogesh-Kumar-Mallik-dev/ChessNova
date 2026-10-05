@@ -1,0 +1,24 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: chess-mongo
+    restart: always
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=chess
+
+  redis:
+    image: redis:7-alpine
+    container_name: chess-redis
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongo_data:
+  redis_data:
