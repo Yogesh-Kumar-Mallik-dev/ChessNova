@@ -13,6 +13,7 @@
 	let lastMove: { from: string; to: string; san?: string; isCapture?: boolean; isPromotion?: boolean } | null = null;
 
 	import { goto } from '$app/navigation';
+	import { Chess } from 'chess.js';
 
 	async function handleMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType; isCapture?: boolean; isPromotion?: boolean }>) {
 		const { from, to, promotion, isCapture, isPromotion } = event.detail;
@@ -56,6 +57,21 @@
 
 	function handleAnalyze() {
 		if (typeof window !== 'undefined' && moves.length > 0) {
+			const c = new Chess();
+			for (const m of moves) {
+				try {
+					c.move(m.san || { from: m.from, to: m.to });
+				} catch (_) {}
+			}
+			c.header(
+				'Event', 'Local Match',
+				'Site', 'ChessNova',
+				'Date', new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
+				'White', 'White',
+				'Black', 'Black'
+			);
+			const pgn = c.pgn();
+			sessionStorage.setItem('review_pgn', pgn);
 			sessionStorage.setItem('review_moves', JSON.stringify(moves));
 			sessionStorage.setItem(
 				'review_players',
@@ -65,7 +81,7 @@
 				})
 			);
 		}
-		goto(`/analysis?fen=${encodeURIComponent(fen)}&review=1`);
+		goto('/analysis?review=1');
 	}
 
 	function resetLocalGame() {

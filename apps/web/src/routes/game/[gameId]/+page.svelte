@@ -2,6 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { Chess } from 'chess.js';
 	import { api } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth';
 	import { gameStore, resetGameStore } from '$lib/stores/game';
@@ -140,6 +141,22 @@
 
 	function handleAnalyze() {
 		if (typeof window !== 'undefined' && $gameStore.moves.length > 0) {
+			const c = new Chess();
+			for (const m of $gameStore.moves) {
+				try {
+					c.move(m.san || { from: m.from, to: m.to });
+				} catch (_) {}
+			}
+			c.header(
+				'Event', 'Rated Live Match',
+				'Site', 'ChessNova',
+				'Date', new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
+				'White', $gameStore.whitePlayer?.username || 'White',
+				'Black', $gameStore.blackPlayer?.username || 'Black',
+				'Result', $gameStore.result || '*'
+			);
+			const pgn = c.pgn();
+			sessionStorage.setItem('review_pgn', pgn);
 			sessionStorage.setItem('review_moves', JSON.stringify($gameStore.moves));
 			sessionStorage.setItem(
 				'review_players',
@@ -148,8 +165,10 @@
 					black: $gameStore.blackPlayer?.username || 'Black'
 				})
 			);
+			goto(`/analysis?gameId=${gameId}&review=1`);
+			return;
 		}
-		goto(`/analysis?fen=${encodeURIComponent($gameStore.fen)}&review=1`);
+		goto(`/analysis?gameId=${gameId}&review=1`);
 	}
 </script>
 

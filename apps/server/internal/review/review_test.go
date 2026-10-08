@@ -45,3 +45,42 @@ func TestGameReviewService(t *testing.T) {
 		t.Errorf("expected 5 eval graph points, got %d", len(result.EvalGraph))
 	}
 }
+
+func TestAnalyzePGN(t *testing.T) {
+	eng := engine.NewStockfishEngine()
+	srv := NewReviewService(eng)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pgn := `[Event "FIDE Candidates 2024"]
+[Site "Toronto CAN"]
+[Date "2024.04.14"]
+[Round "9"]
+[White "Vidit, Santosh Gujrathi"]
+[Black "Nakamura, Hikaru"]
+[Result "0-1"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 0-1`
+
+	result, err := srv.AnalyzePGN(ctx, pgn)
+	if err != nil {
+		t.Fatalf("AnalyzePGN failed: %v", err)
+	}
+
+	if len(result.Moves) != 6 {
+		t.Fatalf("expected 6 reviewed moves, got %d", len(result.Moves))
+	}
+
+	if result.White != "Vidit, Santosh Gujrathi" || result.Black != "Nakamura, Hikaru" {
+		t.Errorf("unexpected players: white=%s, black=%s", result.White, result.Black)
+	}
+
+	if result.Result != "0-1" {
+		t.Errorf("expected result 0-1, got %s", result.Result)
+	}
+
+	if result.PGN == "" {
+		t.Errorf("expected non-empty PGN in result")
+	}
+}

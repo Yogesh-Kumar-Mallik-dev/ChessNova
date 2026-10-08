@@ -8,9 +8,11 @@ import (
 )
 
 type PGNMove struct {
-	Ply int    `json:"ply"`
-	SAN string `json:"san"`
-	FEN string `json:"fen"`
+	Ply  int    `json:"ply"`
+	From string `json:"from,omitempty"`
+	To   string `json:"to,omitempty"`
+	SAN  string `json:"san"`
+	FEN  string `json:"fen"`
 }
 
 type PGNGame struct {
@@ -33,6 +35,10 @@ func (pg *PGNGame) SetHeader(key, value string) {
 
 func (pg *PGNGame) AddMove(ply int, san, fen string) {
 	pg.Moves = append(pg.Moves, PGNMove{Ply: ply, SAN: san, FEN: fen})
+}
+
+func (pg *PGNGame) AddMoveWithSquares(ply int, from, to, san, fen string) {
+	pg.Moves = append(pg.Moves, PGNMove{Ply: ply, From: from, To: to, SAN: san, FEN: fen})
 }
 
 func (pg *PGNGame) Export() string {
@@ -117,26 +123,34 @@ func ParsePGN(content string) (*PGNGame, error) {
 		}
 	}
 
-	// Tokenize moveText, strip comments { ... }, ($1) etc.
+	// Tokenize moveText, strip comments { ... }, recursive variations, etc.
 	text := moveTextBuilder.String()
-	// Strip comments
 	commentRegex := regexp.MustCompile(`\{[^}]*\}`)
 	text = commentRegex.ReplaceAllString(text, "")
-	// Strip recursive variations ( ... )
 	variationRegex := regexp.MustCompile(`\([^)]*\)`)
 	text = variationRegex.ReplaceAllString(text, "")
 
 	tokens := strings.Fields(text)
 	pos := InitialPosition()
+	if fen, ok := game.Headers["FEN"]; ok && strings.TrimSpace(fen) != "" {
+		if customPos, err := FromFEN(fen); err == nil {
+			pos = customPos
+		}
+	}
+
 	ply := 1
 
 	for _, token := range tokens {
+		// Ignore NAGs ($1, $2, etc.)
+		if strings.HasPrefix(token, "$") {
+			continue
+		}
 		// check if token is result
 		if token == "1-0" || token == "0-1" || token == "1/2-1/2" || token == "*" {
 			game.Result = token
 			break
 		}
-		// skip move numbers like "1.", "12..."
+		// skip move numbers like "1.", "12..." or inline moves like "1.e4"
 		if strings.Contains(token, ".") {
 			parts := strings.Split(token, ".")
 			token = parts[len(parts)-1]
@@ -155,7 +169,7 @@ func ParsePGN(content string) (*PGNGame, error) {
 		if err != nil {
 			return nil, err
 		}
-		game.AddMove(ply, san, ToFEN(nextPos))
+		game.AddMoveWithSquares(ply, m.From.String(), m.To.String(), san, ToFEN(nextPos))
 		pos = nextPos
 		ply++
 	}
