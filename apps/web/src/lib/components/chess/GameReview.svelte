@@ -14,6 +14,7 @@
 	export let whitePlayerName = 'White';
 	export let blackPlayerName = 'Black';
 	export let currentPly = 0;
+	export let pgn = '';
 
 	const dispatch = createEventDispatcher<{
 		selectPly: number;
@@ -27,6 +28,7 @@
 	let activeTab: 'review' | 'overview' = 'review';
 	let isAutoPlaying = false;
 	let autoPlayTimer: any = null;
+	let copiedPgn = false;
 
 	const classificationOrder: MoveClassification[] = [
 		'brilliant',
@@ -43,20 +45,24 @@
 	];
 
 	onMount(async () => {
-		if (moves && moves.length > 0) {
+		if ((moves && moves.length > 0) || pgn) {
 			await startReview();
 		}
 	});
 
 	export async function startReview() {
-		if (moves.length === 0) return;
+		if ((!moves || moves.length === 0) && !pgn) return;
 		isAnalyzing = true;
 		progressPercent = 20;
 		progressText = 'Authoritative Stockfish Server Reviewing Game...';
 
 		try {
 			progressPercent = 60;
-			reviewResult = (await api.analysis.review(moves)) as GameReviewResult;
+			const payload = pgn ? { pgn, moves } : moves;
+			reviewResult = (await api.analysis.review(payload)) as GameReviewResult;
+			if (reviewResult?.white) whitePlayerName = reviewResult.white;
+			if (reviewResult?.black) blackPlayerName = reviewResult.black;
+			if (reviewResult?.pgn) pgn = reviewResult.pgn;
 			progressPercent = 100;
 		} catch (e: any) {
 			console.error('Authoritative server review failed:', e);
@@ -64,6 +70,29 @@
 		} finally {
 			isAnalyzing = false;
 		}
+	}
+
+	function copyPgn() {
+		const textToCopy = reviewResult?.pgn || pgn;
+		if (textToCopy) {
+			navigator.clipboard.writeText(textToCopy);
+			copiedPgn = true;
+			setTimeout(() => (copiedPgn = false), 2000);
+		}
+	}
+
+	function downloadPgn() {
+		const text = reviewResult?.pgn || pgn;
+		if (!text) return;
+		const blob = new Blob([text], { type: 'application/x-chess-pgn;charset=utf-8' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${whitePlayerName}_vs_${blackPlayerName}_${new Date().toISOString().slice(0, 10)}.pgn`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
 	}
 
 	$: currentReviewedMove =
@@ -133,15 +162,35 @@
 			</button>
 		</div>
 
-		{#if !isAnalyzing}
-			<button
-				class="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition"
-				on:click={startReview}
-				title="Re-run Stockfish Review"
-			>
-				<Icon name="rotate-cw" size={14} />
-			</button>
-		{/if}
+		<div class="flex items-center gap-1">
+			{#if reviewResult?.pgn || pgn}
+				<button
+					class="px-2 py-1 rounded-lg text-[11px] font-bold text-stone-300 hover:text-white bg-[#383633] hover:bg-[#484643] transition flex items-center gap-1 border border-[#484643]"
+					on:click={copyPgn}
+					title="Copy Annotated PGN to Clipboard"
+				>
+					<Icon name={copiedPgn ? 'check' : 'download'} size={12} className={copiedPgn ? 'text-emerald-400' : ''} />
+					<span>{copiedPgn ? 'Copied' : 'PGN'}</span>
+				</button>
+				<button
+					class="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition"
+					on:click={downloadPgn}
+					title="Download .pgn file"
+				>
+					<Icon name="download" size={14} />
+				</button>
+			{/if}
+
+			{#if !isAnalyzing}
+				<button
+					class="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition"
+					on:click={startReview}
+					title="Re-run Stockfish Review"
+				>
+					<Icon name="rotate-cw" size={14} />
+				</button>
+			{/if}
+		</div>
 	</div>
 
 	<!-- Body Content -->

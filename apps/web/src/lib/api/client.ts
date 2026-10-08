@@ -88,7 +88,12 @@ export const api = {
 		review: (gameId: string) =>
 			request<any>(`/games/${gameId}/review`, {
 				method: 'POST'
-			})
+			}),
+		getPgn: async (gameId: string) => {
+			const res = await fetch(`/api/v1/games/${gameId}/pgn`);
+			if (!res.ok) throw new Error('Failed to fetch game PGN');
+			return res.text();
+		}
 	},
 	chess: {
 		legalMoves: (fen?: string, square?: string) =>
@@ -108,11 +113,25 @@ export const api = {
 				method: 'POST',
 				body: JSON.stringify({ fen, depth })
 			}),
-		review: (moves: { from: string; to: string; san: string; fen?: string }[]) =>
-			request<any>('/analysis/review', {
+		review: (
+			payload:
+				| string
+				| { pgn?: string; moves?: { from: string; to: string; san: string; fen?: string }[] }
+				| { from: string; to: string; san: string; fen?: string }[]
+		) => {
+			let body: Record<string, any>;
+			if (typeof payload === 'string') {
+				body = { pgn: payload };
+			} else if (Array.isArray(payload)) {
+				body = { moves: payload };
+			} else {
+				body = payload;
+			}
+			return request<any>('/analysis/review', {
 				method: 'POST',
-				body: JSON.stringify({ moves })
-			})
+				body: JSON.stringify(body)
+			});
+		}
 	},
 	matchmaking: {
 		join: (data: { initial: number; increment: number }) =>

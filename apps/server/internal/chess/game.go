@@ -242,7 +242,7 @@ func (g *Game) ToPGN(headers map[string]string) string {
 	}
 	pgn.Result = g.Result()
 	for _, m := range g.Moves {
-		pgn.AddMove(m.Ply, m.SAN, m.FENAfter)
+		pgn.AddMoveWithSquares(m.Ply, m.Move.From.String(), m.Move.To.String(), m.SAN, m.FENAfter)
 	}
 	return pgn.Export()
 }

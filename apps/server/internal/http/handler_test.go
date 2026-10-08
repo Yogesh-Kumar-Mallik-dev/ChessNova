@@ -157,3 +157,42 @@ func TestHandleReviewGame(t *testing.T) {
 		t.Errorf("expected 2 reviewed moves, got %d", len(resp.Moves))
 	}
 }
+
+func TestHandleReviewGamePGN(t *testing.T) {
+	router := setupTestRouter()
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"pgn": `[Event "World Championship"]
+[White "Ding Liren"]
+[Black "Nepomniachtchi"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 1-0`,
+	})
+	req := httptest.NewRequest("POST", "/api/v1/analysis/review", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		WhiteAccuracy float64 `json:"whiteAccuracy"`
+		BlackAccuracy float64 `json:"blackAccuracy"`
+		Moves         []any   `json:"moves"`
+		White         string  `json:"white"`
+		Black         string  `json:"black"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp.Moves) != 4 {
+		t.Errorf("expected 4 reviewed moves, got %d", len(resp.Moves))
+	}
+	if resp.White != "Ding Liren" || resp.Black != "Nepomniachtchi" {
+		t.Errorf("unexpected players: %s vs %s", resp.White, resp.Black)
+	}
+}

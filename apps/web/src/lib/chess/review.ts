@@ -57,13 +57,21 @@ export interface GameReviewResult {
 		scoreCp: number;
 		san: string;
 	}>;
+	pgn?: string;
+	headers?: Record<string, string>;
+	white?: string;
+	black?: string;
+	result?: string;
 }
 
 /**
  * Executes authoritative Game Review via the Go backend Stockfish service.
  */
 export async function performGameReview(
-	moves: Array<{ from: string; to: string; san: string; fen?: string }>
+	input:
+		| string
+		| { pgn?: string; moves?: Array<{ from: string; to: string; san: string; fen?: string }> }
+		| Array<{ from: string; to: string; san: string; fen?: string }>
 ): Promise<GameReviewResult> {
-	return (await api.analysis.review(moves)) as GameReviewResult;
+	return (await api.analysis.review(input)) as GameReviewResult;
 }

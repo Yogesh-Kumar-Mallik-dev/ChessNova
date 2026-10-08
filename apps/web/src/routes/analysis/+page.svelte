@@ -26,47 +26,143 @@
 	let rightPanelTab: 'review' | 'tools' = 'review';
 	let reviewResult: GameReviewResult | null = null;
 	let showPgnModal = false;
+	let copiedPgn = false;
+	let currentPgn = '';
 
-	onMount(() => {
-		if (typeof window !== 'undefined') {
-			const savedMoves = sessionStorage.getItem('review_moves');
-			const savedPlayers = sessionStorage.getItem('review_players');
+	function loadPgnContent(pgnText: string) {
+		if (!pgnText || !pgnText.trim()) return;
+		try {
+			const c = new Chess();
+			c.loadPgn(pgnText.trim());
+			const history = c.history({ verbose: true });
+			const headers = c.header();
 
-			if (savedMoves) {
+			whitePlayerName = headers['White'] || 'White';
+			blackPlayerName = headers['Black'] || 'Black';
+
+			const replayChess = new Chess();
+			if (headers['FEN']) {
 				try {
-					moves = JSON.parse(savedMoves);
-					currentPly = moves.length;
-					if (moves.length > 0) {
-						fen = moves[moves.length - 1].fen;
-						lastMove = { from: moves[moves.length - 1].from, to: moves[moves.length - 1].to, san: moves[moves.length - 1].san, isCapture: moves[moves.length - 1].san?.includes('x') };
-						const parts = fen.split(' ');
-						turn = parts.length > 1 && parts[1] === 'b' ? 'black' : 'white';
-					}
-				} catch (e) {
-					console.error('Failed to parse saved review moves:', e);
+					replayChess.load(headers['FEN']);
+					startFen = headers['FEN'];
+				} catch (_) {
+					startFen = INITIAL_FEN;
 				}
-				sessionStorage.removeItem('review_moves');
+			} else {
+				startFen = INITIAL_FEN;
 			}
 
-			if (savedPlayers) {
+			const parsedMoves: Array<{ from: string; to: string; san: string; fen: string }> = [];
+			for (const h of history) {
+				replayChess.move({ from: h.from, to: h.to, promotion: h.promotion });
+				parsedMoves.push({
+					from: h.from,
+					to: h.to,
+					san: h.san,
+					fen: replayChess.fen()
+				});
+			}
+
+			moves = parsedMoves;
+			currentPly = parsedMoves.length;
+			fen = replayChess.fen();
+			lastMove =
+				parsedMoves.length > 0
+					? {
+							from: parsedMoves[parsedMoves.length - 1].from,
+							to: parsedMoves[parsedMoves.length - 1].to,
+							san: parsedMoves[parsedMoves.length - 1].san,
+							isCapture: parsedMoves[parsedMoves.length - 1].san?.includes('x')
+						}
+					: null;
+			turn = replayChess.turn() === 'w' ? 'white' : 'black';
+			currentPgn = pgnText.trim();
+			customPgnInput = currentPgn;
+			reviewResult = null;
+			rightPanelTab = 'review';
+			showPgnModal = false;
+		} catch (err) {
+			console.error('Failed to parse PGN:', err);
+		}
+	}
+
+	onMount(async () => {
+		if (typeof window !== 'undefined') {
+			const pgnParam = $page.url.searchParams.get('pgn');
+			const gameIdParam = $page.url.searchParams.get('gameId');
+			const savedPgn = sessionStorage.getItem('review_pgn');
+
+			if (pgnParam) {
+				loadPgnContent(decodeURIComponent(pgnParam));
+			} else if (savedPgn) {
+				loadPgnContent(savedPgn);
+				sessionStorage.removeItem('review_pgn');
+			} else if (gameIdParam) {
 				try {
-					const p = JSON.parse(savedPlayers);
-					whitePlayerName = p.white || 'White';
-					blackPlayerName = p.black || 'Black';
+					const fetchedPgn = await api.games.getPgn(gameIdParam);
+					if (fetchedPgn) {
+						loadPgnContent(fetchedPgn);
+					}
 				} catch (e) {
-					console.error('Failed to parse saved players:', e);
+					console.error('Failed to load game PGN:', e);
 				}
-				sessionStorage.removeItem('review_players');
+			} else {
+				const savedMoves = sessionStorage.getItem('review_moves');
+				const savedPlayers = sessionStorage.getItem('review_players');
+
+				if (savedMoves) {
+					try {
+						moves = JSON.parse(savedMoves);
+						currentPly = moves.length;
+						if (moves.length > 0) {
+							fen = moves[moves.length - 1].fen;
+							lastMove = { from: moves[moves.length - 1].from, to: moves[moves.length - 1].to, san: moves[moves.length - 1].san, isCapture: moves[moves.length - 1].san?.includes('x') };
+							const parts = fen.split(' ');
+							turn = parts.length > 1 && parts[1] === 'b' ? 'black' : 'white';
+						}
+					} catch (e) {
+						console.error('Failed to parse saved review moves:', e);
+					}
+					sessionStorage.removeItem('review_moves');
+				}
+
+				if (savedPlayers) {
+					try {
+						const p = JSON.parse(savedPlayers);
+						whitePlayerName = p.white || 'White';
+						blackPlayerName = p.black || 'Black';
+					} catch (e) {
+						console.error('Failed to parse saved players:', e);
+					}
+					sessionStorage.removeItem('review_players');
+				}
 			}
 
 			// If URL has review param, default to review tab
-			if ($page.url.searchParams.get('review') === '1' || moves.length > 0) {
+			if ($page.url.searchParams.get('review') === '1' || moves.length > 0 || currentPgn) {
 				rightPanelTab = 'review';
 			} else {
 				rightPanelTab = 'tools';
 			}
 		}
 	});
+
+	$: if (!currentPgn && moves.length > 0) {
+		const c = new Chess();
+		for (const m of moves) {
+			try {
+				c.move(m.san || { from: m.from, to: m.to });
+			} catch (_) {}
+		}
+		c.header(
+			'White', whitePlayerName,
+			'Black', blackPlayerName,
+			'Event', 'Game Analysis',
+			'Site', 'ChessNova',
+			'Date', new Date().toISOString().slice(0, 10).replace(/-/g, '.')
+		);
+		currentPgn = c.pgn();
+	}
 
 	$: activeReviewMove =
 		reviewResult && currentPly > 0 && currentPly <= reviewResult.moves.length
@@ -157,36 +253,28 @@
 	}
 
 	function loadPgn() {
-		if (!customPgnInput.trim()) return;
-		try {
-			const c = new Chess();
-			c.loadPgn(customPgnInput.trim());
-			const history = c.history({ verbose: true });
+		loadPgnContent(customPgnInput);
+	}
 
-			const replayChess = new Chess();
-			const parsedMoves: Array<{ from: string; to: string; san: string; fen: string }> = [];
-
-			for (const h of history) {
-				replayChess.move({ from: h.from, to: h.to, promotion: h.promotion });
-				parsedMoves.push({
-					from: h.from,
-					to: h.to,
-					san: h.san,
-					fen: replayChess.fen()
-				});
-			}
-
-			startFen = INITIAL_FEN;
-			moves = parsedMoves;
-			currentPly = parsedMoves.length;
-			fen = replayChess.fen();
-			lastMove = parsedMoves.length > 0 ? { from: parsedMoves[parsedMoves.length - 1].from, to: parsedMoves[parsedMoves.length - 1].to } : null;
-			turn = replayChess.turn() === 'w' ? 'white' : 'black';
-			showPgnModal = false;
-			rightPanelTab = 'review';
-		} catch (err) {
-			alert('Failed to parse PGN. Please check format.');
+	function copyPgnText() {
+		if (currentPgn) {
+			navigator.clipboard.writeText(currentPgn);
+			copiedPgn = true;
+			setTimeout(() => (copiedPgn = false), 2000);
 		}
+	}
+
+	function downloadPgnFile() {
+		if (!currentPgn) return;
+		const blob = new Blob([currentPgn], { type: 'application/x-chess-pgn;charset=utf-8' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${whitePlayerName}_vs_${blackPlayerName}_analysis.pgn`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
 	}
 
 	function resetToStart() {
@@ -230,11 +318,30 @@
 		</div>
 
 		<div class="flex items-center gap-2">
+			{#if currentPgn || moves.length > 0}
+				<button
+					class="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+					on:click={copyPgnText}
+					title="Copy Game PGN"
+				>
+					<Icon name={copiedPgn ? 'check' : 'download'} size={14} className={copiedPgn ? 'text-emerald-400' : 'text-stone-400'} />
+					<span>{copiedPgn ? 'Copied' : 'Copy PGN'}</span>
+				</button>
+				<button
+					class="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+					on:click={downloadPgnFile}
+					title="Download .pgn file"
+				>
+					<Icon name="download" size={14} className="text-stone-400" />
+					<span>Download</span>
+				</button>
+			{/if}
+
 			<button
 				class="inline-flex items-center gap-2 px-3 py-2 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
 				on:click={() => (showPgnModal = true)}
 			>
-				<Icon name="download" size={14} className="text-stone-400" />
+				<Icon name="download" size={14} className="text-[#81b64c]" />
 				<span>Import PGN</span>
 			</button>
 			<button
@@ -298,6 +405,7 @@
 					<!-- Chess.com Game Review Panel -->
 					<GameReview
 						bind:reviewResult
+						pgn={currentPgn}
 						{moves}
 						{whitePlayerName}
 						{blackPlayerName}

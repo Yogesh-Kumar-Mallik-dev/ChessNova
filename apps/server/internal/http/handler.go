@@ -962,7 +962,8 @@ func (rt *Router) handleEvaluatePosition(w http.ResponseWriter, r *http.Request)
 }
 
 type reviewReq struct {
-	Moves []review.InputMove `json:"moves"`
+	PGN   string             `json:"pgn,omitempty"`
+	Moves []review.InputMove `json:"moves,omitempty"`
 }
 
 func (rt *Router) handleReviewGame(w http.ResponseWriter, r *http.Request) {
@@ -972,12 +973,18 @@ func (rt *Router) handleReviewGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.Moves) == 0 {
-		writeError(w, http.StatusBadRequest, "EMPTY_MOVES", "moves list cannot be empty")
+	var result *review.ReviewResult
+	var err error
+
+	if strings.TrimSpace(req.PGN) != "" {
+		result, err = rt.reviewService.AnalyzePGN(r.Context(), req.PGN)
+	} else if len(req.Moves) > 0 {
+		result, err = rt.reviewService.AnalyzeMoves(r.Context(), req.Moves)
+	} else {
+		writeError(w, http.StatusBadRequest, "EMPTY_INPUT", "either pgn or moves list must be provided")
 		return
 	}
 
-	result, err := rt.reviewService.AnalyzeMoves(r.Context(), req.Moves)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "REVIEW_ERROR", err.Error())
 		return
@@ -994,22 +1001,25 @@ func (rt *Router) handleReviewGameByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	inputMoves := make([]review.InputMove, len(gameDoc.Moves))
-	for i, m := range gameDoc.Moves {
-		inputMoves[i] = review.InputMove{
-			From: m.From,
-			To:   m.To,
-			SAN:  m.SAN,
-			FEN:  m.FEN,
+	var result *review.ReviewResult
+	if strings.TrimSpace(gameDoc.PGN) != "" {
+		result, err = rt.reviewService.AnalyzePGN(r.Context(), gameDoc.PGN)
+	} else if len(gameDoc.Moves) > 0 {
+		inputMoves := make([]review.InputMove, len(gameDoc.Moves))
+		for i, m := range gameDoc.Moves {
+			inputMoves[i] = review.InputMove{
+				From: m.From,
+				To:   m.To,
+				SAN:  m.SAN,
+				FEN:  m.FEN,
+			}
 		}
-	}
-
-	if len(inputMoves) == 0 {
+		result, err = rt.reviewService.AnalyzeMoves(r.Context(), inputMoves)
+	} else {
 		writeError(w, http.StatusBadRequest, "NO_MOVES", "game has no moves to review")
 		return
 	}
 
-	result, err := rt.reviewService.AnalyzeMoves(r.Context(), inputMoves)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "REVIEW_ERROR", err.Error())
 		return
