@@ -13,9 +13,11 @@
 	import CapturedPieces from '$lib/components/game/CapturedPieces.svelte';
 	import GameResult from '$lib/components/game/GameResult.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
-	import type { Color, PieceType } from '$lib/chess/engine';
+	import { INITIAL_FEN, type Color, type PieceType } from '$lib/chess/engine';
+	import { saveLocalGame, stageGameForReview } from '$lib/stores/localGames';
 
 	let gameId = $page.params.gameId || '';
+
 	let socket: GameSocket | null = null;
 	let showResultModal = true;
 	let flipBoard = false;
@@ -147,29 +149,43 @@
 					c.move(m.san || { from: m.from, to: m.to });
 				} catch (_) {}
 			}
+			const whiteName = $gameStore.whitePlayer?.username || 'White';
+			const blackName = $gameStore.blackPlayer?.username || 'Black';
+			const resStr = $gameStore.result || '*';
+
 			c.header(
-				'Event', 'Rated Live Match',
+				'Event', 'Live Match',
 				'Site', 'ChessNova',
 				'Date', new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
-				'White', $gameStore.whitePlayer?.username || 'White',
-				'Black', $gameStore.blackPlayer?.username || 'Black',
-				'Result', $gameStore.result || '*'
+				'White', whiteName,
+				'Black', blackName,
+				'Result', resStr
 			);
 			const pgn = c.pgn();
-			sessionStorage.setItem('review_pgn', pgn);
+			stageGameForReview(pgn, whiteName, blackName);
 			sessionStorage.setItem('review_moves', JSON.stringify($gameStore.moves));
-			sessionStorage.setItem(
-				'review_players',
-				JSON.stringify({
-					white: $gameStore.whitePlayer?.username || 'White',
-					black: $gameStore.blackPlayer?.username || 'Black'
-				})
-			);
+
+			// Save to local games archive so guests and users can review anytime
+			saveLocalGame({
+				id: gameId,
+				date: new Date().toISOString(),
+				event: 'Live Match',
+				white: whiteName,
+				black: blackName,
+				result: resStr,
+				outcome: $gameStore.outcome || 'finished',
+				winner: $gameStore.winner,
+				movesCount: $gameStore.moves.length,
+				pgn,
+				startFen: INITIAL_FEN
+			});
+
 			goto(`/analysis?gameId=${gameId}&review=1`);
 			return;
 		}
 		goto(`/analysis?gameId=${gameId}&review=1`);
 	}
+
 </script>
 
 <div class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full p-2 sm:p-4 lg:p-6">

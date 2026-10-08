@@ -50,11 +50,19 @@
 		}
 	});
 
+	let lastAnalyzedPgn = '';
+
+	$: if (pgn && pgn !== lastAnalyzedPgn && !reviewResult && !isAnalyzing) {
+		startReview();
+	}
+
 	export async function startReview() {
 		if ((!moves || moves.length === 0) && !pgn) return;
 		isAnalyzing = true;
 		progressPercent = 20;
 		progressText = 'Authoritative Stockfish Server Reviewing Game...';
+		lastAnalyzedPgn = pgn;
+
 
 		try {
 			progressPercent = 60;
