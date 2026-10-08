@@ -48,10 +48,23 @@ type UserRating struct {
 	UpdatedAt time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
-const DefaultRating = 1200
-const DefaultKFactor = 32
+const (
+	MinRating      = 100
+	DefaultRating  = 400
+	DefaultKFactor = 32
+)
 
 func CalculateElo(ratingA, ratingB int, scoreA float64, kFactor int) (newA, newB int, changeA, changeB int) {
+	if ratingA < MinRating {
+		ratingA = MinRating
+	}
+	if ratingB < MinRating {
+		ratingB = MinRating
+	}
+	if kFactor <= 0 {
+		kFactor = DefaultKFactor
+	}
+
 	expA := 1.0 / (1.0 + math.Pow(10.0, float64(ratingB-ratingA)/400.0))
 	expB := 1.0 - expA
 
@@ -60,7 +73,19 @@ func CalculateElo(ratingA, ratingB int, scoreA float64, kFactor int) (newA, newB
 	deltaA := int(math.Round(float64(kFactor) * (scoreA - expA)))
 	deltaB := int(math.Round(float64(kFactor) * (scoreB - expB)))
 
-	return ratingA + deltaA, ratingB + deltaB, deltaA, deltaB
+	newA = ratingA + deltaA
+	if newA < MinRating {
+		newA = MinRating
+	}
+	changeA = newA - ratingA
+
+	newB = ratingB + deltaB
+	if newB < MinRating {
+		newB = MinRating
+	}
+	changeB = newB - ratingB
+
+	return newA, newB, changeA, changeB
 }
 
 type Repository interface {
@@ -111,10 +136,16 @@ func (r *MongoRepository) GetRating(ctx context.Context, userID primitive.Object
 		}
 		return nil, err
 	}
+	if ur.Rating < MinRating {
+		ur.Rating = MinRating
+	}
 	return &ur, nil
 }
 
 func (r *MongoRepository) UpsertRating(ctx context.Context, ur *UserRating) error {
+	if ur.Rating < MinRating {
+		ur.Rating = MinRating
+	}
 	ur.UpdatedAt = time.Now().UTC()
 	filter := bson.M{"userId": ur.UserID, "category": ur.Category}
 	update := bson.M{
@@ -151,6 +182,11 @@ func (r *MongoRepository) GetLeaderboard(ctx context.Context, cat Category, limi
 	var list []UserRating
 	if err := cursor.All(ctx, &list); err != nil {
 		return nil, err
+	}
+	for i := range list {
+		if list[i].Rating < MinRating {
+			list[i].Rating = MinRating
+		}
 	}
 	return list, nil
 }

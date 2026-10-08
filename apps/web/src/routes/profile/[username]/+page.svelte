@@ -71,7 +71,7 @@
 								<Icon name={cat.icon} size={13} className="text-slate-500" />
 							</div>
 							<div class="text-xl font-mono font-extrabold text-white">
-								{r?.rating || 1200}
+								{r?.rating || 400}
 							</div>
 							<div class="text-[10px] text-slate-500 mt-0.5">
 								{r?.games || 0} games played

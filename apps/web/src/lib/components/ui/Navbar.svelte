@@ -62,7 +62,7 @@
 					<span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
 					<span>{$authStore.user.username}</span>
 					<span class="bg-slate-900 px-2 py-0.5 rounded-md text-[11px] font-mono text-sky-400 font-bold border border-slate-800">
-						{$authStore.ratings?.blitz || 1200}
+						{$authStore.ratings?.blitz || 400}
 					</span>
 				</a>
 

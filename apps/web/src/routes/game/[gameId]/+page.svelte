@@ -205,7 +205,7 @@
 							<div class="flex items-center gap-2 text-white font-bold leading-tight">
 								<span class="truncate max-w-[140px] sm:max-w-none">{topPlayer?.username || 'Opponent'}</span>
 								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
-									{topPlayer?.rating || 1200}
+									{topPlayer?.rating || 400}
 								</span>
 							</div>
 							<div class="mt-0.5">
@@ -246,7 +246,7 @@
 							<div class="flex items-center gap-2 text-white font-bold leading-tight">
 								<span class="truncate max-w-[140px] sm:max-w-none">{bottomPlayer?.username || 'You'}</span>
 								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30">
-									{bottomPlayer?.rating || 1200}
+									{bottomPlayer?.rating || 400}
 								</span>
 							</div>
 							<div class="mt-0.5">

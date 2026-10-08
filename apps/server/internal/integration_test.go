@@ -67,8 +67,8 @@ func TestCompleteGameIntegrationFlow(t *testing.T) {
 
 	// Step 2: Create game between Player A (White) and Player B (Black)
 	tc := game.TimeControl{InitialSeconds: 180, Increment: 2} // 3+2 blitz
-	whitePlayer := game.PlayerInfo{UserID: userA.ID.Hex(), Username: userA.Username, Rating: 1200}
-	blackPlayer := game.PlayerInfo{UserID: userB.ID.Hex(), Username: userB.Username, Rating: 1200}
+	whitePlayer := game.PlayerInfo{UserID: userA.ID.Hex(), Username: userA.Username, Rating: rating.DefaultRating}
+	blackPlayer := game.PlayerInfo{UserID: userB.ID.Hex(), Username: userB.Username, Rating: rating.DefaultRating}
 
 	ag, err := gameService.CreateGame(whitePlayer, blackPlayer, tc)
 	if err != nil {
@@ -139,8 +139,8 @@ func TestCompleteGameIntegrationFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get rating for player A: %v", err)
 	}
-	if ratingA.Rating <= 1200 {
-		t.Fatalf("expected winner rating to increase above 1200, got %d", ratingA.Rating)
+	if ratingA.Rating <= rating.DefaultRating {
+		t.Fatalf("expected winner rating to increase above %d, got %d", rating.DefaultRating, ratingA.Rating)
 	}
 	if ratingA.Wins != 1 {
 		t.Fatalf("expected 1 win for player A, got %d", ratingA.Wins)
@@ -150,8 +150,8 @@ func TestCompleteGameIntegrationFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get rating for player B: %v", err)
 	}
-	if ratingB.Rating >= 1200 {
-		t.Fatalf("expected loser rating to decrease below 1200, got %d", ratingB.Rating)
+	if ratingB.Rating >= rating.DefaultRating {
+		t.Fatalf("expected loser rating to decrease below %d, got %d", rating.DefaultRating, ratingB.Rating)
 	}
 	if ratingB.Losses != 1 {
 		t.Fatalf("expected 1 loss for player B, got %d", ratingB.Losses)
