@@ -14,6 +14,25 @@
 
 	import { goto } from '$app/navigation';
 	import { Chess } from 'chess.js';
+	import { saveLocalGame, stageGameForReview } from '$lib/stores/localGames';
+
+	function getGamePgn(resultStr = '*'): string {
+		const c = new Chess();
+		for (const m of moves) {
+			try {
+				c.move(m.san || { from: m.from, to: m.to });
+			} catch (_) {}
+		}
+		c.header(
+			'Event', 'Local Match',
+			'Site', 'ChessNova',
+			'Date', new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
+			'White', 'White',
+			'Black', 'Black',
+			'Result', resultStr
+		);
+		return c.pgn();
+	}
 
 	async function handleMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType; isCapture?: boolean; isPromotion?: boolean }>) {
 		const { from, to, promotion, isCapture, isPromotion } = event.detail;
@@ -52,45 +71,95 @@
 			moves = [...moves, { from, to, san: moveSan, fen: nextFen }];
 			fen = nextFen;
 			turn = nextTurn;
+
+			// Check if game reached terminal state to archive game locally
+			const chk = new Chess(nextFen);
+			if (chk.isGameOver()) {
+				let resultStr = '1/2-1/2';
+				let outcomeStr = 'draw';
+				let winnerStr = 'draw';
+
+				if (chk.isCheckmate()) {
+					outcomeStr = 'checkmate';
+					if (chk.turn() === 'b') {
+						resultStr = '1-0';
+						winnerStr = 'white';
+					} else {
+						resultStr = '0-1';
+						winnerStr = 'black';
+					}
+				} else if (chk.isStalemate()) {
+					outcomeStr = 'stalemate';
+				} else if (chk.isInsufficientMaterial()) {
+					outcomeStr = 'insufficient_material';
+				} else if (chk.isThreefoldRepetition()) {
+					outcomeStr = 'threefold_repetition';
+				}
+
+				const fullPgn = getGamePgn(resultStr);
+				saveLocalGame({
+					date: new Date().toISOString(),
+					event: 'Local Match',
+					white: 'White',
+					black: 'Black',
+					result: resultStr,
+					outcome: outcomeStr,
+					winner: winnerStr,
+					timeControl: 'Pass & Play',
+					movesCount: moves.length,
+					pgn: fullPgn,
+					startFen: INITIAL_FEN
+				});
+			}
 		}
 	}
 
 	function handleAnalyze() {
 		if (typeof window !== 'undefined' && moves.length > 0) {
-			const c = new Chess();
-			for (const m of moves) {
-				try {
-					c.move(m.san || { from: m.from, to: m.to });
-				} catch (_) {}
-			}
-			c.header(
-				'Event', 'Local Match',
-				'Site', 'ChessNova',
-				'Date', new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
-				'White', 'White',
-				'Black', 'Black'
-			);
-			const pgn = c.pgn();
-			sessionStorage.setItem('review_pgn', pgn);
+			const pgn = getGamePgn('*');
+			stageGameForReview(pgn, 'White', 'Black');
 			sessionStorage.setItem('review_moves', JSON.stringify(moves));
-			sessionStorage.setItem(
-				'review_players',
-				JSON.stringify({
-					white: 'White',
-					black: 'Black'
-				})
-			);
+			saveLocalGame({
+				date: new Date().toISOString(),
+				event: 'Local Match',
+				white: 'White',
+				black: 'Black',
+				result: '*',
+				outcome: 'ongoing',
+				timeControl: 'Pass & Play',
+				movesCount: moves.length,
+				pgn,
+				startFen: INITIAL_FEN
+			});
 		}
 		goto('/analysis?review=1');
 	}
 
 	function resetLocalGame() {
+		// Archive previous game if it had moves before resetting
+		if (moves.length >= 2) {
+			const pgn = getGamePgn('*');
+			saveLocalGame({
+				date: new Date().toISOString(),
+				event: 'Local Match',
+				white: 'White',
+				black: 'Black',
+				result: '*',
+				outcome: 'reset',
+				timeControl: 'Pass & Play',
+				movesCount: moves.length,
+				pgn,
+				startFen: INITIAL_FEN
+			});
+		}
+
 		fen = INITIAL_FEN;
 		turn = 'white';
 		moves = [];
 		lastMove = null;
 		soundEffects.playGameStart();
 	}
+
 </script>
 
 <div class="flex-1 max-w-6xl mx-auto w-full p-4 sm:p-6 flex flex-col justify-center">

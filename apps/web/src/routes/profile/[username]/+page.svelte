@@ -136,11 +136,13 @@
 								</span>
 
 								<a
-									href="/game/{g.id}"
-									class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 font-medium rounded-lg transition"
+									href="/analysis?gameId={g.id}&review=1"
+									class="px-3 py-1.5 bg-[#81b64c] hover:bg-[#91c65d] text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1.5"
 								>
-									Review
+									<Icon name="search" size={13} />
+									<span>Review</span>
 								</a>
+
 
 								<a
 									href="/api/v1/games/{g.id}/pgn"

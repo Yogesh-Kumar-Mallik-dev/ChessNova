@@ -11,6 +11,13 @@
 	import { INITIAL_FEN, executeMoveClient, type Color, type PieceType } from '$lib/chess/engine';
 	import type { GameReviewResult } from '$lib/chess/review';
 	import { soundEffects } from '$lib/audio/sounds';
+	import {
+		getLocalGames,
+		saveLocalGame,
+		deleteLocalGame,
+		clearAllLocalGames,
+		type LocalGameRecord
+	} from '$lib/stores/localGames';
 
 	let startFen = $page.url.searchParams.get('fen') || INITIAL_FEN;
 	let fen = startFen;
@@ -24,11 +31,13 @@
 
 	let whitePlayerName = 'White';
 	let blackPlayerName = 'Black';
-	let rightPanelTab: 'review' | 'tools' = 'review';
+	let rightPanelTab: 'review' | 'tools' | 'history' = 'review';
 	let reviewResult: GameReviewResult | null = null;
 	let showPgnModal = false;
 	let copiedPgn = false;
 	let currentPgn = '';
+	let localGamesList: LocalGameRecord[] = [];
+
 
 	function loadPgnContent(pgnText: string) {
 		if (!pgnText || !pgnText.trim()) return;
@@ -139,6 +148,8 @@
 				}
 			}
 
+			refreshLocalGames();
+
 			// If URL has review param, default to review tab
 			if ($page.url.searchParams.get('review') === '1' || moves.length > 0 || currentPgn) {
 				rightPanelTab = 'review';
@@ -147,6 +158,7 @@
 			}
 		}
 	});
+
 
 	$: if (!currentPgn && moves.length > 0) {
 		const c = new Chess();
@@ -290,6 +302,27 @@
 		URL.revokeObjectURL(url);
 	}
 
+	function refreshLocalGames() {
+		localGamesList = getLocalGames();
+	}
+
+	function handleLoadSavedGame(rec: LocalGameRecord) {
+		loadPgnContent(rec.pgn);
+		rightPanelTab = 'review';
+	}
+
+	function handleDeleteSavedGame(id: string) {
+		deleteLocalGame(id);
+		refreshLocalGames();
+	}
+
+	function handleClearAllSavedGames() {
+		if (confirm('Clear all locally saved match history?')) {
+			clearAllLocalGames();
+			refreshLocalGames();
+		}
+	}
+
 	function resetToStart() {
 		startFen = INITIAL_FEN;
 		fen = INITIAL_FEN;
@@ -299,8 +332,11 @@
 		turn = 'white';
 		lastMove = null;
 		reviewResult = null;
+		currentPgn = '';
+		customPgnInput = '';
 		soundEffects.playGameStart();
 	}
+
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -397,23 +433,36 @@
 			<!-- Panel Tab Selector -->
 			<div class="flex items-center p-1 bg-[#1e1d1b] border border-[#3d3b37] rounded-xl mb-2.5 shrink-0">
 				<button
-					class="flex-1 py-1.5 px-3 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 {rightPanelTab === 'review'
+					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 {rightPanelTab === 'review'
 						? 'bg-[#81b64c] text-white shadow'
 						: 'text-stone-400 hover:text-white'}"
 					on:click={() => (rightPanelTab = 'review')}
 				>
 					<Icon name="search" size={14} />
-					<span>Game Review</span>
+					<span>Review</span>
 				</button>
 
 				<button
-					class="flex-1 py-1.5 px-3 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 {rightPanelTab === 'tools'
-						? 'bg-[#383633] text-white shadow'
+					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 {rightPanelTab === 'history'
+						? 'bg-[#383633] text-white shadow border border-[#484643]'
+						: 'text-stone-400 hover:text-white'}"
+					on:click={() => {
+						refreshLocalGames();
+						rightPanelTab = 'history';
+					}}
+				>
+					<Icon name="clock" size={14} />
+					<span>Past Games ({localGamesList.length})</span>
+				</button>
+
+				<button
+					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 {rightPanelTab === 'tools'
+						? 'bg-[#383633] text-white shadow border border-[#484643]'
 						: 'text-stone-400 hover:text-white'}"
 					on:click={() => (rightPanelTab = 'tools')}
 				>
 					<Icon name="settings" size={14} />
-					<span>Scorecard & FEN</span>
+					<span>Scorecard</span>
 				</button>
 			</div>
 
@@ -430,6 +479,91 @@
 						{currentPly}
 						on:selectPly={(e) => goToPly(e.detail)}
 					/>
+				{:else if rightPanelTab === 'history'}
+					<!-- Local Past Matches Archive for Guests and Users -->
+					<div class="bg-[#262522] border border-[#3d3b37] rounded-2xl p-4 shadow-2xl flex flex-col h-full overflow-hidden">
+						<div class="flex items-center justify-between pb-3 border-b border-[#3d3b37] shrink-0">
+							<div>
+								<h3 class="text-xs font-bold text-white uppercase tracking-wider">Local Match Archive</h3>
+								<p class="text-[11px] text-stone-400">Offline & guest match history saved in browser</p>
+							</div>
+							{#if localGamesList.length > 0}
+								<button
+									class="px-2 py-1 bg-stone-800 hover:bg-rose-900/60 hover:text-rose-200 text-stone-400 text-[11px] font-bold rounded-lg transition border border-stone-700"
+									on:click={handleClearAllSavedGames}
+								>
+									Clear All
+								</button>
+							{/if}
+						</div>
+
+						<div class="flex-1 overflow-y-auto py-2 flex flex-col gap-2">
+							{#if localGamesList.length === 0}
+								<div class="flex flex-col items-center justify-center h-full text-center py-12 px-4 gap-2">
+									<div class="w-10 h-10 rounded-xl bg-stone-800 flex items-center justify-center text-stone-500">
+										<Icon name="clock" size={20} />
+									</div>
+									<span class="text-xs font-bold text-stone-300">No Saved Games Yet</span>
+									<p class="text-[11px] text-stone-500 max-w-[200px]">
+										Play online or Pass & Play matches to build your local review history.
+									</p>
+								</div>
+							{:else}
+								{#each localGamesList as rec}
+									{@const won = rec.result === '1-0'}
+									{@const lost = rec.result === '0-1'}
+									{@const draw = rec.result === '1/2-1/2'}
+									{@const resClass = draw
+										? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+										: won
+											? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+											: lost
+												? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+												: 'text-stone-300 bg-stone-800 border-stone-700'}
+
+									<div class="p-3 bg-[#1e1d1b] border border-[#3d3b37] hover:border-stone-500 rounded-xl transition flex items-center justify-between gap-3 group">
+										<div class="min-w-0 flex-1">
+											<div class="flex items-center gap-2 mb-1">
+												<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border {resClass}">
+													{rec.result}
+												</span>
+												<span class="text-[11px] font-bold text-white truncate">
+													{rec.white} vs {rec.black}
+												</span>
+											</div>
+											<div class="flex items-center gap-2 text-[10px] text-stone-400">
+												<span>{rec.event}</span>
+												<span>•</span>
+												<span>{rec.movesCount} plies</span>
+												<span>•</span>
+												<span>{new Date(rec.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+											</div>
+										</div>
+
+										<div class="flex items-center gap-1.5 shrink-0">
+											<button
+												class="px-2.5 py-1.5 bg-[#81b64c] hover:bg-[#91c65d] active:bg-[#73a443] text-white font-extrabold text-[11px] uppercase tracking-wider rounded-lg shadow transition flex items-center gap-1"
+												on:click={() => handleLoadSavedGame(rec)}
+												title="Review this game"
+											>
+												<Icon name="search" size={12} />
+												<span>Review</span>
+											</button>
+
+											<button
+												class="p-1.5 text-stone-500 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition"
+												on:click={() => handleDeleteSavedGame(rec.id)}
+												title="Delete game"
+											>
+												<Icon name="x" size={13} />
+											</button>
+
+										</div>
+									</div>
+								{/each}
+							{/if}
+						</div>
+					</div>
 				{:else}
 					<!-- Tools, FEN & Scorecard Panel -->
 					<div class="bg-[#262522] border border-[#3d3b37] rounded-2xl p-4 shadow-2xl flex flex-col gap-3.5 h-full">
@@ -502,6 +636,7 @@
 					</div>
 				{/if}
 			</div>
+
 		</div>
 	</div>
 </div>
