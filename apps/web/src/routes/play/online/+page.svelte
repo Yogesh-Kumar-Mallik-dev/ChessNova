@@ -41,7 +41,7 @@
 
 	$: userRating = (() => {
 		const cat = selectedPreset.type.toLowerCase();
-		return $authStore.ratings?.[cat] || 1200;
+		return $authStore.ratings?.[cat] || 400;
 	})();
 
 	async function startMatchmaking() {

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
+	import { authStore } from '$lib/stores/auth';
 	import ChessBoard from '$lib/components/chess/ChessBoard.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import { executeMoveClient, type Color, type PieceType } from '$lib/chess/engine';
@@ -14,7 +15,7 @@
 	let orientation: Color = 'white';
 	let turn: Color = 'white';
 	let lastMove: { from: string; to: string; san?: string; isCapture?: boolean; isPromotion?: boolean } | null = null;
-	let userRating = 1200;
+	let userRating = 400;
 	let ratingDiff: number | null = null;
 	let solvedCount = 0;
 
@@ -93,6 +94,9 @@
 	}
 
 	onMount(() => {
+		if ($authStore.ratings?.puzzles) {
+			userRating = Math.max(100, $authStore.ratings.puzzles);
+		}
 		loadRandomPuzzle();
 	});
 </script>

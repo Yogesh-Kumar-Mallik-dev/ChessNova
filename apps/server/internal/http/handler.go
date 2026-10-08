@@ -683,17 +683,19 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			oldRating := uRat.Rating
 			diff := 10
 			if req.Success {
 				uRat.Rating += 12
 				uRat.Wins++
 				diff = 12
 			} else {
-				if uRat.Rating > 100 {
-					uRat.Rating -= 10
+				uRat.Rating -= 10
+				if uRat.Rating < rating.MinRating {
+					uRat.Rating = rating.MinRating
 				}
 				uRat.Losses++
-				diff = -10
+				diff = uRat.Rating - oldRating
 			}
 			uRat.Games++
 			uRat.UpdatedAt = time.Now().UTC()
@@ -711,14 +713,21 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 
 	// Guest fallback
 	diff := 10
+	guestRating := rating.DefaultRating
 	if req.Success {
 		diff = 12
+		guestRating += diff
 	} else {
 		diff = -10
+		guestRating += diff
+		if guestRating < rating.MinRating {
+			guestRating = rating.MinRating
+			diff = guestRating - rating.DefaultRating
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success":   req.Success,
-		"newRating": 1200 + diff,
+		"newRating": guestRating,
 		"diff":      diff,
 		"games":     1,
 	})
