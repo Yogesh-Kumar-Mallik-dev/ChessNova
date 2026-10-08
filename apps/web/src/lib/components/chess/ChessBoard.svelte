@@ -45,6 +45,7 @@
 	import { themeStore, type BoardTheme } from '$lib/stores/preferences';
 
 	export let theme: BoardTheme = $themeStore;
+	export let boardSizeClass: string = 'max-w-[min(90vw,calc(100dvh-180px),580px)]';
 
 	onMount(() => {
 		const unsub = themeStore.subscribe((val) => {
@@ -394,7 +395,7 @@
 	$: files = orientation === 'white' ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
 </script>
 
-<div class="relative w-full max-w-[min(88vw,590px)] aspect-square rounded-2xl overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.85)] border-4 border-slate-800 ring-1 ring-slate-700/60 select-none {isCheckmate ? 'ring-2 ring-amber-400/80 animate-[boardImpact_450ms_ease-out]' : ''}">
+<div class="relative w-full aspect-square {boardSizeClass} rounded-2xl overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.85)] border-4 border-slate-800 ring-1 ring-slate-700/60 select-none {isCheckmate ? 'ring-2 ring-amber-400/80 animate-[boardImpact_450ms_ease-out]' : ''}">
 	{#if showSoundToggle}
 		<button
 			class="absolute top-2 right-2 z-30 p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 transition shadow-md"
