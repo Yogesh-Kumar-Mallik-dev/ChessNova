@@ -179,8 +179,11 @@ func (e *StockfishEngine) EvaluateFen(ctx context.Context, fen string, depth int
 	}
 
 	// Normalize score to White's perspective (+ White advantage, - Black advantage)
-	if isBlackToMove && !eval.IsMate {
+	if isBlackToMove {
 		eval.ScoreCp = -eval.ScoreCp
+		if eval.IsMate {
+			eval.MateIn = -eval.MateIn
+		}
 	}
 
 	if len(eval.PV) == 0 && eval.BestMove != "" {
@@ -190,14 +193,71 @@ func (e *StockfishEngine) EvaluateFen(ctx context.Context, fen string, depth int
 	return eval, nil
 }
 
-// Pure Go fallback evaluation based on legal move search & material balance
-func fallbackEval(fen string) *Evaluation {
-	pos, err := chess.FromFEN(fen)
-	if err != nil {
-		return &Evaluation{ScoreCp: 0, BestMove: "e2e4", PV: []string{"e2e4"}, Depth: 1}
+// Piece-square tables for positional evaluation in fallback engine
+var (
+	pawnPST = [64]int{
+		0, 0, 0, 0, 0, 0, 0, 0,
+		50, 50, 50, 50, 50, 50, 50, 50,
+		10, 10, 20, 30, 30, 20, 10, 10,
+		5, 5, 10, 25, 25, 10, 5, 5,
+		0, 0, 0, 20, 20, 0, 0, 0,
+		5, -5, -10, 0, 0, -10, -5, 5,
+		5, 10, 10, -20, -20, 10, 10, 5,
+		0, 0, 0, 0, 0, 0, 0, 0,
 	}
+	knightPST = [64]int{
+		-50, -40, -30, -30, -30, -30, -40, -50,
+		-40, -20, 0, 0, 0, 0, -20, -40,
+		-30, 0, 10, 15, 15, 10, 0, -30,
+		-30, 5, 15, 20, 20, 15, 5, -30,
+		-30, 0, 15, 20, 20, 15, 0, -30,
+		-30, 5, 10, 15, 15, 10, 5, -30,
+		-40, -20, 0, 5, 5, 0, -20, -40,
+		-50, -40, -30, -30, -30, -30, -40, -50,
+	}
+	bishopPST = [64]int{
+		-20, -10, -10, -10, -10, -10, -10, -20,
+		-10, 0, 0, 0, 0, 0, 0, -10,
+		-10, 0, 5, 10, 10, 5, 0, -10,
+		-10, 5, 5, 10, 10, 5, 5, -10,
+		-10, 0, 10, 10, 10, 10, 0, -10,
+		-10, 10, 10, 10, 10, 10, 10, -10,
+		-10, 5, 0, 0, 0, 0, 5, -10,
+		-20, -10, -10, -10, -10, -10, -10, -20,
+	}
+	rookPST = [64]int{
+		0, 0, 0, 0, 0, 0, 0, 0,
+		5, 10, 10, 10, 10, 10, 10, 5,
+		-5, 0, 0, 0, 0, 0, 0, -5,
+		-5, 0, 0, 0, 0, 0, 0, -5,
+		-5, 0, 0, 0, 0, 0, 0, -5,
+		-5, 0, 0, 0, 0, 0, 0, -5,
+		-5, 0, 0, 0, 0, 0, 0, -5,
+		0, 0, 0, 5, 5, 0, 0, 0,
+	}
+	queenPST = [64]int{
+		-20, -10, -10, -5, -5, -10, -10, -20,
+		-10, 0, 0, 0, 0, 0, 0, -10,
+		-10, 0, 5, 5, 5, 5, 0, -10,
+		-5, 0, 5, 5, 5, 5, 0, -5,
+		0, 0, 5, 5, 5, 5, 0, -5,
+		-10, 5, 5, 5, 5, 5, 0, -10,
+		-10, 0, 5, 0, 0, 0, 0, -10,
+		-20, -10, -10, -5, -5, -10, -10, -20,
+	}
+	kingPST = [64]int{
+		-30, -40, -40, -50, -50, -40, -40, -30,
+		-30, -40, -40, -50, -50, -40, -40, -30,
+		-30, -40, -40, -50, -50, -40, -40, -30,
+		-30, -40, -40, -50, -50, -40, -40, -30,
+		-20, -30, -30, -40, -40, -30, -30, -20,
+		-10, -20, -20, -20, -20, -20, -20, -10,
+		20, 20, 0, 0, 0, 0, 20, 20,
+		20, 30, 10, 0, 0, 10, 30, 20,
+	}
+)
 
-	// Calculate base material score from White's perspective
+func evaluateStaticPosition(pos chess.Position) int {
 	score := 0
 	pieceVals := map[chess.PieceType]int{
 		chess.Pawn: 100, chess.Knight: 320, chess.Bishop: 330,
@@ -206,72 +266,157 @@ func fallbackEval(fen string) *Evaluation {
 
 	for sq := 0; sq < 64; sq++ {
 		p := pos.Board[sq]
-		if !p.IsEmpty() {
-			val := pieceVals[p.Type]
-			if p.Color == chess.White {
-				score += val
-			} else {
-				score -= val
-			}
+		if p.IsEmpty() {
+			continue
 		}
+		val := pieceVals[p.Type]
+		var pstVal int
+		tableSq := sq
+		if p.Color == chess.Black {
+			// Flip vertically for black
+			tableSq = (7-(sq/8))*8 + (sq % 8)
+		}
+
+		switch p.Type {
+		case chess.Pawn:
+			pstVal = pawnPST[tableSq]
+		case chess.Knight:
+			pstVal = knightPST[tableSq]
+		case chess.Bishop:
+			pstVal = bishopPST[tableSq]
+		case chess.Rook:
+			pstVal = rookPST[tableSq]
+		case chess.Queen:
+			pstVal = queenPST[tableSq]
+		case chess.King:
+			pstVal = kingPST[tableSq]
+		}
+
+		totalPieceScore := val + pstVal
+		if p.Color == chess.White {
+			score += totalPieceScore
+		} else {
+			score -= totalPieceScore
+		}
+	}
+	return score
+}
+
+// Pure Go fallback evaluation based on 2-ply minimax lookahead & positional PST tables
+func fallbackEval(fen string) *Evaluation {
+	pos, err := chess.FromFEN(fen)
+	if err != nil {
+		return &Evaluation{ScoreCp: 0, BestMove: "e2e4", PV: []string{"e2e4"}, Depth: 1}
 	}
 
 	legalMoves := chess.LegalMoves(pos)
 	if len(legalMoves) == 0 {
 		if chess.IsCheck(pos) {
 			if pos.SideToMove == chess.White {
-				return &Evaluation{ScoreCp: -10000, IsMate: true, MateIn: -1, Depth: 1}
+				return &Evaluation{ScoreCp: -10000, IsMate: true, MateIn: -1, Depth: 2}
 			}
-			return &Evaluation{ScoreCp: 10000, IsMate: true, MateIn: 1, Depth: 1}
+			return &Evaluation{ScoreCp: 10000, IsMate: true, MateIn: 1, Depth: 2}
 		}
 		// Stalemate
-		return &Evaluation{ScoreCp: 0, IsMate: false, Depth: 1}
+		return &Evaluation{ScoreCp: 0, IsMate: false, Depth: 2}
 	}
 
-	// Pick best candidate move using 1-ply material lookahead and central dominance
 	bestMove := legalMoves[0]
-	bestEval := -999999
-	if pos.SideToMove == chess.Black {
-		bestEval = 999999
-	}
+	var bestScore int
 
-	for _, m := range legalMoves {
-		nextPos, err := chess.ApplyMove(pos, m)
-		if err != nil {
-			continue
-		}
+	if pos.SideToMove == chess.White {
+		bestScore = -999999
+		for _, m := range legalMoves {
+			pos1, err := chess.ApplyMove(pos, m)
+			if err != nil {
+				continue
+			}
 
-		mScore := 0
-		for sq := 0; sq < 64; sq++ {
-			p := nextPos.Board[sq]
-			if !p.IsEmpty() {
-				val := pieceVals[p.Type]
-				if p.Color == chess.White {
-					mScore += val
-				} else {
-					mScore -= val
+			// Ply 2: Opponent's best response
+			oppMoves := chess.LegalMoves(pos1)
+			if len(oppMoves) == 0 {
+				if chess.IsCheck(pos1) {
+					// Mate in 1 for White!
+					return &Evaluation{
+						ScoreCp:  10000,
+						IsMate:   true,
+						MateIn:   1,
+						BestMove: m.UCI(),
+						PV:       []string{m.UCI()},
+						Depth:    2,
+					}
+				}
+				// Stalemate
+				if 0 > bestScore {
+					bestScore = 0
+					bestMove = m
+				}
+				continue
+			}
+
+			// Black minimizes score
+			minOppScore := 999999
+			for _, om := range oppMoves {
+				pos2, err := chess.ApplyMove(pos1, om)
+				if err != nil {
+					continue
+				}
+				eval := evaluateStaticPosition(pos2)
+				if eval < minOppScore {
+					minOppScore = eval
 				}
 			}
-		}
 
-		// Small bonus for center control (d4, e4, d5, e5)
-		toStr := m.To.String()
-		if toStr == "e4" || toStr == "d4" || toStr == "e5" || toStr == "d5" {
-			if pos.SideToMove == chess.White {
-				mScore += 15
-			} else {
-				mScore -= 15
-			}
-		}
-
-		if pos.SideToMove == chess.White {
-			if mScore > bestEval {
-				bestEval = mScore
+			if minOppScore > bestScore {
+				bestScore = minOppScore
 				bestMove = m
 			}
-		} else {
-			if mScore < bestEval {
-				bestEval = mScore
+		}
+	} else {
+		// Black maximizes negative score (minimizes White's score)
+		bestScore = 999999
+		for _, m := range legalMoves {
+			pos1, err := chess.ApplyMove(pos, m)
+			if err != nil {
+				continue
+			}
+
+			oppMoves := chess.LegalMoves(pos1)
+			if len(oppMoves) == 0 {
+				if chess.IsCheck(pos1) {
+					// Mate in 1 for Black!
+					return &Evaluation{
+						ScoreCp:  -10000,
+						IsMate:   true,
+						MateIn:   -1,
+						BestMove: m.UCI(),
+						PV:       []string{m.UCI()},
+						Depth:    2,
+					}
+				}
+				// Stalemate
+				if 0 < bestScore {
+					bestScore = 0
+					bestMove = m
+				}
+				continue
+			}
+
+			// White maximizes score
+			maxOppScore := -999999
+			for _, om := range oppMoves {
+				pos2, err := chess.ApplyMove(pos1, om)
+				if err != nil {
+					continue
+				}
+				eval := evaluateStaticPosition(pos2)
+				if eval > maxOppScore {
+					maxOppScore = eval
+				}
+			}
+
+			if maxOppScore < bestScore {
+				bestScore = maxOppScore
 				bestMove = m
 			}
 		}
@@ -279,11 +424,12 @@ func fallbackEval(fen string) *Evaluation {
 
 	bestUCI := bestMove.UCI()
 	return &Evaluation{
-		ScoreCp:  score,
+		ScoreCp:  bestScore,
 		IsMate:   false,
 		BestMove: bestUCI,
 		PV:       []string{bestUCI},
-		Depth:    1,
+		Depth:    2,
 	}
 }
+
 

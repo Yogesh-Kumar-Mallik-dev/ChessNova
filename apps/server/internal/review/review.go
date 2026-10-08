@@ -329,13 +329,13 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 		} else if isBest && playerWinBefore < 55.0 && playerWinAfter >= 60.0 && winDelta <= 0.2 {
 			classification = ClassGreat
 			explanation = fmt.Sprintf("Great move! %s was the solitary winning continuation in a complex position.", m.SAN)
-		} else if isBest || winDelta <= 0.5 {
+		} else if isBest {
 			classification = ClassBest
 			explanation = fmt.Sprintf("Best move! You found the optimal continuation (%s).", m.SAN)
-		} else if winDelta <= 2.2 {
+		} else if winDelta <= 1.5 {
 			classification = ClassExcellent
 			explanation = "Excellent move! A very strong choice that keeps the pressure."
-		} else if winDelta <= 5.5 {
+		} else if winDelta <= 5.0 {
 			classification = ClassGood
 			explanation = "Good move. Solid choice that preserves the balance."
 		} else if winDelta <= 11.5 {
