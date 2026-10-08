@@ -10,5 +10,10 @@ if command -v docker >/dev/null 2>&1; then
   echo "==> [uenvi] Stopping and removing containers..."
   cd "$ROOT_DIR"
   docker compose down
+  for CNAME in chess-mongo chess-redis; do
+    if docker ps -a --format '{{.Names}}' | grep -Eq "^${CNAME}$"; then
+      docker rm -f "$CNAME" >/dev/null 2>&1 || true
+    fi
+  done
   echo "✅ [uenvi] Containers stopped."
 fi

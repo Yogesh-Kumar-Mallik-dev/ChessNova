@@ -1,3 +1,5 @@
+name: chessnova
+
 services:
   mongodb:
     image: mongo:7
