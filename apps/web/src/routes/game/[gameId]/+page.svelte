@@ -188,81 +188,84 @@
 
 </script>
 
-<div class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full p-2 sm:p-4 lg:p-6">
-	<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start justify-center">
+<div class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full p-2 sm:px-4 sm:py-2.5 lg:px-6 lg:py-2.5">
+	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center justify-center my-auto">
 		
 		<!-- Board Column -->
-		<div class="lg:col-span-8 flex flex-col items-center justify-center">
+		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center">
 			
-			<!-- Top Player Bar (Opponent) -->
-			<div class="w-full max-w-[min(88vw,590px)] flex items-center justify-between py-2 px-1 text-sm font-semibold select-none">
-				<div class="flex items-center gap-3">
-					<div class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-xs font-mono font-bold text-slate-300 shadow-md">
-						<Icon name="user" size={16} />
-					</div>
-					<div>
-						<div class="flex items-center gap-2 text-white font-bold leading-tight">
-							<span>{topPlayer?.username || 'Opponent'}</span>
-							<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
-								{topPlayer?.rating || 1200}
-							</span>
+			<div class="w-full max-w-[min(92vw,calc(100dvh-170px),570px)] flex flex-col items-center">
+				<!-- Top Player Bar (Opponent) -->
+				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mb-1">
+					<div class="flex items-center gap-2.5">
+						<div class="w-8 h-8 rounded-xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-xs font-mono font-bold text-slate-300 shadow-md">
+							<Icon name="user" size={15} />
 						</div>
-						<div class="mt-1">
-							<CapturedPieces fen={$gameStore.fen} forColor={opponentColor} />
+						<div>
+							<div class="flex items-center gap-2 text-white font-bold leading-tight">
+								<span class="truncate max-w-[140px] sm:max-w-none">{topPlayer?.username || 'Opponent'}</span>
+								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+									{topPlayer?.rating || 1200}
+								</span>
+							</div>
+							<div class="mt-0.5">
+								<CapturedPieces fen={$gameStore.fen} forColor={opponentColor} />
+							</div>
 						</div>
 					</div>
+
+					<GameClock timeMs={topTimeMs} isActive={isTopTurn} />
 				</div>
 
-				<GameClock timeMs={topTimeMs} isActive={isTopTurn} />
-			</div>
+				<!-- Chess Board -->
+				<ChessBoard
+					fen={$gameStore.fen}
+					orientation={currentOrientation}
+					turn={$gameStore.turn}
+					selectedSquare={$gameStore.selectedSquare}
+					legalMoves={$gameStore.legalMoves}
+					lastMove={$gameStore.lastMove}
+					isCheck={$gameStore.isCheck}
+					interactive={$gameStore.status === 'playing'}
+					gameOver={$gameStore.status === 'finished'}
+					gameResult={$gameStore.result || ''}
+					gameOutcome={$gameStore.outcome || ''}
+					gameWinner={$gameStore.winner || ''}
+					disableGameOverModal={true}
+					boardSizeClass="w-full"
+					on:move={handleMove}
+				/>
 
-			<!-- Chess Board -->
-			<ChessBoard
-				fen={$gameStore.fen}
-				orientation={currentOrientation}
-				turn={$gameStore.turn}
-				selectedSquare={$gameStore.selectedSquare}
-				legalMoves={$gameStore.legalMoves}
-				lastMove={$gameStore.lastMove}
-				isCheck={$gameStore.isCheck}
-				interactive={$gameStore.status === 'playing'}
-				gameOver={$gameStore.status === 'finished'}
-				gameResult={$gameStore.result || ''}
-				gameOutcome={$gameStore.outcome || ''}
-				gameWinner={$gameStore.winner || ''}
-				disableGameOverModal={true}
-				on:move={handleMove}
-			/>
+				<!-- Bottom Player Bar (Self) -->
+				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mt-1">
+					<div class="flex items-center gap-2.5">
+						<div class="w-8 h-8 rounded-xl bg-sky-500/15 border border-sky-500/40 flex items-center justify-center text-xs font-mono font-bold text-sky-400 shadow-md">
+							<Icon name="crown" size={15} />
+						</div>
+						<div>
+							<div class="flex items-center gap-2 text-white font-bold leading-tight">
+								<span class="truncate max-w-[140px] sm:max-w-none">{bottomPlayer?.username || 'You'}</span>
+								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30">
+									{bottomPlayer?.rating || 1200}
+								</span>
+							</div>
+							<div class="mt-0.5">
+								<CapturedPieces fen={$gameStore.fen} forColor={userColor} />
+							</div>
+						</div>
+					</div>
 
-			<!-- Bottom Player Bar (Self) -->
-			<div class="w-full max-w-[min(88vw,590px)] flex items-center justify-between py-2 px-1 text-sm font-semibold select-none">
-				<div class="flex items-center gap-3">
-					<div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/40 flex items-center justify-center text-xs font-mono font-bold text-sky-400 shadow-md">
-						<Icon name="crown" size={16} />
-					</div>
-					<div>
-						<div class="flex items-center gap-2 text-white font-bold leading-tight">
-							<span>{bottomPlayer?.username || 'You'}</span>
-							<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30">
-								{bottomPlayer?.rating || 1200}
-							</span>
-						</div>
-						<div class="mt-1">
-							<CapturedPieces fen={$gameStore.fen} forColor={userColor} />
-						</div>
-					</div>
+					<GameClock timeMs={bottomTimeMs} isActive={isBottomTurn} />
 				</div>
-
-				<GameClock timeMs={bottomTimeMs} isActive={isBottomTurn} />
 			</div>
 
 		</div>
 
 		<!-- Right Panel: HUD, Move Ledger & Actions -->
-		<div class="lg:col-span-4 w-full flex flex-col h-[400px] lg:h-[610px] bg-gradient-to-b from-[#121824] to-[#0c1017] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+		<div class="lg:col-span-5 xl:col-span-4 w-full flex flex-col h-[420px] lg:h-[min(calc(100dvh-100px),620px)] bg-gradient-to-b from-[#121824] to-[#0c1017] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
 			
 			<!-- HUD Header -->
-			<div class="p-3.5 border-b border-slate-800 bg-[#090d15]/80 flex items-center justify-between">
+			<div class="p-3 border-b border-slate-800 bg-[#090d15]/80 flex items-center justify-between">
 				<div class="flex items-center gap-2.5 text-xs font-bold">
 					<span class="w-2 h-2 rounded-full {$gameStore.connectionStatus === 'connected' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-500 animate-ping'}"></span>
 					<span class="font-mono text-slate-300">

@@ -97,48 +97,55 @@
 	});
 </script>
 
-<div class="flex-1 max-w-6xl mx-auto w-full p-4 sm:p-6 flex flex-col justify-center">
+<div class="flex-1 max-w-6xl mx-auto w-full p-2 sm:px-4 sm:py-2.5 flex flex-col justify-center">
 	<!-- Header -->
-	<div class="mb-6 flex items-center justify-between">
-		<div>
-			<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold mb-2">
-				<Icon name="puzzle" size={14} />
-				<span>Tactics Lab</span>
+	<div class="mb-2 sm:mb-3 flex items-center justify-between">
+		<div class="flex items-center gap-3">
+			<div class="w-8 h-8 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+				<Icon name="puzzle" size={16} />
 			</div>
-			<h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Tactical Puzzles</h1>
-			<p class="text-xs sm:text-sm text-slate-400 mt-1">Train calculation and sharp pattern recognition</p>
+			<div>
+				<div class="flex items-center gap-2">
+					<h1 class="text-lg sm:text-xl font-extrabold text-white tracking-tight">Tactical Puzzles</h1>
+					<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">Tactics Lab</span>
+				</div>
+				<p class="text-[11px] sm:text-xs text-slate-400">Train calculation and sharp pattern recognition</p>
+			</div>
 		</div>
 
 		<button
-			class="inline-flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-medium text-slate-200 transition shadow-sm"
+			class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-medium text-slate-200 transition shadow-sm"
 			on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 		>
-			<Icon name="rotate-cw" size={14} className="text-slate-400" />
+			<Icon name="rotate-cw" size={13} className="text-slate-400" />
 			<span>Flip Board</span>
 		</button>
 	</div>
 
-	<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start justify-center">
+	<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-center justify-center my-auto">
 		<!-- Left: Puzzle Board -->
-		<div class="lg:col-span-8 flex justify-center">
-			{#if loading}
-				<div class="w-full max-w-[560px] aspect-square bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col items-center justify-center text-sm text-slate-400 gap-3 shadow-2xl backdrop-blur-xl animate-pulse">
-					<div class="w-8 h-8 border-2 border-sky-500/30 border-t-sky-400 rounded-full animate-spin"></div>
-					<span class="text-xs font-mono text-slate-400">Loading tactical position...</span>
-				</div>
-			{:else}
-				<ChessBoard
-					fen={currentFen}
-					{orientation}
-					{turn}
-					{lastMove}
-					on:move={handleMove}
-				/>
-			{/if}
+		<div class="lg:col-span-7 xl:col-span-8 flex justify-center">
+			<div class="w-full max-w-[min(90vw,calc(100dvh-150px),580px)] flex justify-center">
+				{#if loading}
+					<div class="w-full aspect-square bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col items-center justify-center text-sm text-slate-400 gap-3 shadow-2xl backdrop-blur-xl animate-pulse">
+						<div class="w-8 h-8 border-2 border-sky-500/30 border-t-sky-400 rounded-full animate-spin"></div>
+						<span class="text-xs font-mono text-slate-400">Loading tactical position...</span>
+					</div>
+				{:else}
+					<ChessBoard
+						fen={currentFen}
+						{orientation}
+						{turn}
+						{lastMove}
+						boardSizeClass="w-full"
+						on:move={handleMove}
+					/>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Right: Puzzle Controls & Feedback -->
-		<div class="lg:col-span-4 bg-slate-900/80 border border-slate-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-2xl flex flex-col gap-5">
+		<div class="lg:col-span-5 xl:col-span-4 h-[420px] lg:h-[min(calc(100dvh-150px),580px)] bg-slate-900/80 border border-slate-800/80 backdrop-blur-xl rounded-2xl p-5 shadow-2xl flex flex-col justify-between overflow-y-auto">
 			<div class="flex items-center justify-between pb-4 border-b border-slate-800/80">
 				<div>
 					<span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider">Tactics Rating</span>

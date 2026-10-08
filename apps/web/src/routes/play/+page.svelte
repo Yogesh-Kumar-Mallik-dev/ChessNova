@@ -162,52 +162,59 @@
 
 </script>
 
-<div class="flex-1 max-w-6xl mx-auto w-full p-4 sm:p-6 flex flex-col justify-center">
+<div class="flex-1 max-w-6xl mx-auto w-full p-2 sm:px-4 sm:py-2.5 flex flex-col justify-center">
 	<!-- Header -->
-	<div class="mb-6 flex items-center justify-between">
-		<div>
-			<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold mb-2">
-				<Icon name="swords" size={14} />
-				<span>Local Match</span>
+	<div class="mb-2 sm:mb-3 flex items-center justify-between">
+		<div class="flex items-center gap-3">
+			<div class="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+				<Icon name="swords" size={16} />
 			</div>
-			<h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Pass & Play</h1>
-			<p class="text-xs sm:text-sm text-slate-400 mt-1">Standard FIDE rules, legal move reticles, and live check detection</p>
+			<div>
+				<div class="flex items-center gap-2">
+					<h1 class="text-lg sm:text-xl font-extrabold text-white tracking-tight">Pass & Play</h1>
+					<span class="hidden sm:inline-block text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-bold">Local Match</span>
+				</div>
+				<p class="text-[11px] sm:text-xs text-slate-400">Standard FIDE rules with move reticles & check detection</p>
+			</div>
 		</div>
 
 		<div class="flex items-center gap-2">
 			<button
-				class="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-medium text-slate-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-medium text-slate-200 transition shadow-sm"
 				on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 			>
-				<Icon name="rotate-cw" size={14} className="text-slate-400" />
+				<Icon name="rotate-cw" size={13} className="text-slate-400" />
 				<span>Flip</span>
 			</button>
 			<button
-				class="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-medium text-slate-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-medium text-slate-200 transition shadow-sm"
 				on:click={resetLocalGame}
 			>
-				<Icon name="rotate-ccw" size={14} className="text-slate-400" />
+				<Icon name="rotate-ccw" size={13} className="text-slate-400" />
 				<span>Reset</span>
 			</button>
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start justify-center">
-		<div class="lg:col-span-8 flex justify-center">
-			<ChessBoard
-				{fen}
-				{orientation}
-				{turn}
-				{lastMove}
-				on:move={handleMove}
-				on:newGame={resetLocalGame}
-				on:rematch={resetLocalGame}
-				on:analyze={handleAnalyze}
-			/>
+	<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-center justify-center my-auto">
+		<div class="lg:col-span-7 xl:col-span-8 flex justify-center">
+			<div class="w-full max-w-[min(90vw,calc(100dvh-150px),580px)] flex justify-center">
+				<ChessBoard
+					{fen}
+					{orientation}
+					{turn}
+					{lastMove}
+					boardSizeClass="w-full"
+					on:move={handleMove}
+					on:newGame={resetLocalGame}
+					on:rematch={resetLocalGame}
+					on:analyze={handleAnalyze}
+				/>
+			</div>
 		</div>
 
-		<div class="lg:col-span-4 h-[400px] lg:h-[580px] bg-slate-900/80 border border-slate-800/80 backdrop-blur-xl rounded-2xl flex flex-col overflow-hidden shadow-2xl">
-			<div class="p-3.5 border-b border-slate-800/80 bg-slate-950/60 text-xs font-bold text-white flex justify-between items-center">
+		<div class="lg:col-span-5 xl:col-span-4 h-[380px] lg:h-[min(calc(100dvh-150px),580px)] bg-slate-900/80 border border-slate-800/80 backdrop-blur-xl rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+			<div class="p-3 border-b border-slate-800/80 bg-slate-950/60 text-xs font-bold text-white flex justify-between items-center">
 				<span class="tracking-wide uppercase text-[10px] text-slate-400">Scorecard (FIDE SAN)</span>
 				<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60">
 					<span class="w-2 h-2 rounded-full {turn === 'white' ? 'bg-white' : 'bg-slate-900 border border-slate-600'}"></span>

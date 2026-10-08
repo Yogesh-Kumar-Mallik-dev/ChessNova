@@ -354,74 +354,79 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-5 flex flex-col justify-center select-none">
+<div class="flex-1 max-w-7xl mx-auto w-full p-2 sm:px-4 sm:py-2.5 flex flex-col justify-center select-none">
 	<!-- Header -->
-	<div class="mb-4 flex items-center justify-between">
-		<div>
-			<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[#81b64c] text-xs font-semibold mb-1.5">
-				<Icon name="search" size={14} />
-				<span>Game Review & Analysis</span>
+	<div class="mb-2 sm:mb-3 flex items-center justify-between gap-3">
+		<div class="flex items-center gap-3">
+			<div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-[#81b64c]">
+				<Icon name="search" size={16} />
 			</div>
-			<h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Stockfish Review Laboratory</h1>
-			<p class="text-xs text-stone-400 mt-0.5">Authentic Chess.com game review with Stockfish evaluation, accuracy CAPS scoring, and ECO database</p>
+			<div>
+				<div class="flex items-center gap-2">
+					<h1 class="text-base sm:text-lg font-extrabold text-white tracking-tight">Stockfish Review Laboratory</h1>
+					<span class="hidden md:inline-block text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-[#81b64c] border border-emerald-500/20 font-bold">Chess.com Review & CAPS</span>
+				</div>
+				<p class="text-[11px] text-stone-400 hidden sm:block">Coach evaluation, move classifications, eval bar, and local archives</p>
+			</div>
 		</div>
 
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
 			{#if currentPgn || moves.length > 0}
 				<button
-					class="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+					class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
 					on:click={copyPgnText}
 					title="Copy Game PGN"
 				>
-					<Icon name={copiedPgn ? 'check' : 'download'} size={14} className={copiedPgn ? 'text-emerald-400' : 'text-stone-400'} />
-					<span>{copiedPgn ? 'Copied' : 'Copy PGN'}</span>
+					<Icon name={copiedPgn ? 'check' : 'download'} size={13} className={copiedPgn ? 'text-emerald-400' : 'text-stone-400'} />
+					<span>{copiedPgn ? 'Copied' : 'Copy'}</span>
 				</button>
 				<button
-					class="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+					class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
 					on:click={downloadPgnFile}
 					title="Download .pgn file"
 				>
-					<Icon name="download" size={14} className="text-stone-400" />
-					<span>Download</span>
+					<Icon name="download" size={13} className="text-stone-400" />
+					<span>PGN</span>
 				</button>
 			{/if}
 
 			<button
-				class="inline-flex items-center gap-2 px-3 py-2 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
 				on:click={() => (showPgnModal = true)}
 			>
-				<Icon name="download" size={14} className="text-[#81b64c]" />
-				<span>Import PGN</span>
+				<Icon name="download" size={13} className="text-[#81b64c]" />
+				<span>Import</span>
 			</button>
 			<button
-				class="inline-flex items-center gap-2 px-3 py-2 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
 				on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 			>
-				<Icon name="rotate-cw" size={14} className="text-stone-400" />
+				<Icon name="rotate-cw" size={13} className="text-stone-400" />
 				<span>Flip</span>
 			</button>
 			<button
-				class="inline-flex items-center gap-2 px-3 py-2 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
 				on:click={resetToStart}
 			>
-				<Icon name="rotate-ccw" size={14} className="text-stone-400" />
+				<Icon name="rotate-ccw" size={13} className="text-stone-400" />
 				<span>Reset</span>
 			</button>
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start justify-center">
+	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-5 items-center justify-center my-auto">
 		<!-- Left: Board with Eval Bar and Best Move Arrow -->
-		<div class="lg:col-span-7 xl:col-span-8 flex justify-center items-center gap-2.5">
-			<div class="hidden sm:flex h-[min(80vw,520px)]">
+		<div class="lg:col-span-7 xl:col-span-8 flex justify-center items-center gap-2 sm:gap-3">
+			<div class="hidden sm:flex h-[min(88vw,calc(100dvh-150px),580px)]">
 				<EvalBar scoreCp={currentScoreCp} {orientation} />
 			</div>
-			<div class="shrink-0 flex justify-center">
+			<div class="shrink-0 flex justify-center w-full max-w-[min(88vw,calc(100dvh-150px),580px)]">
 				<ChessBoard
 					{fen}
 					{orientation}
 					{turn}
 					{lastMove}
+					boardSizeClass="w-full"
 					reviewMove={activeReviewMove}
 					on:move={handleMove}
 				/>
@@ -429,7 +434,7 @@
 		</div>
 
 		<!-- Right: Game Review / Tools Panel -->
-		<div class="lg:col-span-5 xl:col-span-4 h-[590px] flex flex-col">
+		<div class="lg:col-span-5 xl:col-span-4 h-[420px] lg:h-[min(calc(100dvh-150px),620px)] flex flex-col">
 			<!-- Panel Tab Selector -->
 			<div class="flex items-center p-1 bg-[#1e1d1b] border border-[#3d3b37] rounded-xl mb-2.5 shrink-0">
 				<button
