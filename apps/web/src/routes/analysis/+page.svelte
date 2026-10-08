@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { Chess } from 'chess.js';
 	import ChessBoard from '$lib/components/chess/ChessBoard.svelte';
+	import EvalBar from '$lib/components/chess/EvalBar.svelte';
 	import MoveList from '$lib/components/game/MoveList.svelte';
 	import GameReview from '$lib/components/chess/GameReview.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
@@ -163,6 +164,18 @@
 		);
 		currentPgn = c.pgn();
 	}
+
+	$: currentScoreCp = (() => {
+		if (reviewResult && reviewResult.moves.length > 0) {
+			if (currentPly === 0) {
+				return reviewResult.evalGraph?.[0]?.scoreCp || 0;
+			}
+			if (currentPly <= reviewResult.moves.length) {
+				return reviewResult.moves[currentPly - 1].evalAfter;
+			}
+		}
+		return 0;
+	})();
 
 	$: activeReviewMove =
 		reviewResult && currentPly > 0 && currentPly <= reviewResult.moves.length
@@ -362,16 +375,21 @@
 	</div>
 
 	<div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start justify-center">
-		<!-- Left: Board with Best Move Arrow and Badges -->
-		<div class="lg:col-span-7 xl:col-span-8 flex justify-center">
-			<ChessBoard
-				{fen}
-				{orientation}
-				{turn}
-				{lastMove}
-				reviewMove={activeReviewMove}
-				on:move={handleMove}
-			/>
+		<!-- Left: Board with Eval Bar and Best Move Arrow -->
+		<div class="lg:col-span-7 xl:col-span-8 flex justify-center items-center gap-2.5">
+			<div class="hidden sm:flex h-[min(80vw,520px)]">
+				<EvalBar scoreCp={currentScoreCp} {orientation} />
+			</div>
+			<div class="shrink-0 flex justify-center">
+				<ChessBoard
+					{fen}
+					{orientation}
+					{turn}
+					{lastMove}
+					reviewMove={activeReviewMove}
+					on:move={handleMove}
+				/>
+			</div>
 		</div>
 
 		<!-- Right: Game Review / Tools Panel -->

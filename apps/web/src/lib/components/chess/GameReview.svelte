@@ -95,6 +95,61 @@
 		URL.revokeObjectURL(url);
 	}
 
+	function estimateElo(accuracy: number): number {
+		if (accuracy >= 98) return 2600;
+		if (accuracy >= 95) return 2350;
+		if (accuracy >= 90) return 2100;
+		if (accuracy >= 85) return 1850;
+		if (accuracy >= 80) return 1650;
+		if (accuracy >= 75) return 1450;
+		if (accuracy >= 70) return 1250;
+		if (accuracy >= 60) return 1000;
+		return Math.max(500, Math.round(accuracy * 12));
+	}
+
+	function jumpToNextKeyMove() {
+		if (!reviewResult || reviewResult.moves.length === 0) return;
+		for (let i = currentPly; i < reviewResult.moves.length; i++) {
+			const c = reviewResult.moves[i].classification;
+			if (['blunder', 'mistake', 'miss', 'inaccuracy', 'brilliant', 'great'].includes(c)) {
+				jumpToPly(i + 1);
+				return;
+			}
+		}
+		for (let i = 0; i < currentPly; i++) {
+			const c = reviewResult.moves[i].classification;
+			if (['blunder', 'mistake', 'miss', 'inaccuracy', 'brilliant', 'great'].includes(c)) {
+				jumpToPly(i + 1);
+				return;
+			}
+		}
+	}
+
+	function jumpToPrevKeyMove() {
+		if (!reviewResult || reviewResult.moves.length === 0) return;
+		for (let i = currentPly - 2; i >= 0; i--) {
+			const c = reviewResult.moves[i].classification;
+			if (['blunder', 'mistake', 'miss', 'inaccuracy', 'brilliant', 'great'].includes(c)) {
+				jumpToPly(i + 1);
+				return;
+			}
+		}
+	}
+
+	$: coachQuote = (() => {
+		if (!reviewResult) return '';
+		const avg = (reviewResult.whiteAccuracy + reviewResult.blackAccuracy) / 2;
+		if (avg >= 90) {
+			return 'Grandmaster level game! Both sides executed high-caliber positional and tactical ideas.';
+		} else if (avg >= 80) {
+			return 'Sharp and competitive! Solid strategic awareness with decisive turning points.';
+		} else if (avg >= 70) {
+			return 'An eventful battle! Notice the tactical moments where the evaluation swung.';
+		} else {
+			return 'A wild, tactical clash! Stepping through the key inaccuracies will uncover big opportunities.';
+		}
+	})();
+
 	$: currentReviewedMove =
 		reviewResult && currentPly > 0 && currentPly <= reviewResult.moves.length
 			? reviewResult.moves[currentPly - 1]
@@ -127,7 +182,7 @@
 					clearInterval(autoPlayTimer);
 					isAutoPlaying = false;
 				}
-			}, 1400);
+			}, 1300);
 		}
 	}
 
@@ -232,6 +287,22 @@
 		{:else if activeTab === 'review'}
 			<!-- COACH / MOVE-BY-MOVE REVIEW TAB -->
 			<div class="flex flex-col gap-3.5">
+				<!-- Coach Avatar & Summary Speech Bubble -->
+				<div class="bg-[#1e1d1b] border border-[#3d3b37] rounded-2xl p-3 shadow-md flex items-center gap-3">
+					<div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 border border-sky-400/40 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(56,189,248,0.3)]">
+						<Icon name="crown" size={18} className="text-white drop-shadow" />
+					</div>
+					<div class="flex-1 min-w-0">
+						<div class="flex items-center gap-2 mb-0.5">
+							<span class="text-xs font-black text-white">Coach Nova</span>
+							<span class="px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-400 text-[10px] font-mono font-bold border border-sky-500/30">Coach</span>
+						</div>
+						<p class="text-[11px] text-stone-300 leading-snug">
+							{coachQuote}
+						</p>
+					</div>
+				</div>
+
 				<!-- Current Move Coach Card -->
 				{#if currentReviewedMove}
 					<div class="bg-[#1e1d1b] border border-[#3d3b37] rounded-2xl p-4 shadow-lg flex flex-col gap-3">
@@ -249,9 +320,14 @@
 								</div>
 							</div>
 
-							<!-- Accuracy pill -->
-							<div class="px-2.5 py-1 rounded-full bg-[#2a2926] border border-[#3d3b37] text-[11px] font-mono font-bold text-stone-300">
-								{currentReviewedMove.accuracy}% acc
+							<!-- Accuracy pill & Evaluation pill -->
+							<div class="flex items-center gap-1.5">
+								<div class="px-2 py-0.5 rounded-full bg-[#2a2926] border border-[#3d3b37] text-[10px] font-mono font-bold text-stone-300">
+									{formatScore(currentReviewedMove.evalAfter)}
+								</div>
+								<div class="px-2.5 py-1 rounded-full bg-[#2a2926] border border-[#3d3b37] text-[11px] font-mono font-bold text-stone-300">
+									{currentReviewedMove.accuracy}% acc
+								</div>
 							</div>
 						</div>
 
@@ -283,52 +359,74 @@
 				{/if}
 
 				<!-- Interactive Move Navigation Controls -->
-				<div class="bg-[#1e1d1b] border border-[#3d3b37] rounded-2xl p-3 flex items-center justify-between">
-					<div class="flex items-center gap-1.5">
+				<div class="bg-[#1e1d1b] border border-[#3d3b37] rounded-2xl p-3 flex flex-col gap-2.5">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-1.5">
+							<button
+								class="w-8 h-8 rounded-xl bg-[#383633] hover:bg-[#484643] active:bg-[#2b2a28] text-stone-300 hover:text-white flex items-center justify-center transition border border-[#484643]/50 disabled:opacity-40"
+								on:click={() => jumpToPly(0)}
+								disabled={currentPly <= 0}
+								title="Start of Game"
+							>
+								<Icon name="chevrons-left" size={15} />
+							</button>
+							<button
+								class="w-8 h-8 rounded-xl bg-[#383633] hover:bg-[#484643] active:bg-[#2b2a28] text-stone-300 hover:text-white flex items-center justify-center transition border border-[#484643]/50 disabled:opacity-40"
+								on:click={handlePrev}
+								disabled={currentPly <= 0}
+								title="Previous Move (Left Arrow)"
+							>
+								<Icon name="chevron-left" size={15} />
+							</button>
+						</div>
+
 						<button
-							class="w-8 h-8 rounded-xl bg-[#383633] hover:bg-[#484643] active:bg-[#2b2a28] text-stone-300 hover:text-white flex items-center justify-center transition border border-[#484643]/50 disabled:opacity-40"
-							on:click={() => jumpToPly(0)}
-							disabled={currentPly <= 0}
-							title="Start of Game"
+							class="px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wide flex items-center gap-1.5 transition border-b-2 {isAutoPlaying
+								? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-800'
+								: 'bg-[#383633] hover:bg-[#484643] text-stone-200 border-[#292825]'}"
+							on:click={toggleAutoPlay}
 						>
-							<Icon name="chevrons-left" size={15} />
+							<Icon name={isAutoPlaying ? 'clock' : 'play'} size={13} />
+							<span>{isAutoPlaying ? 'Pause' : 'Auto'}</span>
 						</button>
-						<button
-							class="w-8 h-8 rounded-xl bg-[#383633] hover:bg-[#484643] active:bg-[#2b2a28] text-stone-300 hover:text-white flex items-center justify-center transition border border-[#484643]/50 disabled:opacity-40"
-							on:click={handlePrev}
-							disabled={currentPly <= 0}
-							title="Previous Move (Left Arrow)"
-						>
-							<Icon name="chevron-left" size={15} />
-						</button>
+
+						<div class="flex items-center gap-1.5">
+							<button
+								class="w-8 h-8 rounded-xl bg-[#383633] hover:bg-[#484643] active:bg-[#2b2a28] text-stone-300 hover:text-white flex items-center justify-center transition border border-[#484643]/50 disabled:opacity-40"
+								on:click={handleNext}
+								disabled={currentPly >= moves.length}
+								title="Next Move (Right Arrow)"
+							>
+								<Icon name="chevron-right" size={15} />
+							</button>
+							<button
+								class="w-8 h-8 rounded-xl bg-[#383633] hover:bg-[#484643] active:bg-[#2b2a28] text-stone-300 hover:text-white flex items-center justify-center transition border border-[#484643]/50 disabled:opacity-40"
+								on:click={() => jumpToPly(moves.length)}
+								disabled={currentPly >= moves.length}
+								title="End of Game"
+							>
+								<Icon name="chevrons-right" size={15} />
+							</button>
+						</div>
 					</div>
 
-					<button
-						class="px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wide flex items-center gap-1.5 transition border-b-2 {isAutoPlaying
-							? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-800'
-							: 'bg-[#383633] hover:bg-[#484643] text-stone-200 border-[#292825]'}"
-						on:click={toggleAutoPlay}
-					>
-						<Icon name={isAutoPlaying ? 'clock' : 'play'} size={13} />
-						<span>{isAutoPlaying ? 'Pause' : 'Auto'}</span>
-					</button>
-
-					<div class="flex items-center gap-1.5">
+					<!-- Fast Jump To Key Moments (Chess.com Style) -->
+					<div class="flex items-center justify-between gap-2 pt-2 border-t border-[#383633]">
 						<button
-							class="w-8 h-8 rounded-xl bg-[#383633] hover:bg-[#484643] active:bg-[#2b2a28] text-stone-300 hover:text-white flex items-center justify-center transition border border-[#484643]/50 disabled:opacity-40"
-							on:click={handleNext}
-							disabled={currentPly >= moves.length}
-							title="Next Move (Right Arrow)"
+							class="flex-1 py-1.5 px-2 rounded-xl bg-[#282724] hover:bg-[#34322e] text-stone-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition border border-[#3d3b37]"
+							on:click={jumpToPrevKeyMove}
+							title="Jump to Previous Key Move / Mistake"
 						>
-							<Icon name="chevron-right" size={15} />
+							<Icon name="chevron-left" size={13} className="text-amber-400" />
+							<span>Prev Key Move</span>
 						</button>
 						<button
-							class="w-8 h-8 rounded-xl bg-[#383633] hover:bg-[#484643] active:bg-[#2b2a28] text-stone-300 hover:text-white flex items-center justify-center transition border border-[#484643]/50 disabled:opacity-40"
-							on:click={() => jumpToPly(moves.length)}
-							disabled={currentPly >= moves.length}
-							title="End of Game"
+							class="flex-1 py-1.5 px-2 rounded-xl bg-[#282724] hover:bg-[#34322e] text-stone-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition border border-[#3d3b37]"
+							on:click={jumpToNextKeyMove}
+							title="Jump to Next Key Move / Mistake"
 						>
-							<Icon name="chevrons-right" size={15} />
+							<span>Next Key Move</span>
+							<Icon name="chevron-right" size={13} className="text-amber-400" />
 						</button>
 					</div>
 				</div>
@@ -362,7 +460,10 @@
 						<span class="text-2xl font-black text-white font-mono tracking-tight">
 							{reviewResult.whiteAccuracy}%
 						</span>
-						<span class="text-[10px] text-stone-400 uppercase tracking-widest font-bold">Accuracy</span>
+						<span class="text-xs font-mono font-bold text-sky-400 mt-0.5">
+							~{estimateElo(reviewResult.whiteAccuracy)} Elo
+						</span>
+						<span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold">Accuracy & Rating</span>
 					</div>
 
 					<!-- Black Player -->
@@ -374,7 +475,10 @@
 						<span class="text-2xl font-black text-white font-mono tracking-tight">
 							{reviewResult.blackAccuracy}%
 						</span>
-						<span class="text-[10px] text-stone-400 uppercase tracking-widest font-bold">Accuracy</span>
+						<span class="text-xs font-mono font-bold text-sky-400 mt-0.5">
+							~{estimateElo(reviewResult.blackAccuracy)} Elo
+						</span>
+						<span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold">Accuracy & Rating</span>
 					</div>
 				</div>
 
