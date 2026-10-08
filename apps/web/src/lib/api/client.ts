@@ -81,6 +81,10 @@ export const api = {
 			request<any>(`/games/${gameId}/resign`, {
 				method: 'POST'
 			}),
+		join: (gameId: string) =>
+			request<any>(`/games/${gameId}/join`, {
+				method: 'POST'
+			}),
 		review: (gameId: string) =>
 			request<any>(`/games/${gameId}/review`, {
 				method: 'POST'
@@ -112,7 +116,7 @@ export const api = {
 	},
 	matchmaking: {
 		join: (data: { initial: number; increment: number }) =>
-			request<any>('/matchmaking/join', {
+			request<any>(`/matchmaking/join`, {
 				method: 'POST',
 				body: JSON.stringify(data)
 			}),
@@ -127,6 +131,11 @@ export const api = {
 	},
 	puzzles: {
 		getRandom: () => request<any>('/puzzles/random'),
-		getById: (id: string) => request<any>(`/puzzles/${id}`)
+		getById: (id: string) => request<any>(`/puzzles/${id}`),
+		solve: (id: string, success: boolean) =>
+			request<{ success: boolean; newRating: number; diff: number; games: number }>(`/puzzles/${id}/solve`, {
+				method: 'POST',
+				body: JSON.stringify({ success })
+			})
 	}
 };

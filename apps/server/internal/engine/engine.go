@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"chess-platform/server/internal/chess"
 )
 
 type Evaluation struct {
@@ -188,23 +190,25 @@ func (e *StockfishEngine) EvaluateFen(ctx context.Context, fen string, depth int
 	return eval, nil
 }
 
-// Pure Go fallback evaluation based on piece-square material balance
+// Pure Go fallback evaluation based on legal move search & material balance
 func fallbackEval(fen string) *Evaluation {
-	parts := strings.Split(fen, " ")
-	if len(parts) == 0 {
-		return &Evaluation{ScoreCp: 0, BestMove: "e2e4", PV: []string{"e2e4"}}
+	pos, err := chess.FromFEN(fen)
+	if err != nil {
+		return &Evaluation{ScoreCp: 0, BestMove: "e2e4", PV: []string{"e2e4"}, Depth: 1}
 	}
 
-	board := parts[0]
+	// Calculate base material score from White's perspective
 	score := 0
-	pieceVals := map[rune]int{
-		'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000,
-		'P': 100, 'N': 320, 'B': 330, 'R': 500, 'Q': 900, 'K': 20000,
+	pieceVals := map[chess.PieceType]int{
+		chess.Pawn: 100, chess.Knight: 320, chess.Bishop: 330,
+		chess.Rook: 500, chess.Queen: 900, chess.King: 20000,
 	}
 
-	for _, ch := range board {
-		if val, exists := pieceVals[ch]; exists {
-			if ch >= 'A' && ch <= 'Z' {
+	for sq := 0; sq < 64; sq++ {
+		p := pos.Board[sq]
+		if !p.IsEmpty() {
+			val := pieceVals[p.Type]
+			if p.Color == chess.White {
 				score += val
 			} else {
 				score -= val
@@ -212,11 +216,74 @@ func fallbackEval(fen string) *Evaluation {
 		}
 	}
 
+	legalMoves := chess.LegalMoves(pos)
+	if len(legalMoves) == 0 {
+		if chess.IsCheck(pos) {
+			if pos.SideToMove == chess.White {
+				return &Evaluation{ScoreCp: -10000, IsMate: true, MateIn: -1, Depth: 1}
+			}
+			return &Evaluation{ScoreCp: 10000, IsMate: true, MateIn: 1, Depth: 1}
+		}
+		// Stalemate
+		return &Evaluation{ScoreCp: 0, IsMate: false, Depth: 1}
+	}
+
+	// Pick best candidate move using 1-ply material lookahead and central dominance
+	bestMove := legalMoves[0]
+	bestEval := -999999
+	if pos.SideToMove == chess.Black {
+		bestEval = 999999
+	}
+
+	for _, m := range legalMoves {
+		nextPos, err := chess.ApplyMove(pos, m)
+		if err != nil {
+			continue
+		}
+
+		mScore := 0
+		for sq := 0; sq < 64; sq++ {
+			p := nextPos.Board[sq]
+			if !p.IsEmpty() {
+				val := pieceVals[p.Type]
+				if p.Color == chess.White {
+					mScore += val
+				} else {
+					mScore -= val
+				}
+			}
+		}
+
+		// Small bonus for center control (d4, e4, d5, e5)
+		toStr := m.To.String()
+		if toStr == "e4" || toStr == "d4" || toStr == "e5" || toStr == "d5" {
+			if pos.SideToMove == chess.White {
+				mScore += 15
+			} else {
+				mScore -= 15
+			}
+		}
+
+		if pos.SideToMove == chess.White {
+			if mScore > bestEval {
+				bestEval = mScore
+				bestMove = m
+			}
+		} else {
+			if mScore < bestEval {
+				bestEval = mScore
+				bestMove = m
+			}
+		}
+	}
+
+	bestUCI := bestMove.UCI()
 	return &Evaluation{
 		ScoreCp:  score,
 		IsMate:   false,
-		BestMove: "",
-		PV:       []string{},
+		BestMove: bestUCI,
+		PV:       []string{bestUCI},
 		Depth:    1,
 	}
 }
+

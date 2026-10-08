@@ -18,6 +18,7 @@ const (
 	Blitz     Category = "blitz"
 	Rapid     Category = "rapid"
 	Classical Category = "classical"
+	Puzzles   Category = "puzzles"
 )
 
 func DetermineCategory(initialSeconds int) Category {

@@ -111,6 +111,7 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("GET /api/v1/games/{id}", rt.handleGetGame)
 	rt.mux.HandleFunc("GET /api/v1/games/{id}/pgn", rt.handleGetGamePGN)
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/moves", rt.withAuth(rt.handleMakeMove))
+	rt.mux.HandleFunc("POST /api/v1/games/{id}/join", rt.withAuth(rt.handleJoinGame))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/resign", rt.withAuth(rt.handleResign))
 
 	// Authoritative Chess Engine & Legal Move Rules
@@ -128,6 +129,7 @@ func (rt *Router) routes() {
 	// Puzzles
 	rt.mux.HandleFunc("GET /api/v1/puzzles/random", rt.handleGetRandomPuzzle)
 	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}", rt.handleGetPuzzleByID)
+	rt.mux.HandleFunc("POST /api/v1/puzzles/{id}/solve", rt.handleSolvePuzzle)
 
 	// WebSockets
 	rt.mux.HandleFunc("/ws/game/{id}", rt.handleWebSocket)
@@ -567,6 +569,45 @@ func (rt *Router) handleResign(w http.ResponseWriter, r *http.Request, claims *a
 	writeJSON(w, http.StatusOK, doc)
 }
 
+func (rt *Router) handleJoinGame(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	id := r.PathValue("id")
+	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	uRat, _ := rt.ratingRepo.GetRating(r.Context(), userOID, rating.Blitz)
+	ratVal := rating.DefaultRating
+	if uRat != nil {
+		ratVal = uRat.Rating
+	}
+
+	player := game.PlayerInfo{
+		UserID:   claims.UserID,
+		Username: claims.Username,
+		Rating:   ratVal,
+	}
+
+	ag, err := rt.gameService.JoinGame(id, player)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "JOIN_ERROR", err.Error())
+		return
+	}
+
+	// Broadcast update to websocket
+	rt.wsHub.Broadcast(id, websocket.ServerMessage{
+		Type:        "game_started",
+		GameID:      ag.ID,
+		FEN:         chess.ToFEN(ag.Engine.CurrentPosition),
+		Turn:        ag.Engine.CurrentPosition.SideToMove.String(),
+		WhiteTime:   ag.Clock.WhiteTimeMs,
+		BlackTime:   ag.Clock.BlackTimeMs,
+		Status:      ag.Status,
+		White:       &ag.White,
+		Black:       &ag.Black,
+		TimeControl: &ag.TimeControl,
+	})
+
+	writeJSON(w, http.StatusOK, ag)
+}
+
+
 // Leaderboard Handler
 func (rt *Router) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	catStr := r.URL.Query().Get("category")
@@ -609,6 +650,78 @@ func (rt *Router) handleGetPuzzleByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, p)
+}
+
+type solvePuzzleReq struct {
+	Success bool `json:"success"`
+}
+
+func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	_, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid puzzle ID")
+		return
+	}
+
+	var req solvePuzzleReq
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		claims, err := rt.authService.ValidateAccessToken(tokenStr)
+		if err == nil && claims != nil {
+			userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+			uRat, _ := rt.ratingRepo.GetRating(r.Context(), userOID, rating.Puzzles)
+			if uRat == nil {
+				uRat = &rating.UserRating{
+					UserID:   userOID,
+					Username: claims.Username,
+					Category: rating.Puzzles,
+					Rating:   rating.DefaultRating,
+				}
+			}
+
+			diff := 10
+			if req.Success {
+				uRat.Rating += 12
+				uRat.Wins++
+				diff = 12
+			} else {
+				if uRat.Rating > 100 {
+					uRat.Rating -= 10
+				}
+				uRat.Losses++
+				diff = -10
+			}
+			uRat.Games++
+			uRat.UpdatedAt = time.Now().UTC()
+			_ = rt.ratingRepo.UpsertRating(r.Context(), uRat)
+
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"success":   req.Success,
+				"newRating": uRat.Rating,
+				"diff":      diff,
+				"games":     uRat.Games,
+			})
+			return
+		}
+	}
+
+	// Guest fallback
+	diff := 10
+	if req.Success {
+		diff = 12
+	} else {
+		diff = -10
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":   req.Success,
+		"newRating": 1200 + diff,
+		"diff":      diff,
+		"games":     1,
+	})
 }
 
 // WebSocket Handler

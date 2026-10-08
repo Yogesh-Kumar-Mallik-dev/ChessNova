@@ -117,6 +117,31 @@ func calculateMoveAccuracy(winBefore, winAfter float64, isWhite bool) float64 {
 	return math.Round(acc*10) / 10
 }
 
+// isPieceSacrifice returns true if a minor or major piece moved into an attacked square
+func isPieceSacrifice(pos chess.Position, m chess.Move) bool {
+	movedPiece := pos.Board.Get(m.From)
+	if movedPiece.Type != chess.Knight && movedPiece.Type != chess.Bishop &&
+		movedPiece.Type != chess.Rook && movedPiece.Type != chess.Queen {
+		return false
+	}
+
+	nextPos, err := chess.ApplyMove(pos, m)
+	if err != nil {
+		return false
+	}
+
+	oppMoves := chess.LegalMoves(nextPos)
+	for _, oppM := range oppMoves {
+		if oppM.To == m.To {
+			attacker := nextPos.Board.Get(oppM.From)
+			if attacker.Type == chess.Pawn || attacker.Type < movedPiece.Type {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*ReviewResult, error) {
 	sans := make([]string, len(moves))
 	for i, m := range moves {
@@ -198,12 +223,36 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 		classification := ClassGood
 		explanation := "Good move. A solid choice that maintains balance."
 
-		if isBook {
+		// Check if position had only 1 legal move (Forced)
+		isForced := false
+		var prevPos chess.Position
+		hasPrevPos := false
+		if p, err := chess.FromFEN(prevFEN); err == nil {
+			prevPos = p
+			hasPrevPos = true
+			if len(chess.LegalMoves(prevPos)) == 1 {
+				isForced = true
+			}
+		}
+
+		mObj, _ := chess.ParseUCIMove(playedUCI)
+		isSacrifice := hasPrevPos && isPieceSacrifice(prevPos, mObj)
+
+		if isForced {
+			classification = ClassForced
+			explanation = "Forced move. The only legal response available."
+		} else if isBook {
 			classification = ClassBook
 			explanation = "Book move. Standard opening theory."
 			if openingInfo != nil {
 				explanation = "Book move. Follows " + openingInfo.Name
 			}
+		} else if isBest && isSacrifice && playerWinAfter >= 50.0 {
+			classification = ClassBrilliant
+			explanation = "Brilliant move!! You sacrificed material to seize a decisive advantage."
+		} else if isBest && playerWinBefore < 55.0 && playerWinAfter >= 60.0 && winDelta <= 0.2 {
+			classification = ClassGreat
+			explanation = "Great move! You found the solitary winning continuation."
 		} else if isBest || winDelta <= 0.5 {
 			classification = ClassBest
 			explanation = "Best move! You found the optimal continuation."
@@ -228,7 +277,7 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 		}
 
 		acc := calculateMoveAccuracy(winBefore, winAfter, isWhite)
-		if classification == ClassBook {
+		if classification == ClassBook || classification == ClassForced || classification == ClassBrilliant || classification == ClassGreat {
 			acc = 100.0
 		}
 
@@ -244,11 +293,10 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 
 		bestSAN := bestUCI // fallback
 		if pos, err := chess.FromFEN(prevFEN); err == nil && len(bestUCI) >= 4 {
-			fromSq, _ := chess.ParseSquare(bestUCI[:2])
-			toSq, _ := chess.ParseSquare(bestUCI[2:4])
-			mObj := chess.Move{From: fromSq, To: toSq}
-			if s, err := chess.MoveToSAN(pos, mObj); err == nil {
-				bestSAN = s
+			if mObj, err := chess.ParseUCIMove(bestUCI); err == nil {
+				if s, err := chess.MoveToSAN(pos, mObj); err == nil {
+					bestSAN = s
+				}
 			}
 		}
 

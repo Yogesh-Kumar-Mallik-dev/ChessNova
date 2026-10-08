@@ -15,7 +15,6 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "autoprefixer": "^10.4.20",
     "clsx": "^2.1.1",
-    "lucide-svelte": "^0.474.0",
     "postcss": "^8.5.1",
     "svelte": "^5.16.0",
     "svelte-check": "^4.1.4",
@@ -26,7 +25,6 @@
     "vite": "^6.0.7"
   },
   "dependencies": {
-    "@lucide/svelte": "^1.52.0",
     "chess.js": "^1.4.0",
     "stockfish.js": "^10.0.2"
   }

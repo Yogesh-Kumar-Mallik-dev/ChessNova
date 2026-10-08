@@ -75,11 +75,19 @@ func (c *ClockState) CurrentTimes(status Status) (whiteMs, blackMs int64, timedO
 	return whiteMs, blackMs, nil
 }
 
-// UpdateAfterMove calculates elapsed time, subtracts from active side, adds increment, switches active color
+// UpdateAfterMove calculates elapsed time with network lag compensation, subtracts from active side, adds increment, switches active color
 func (c *ClockState) UpdateAfterMove(incrementSeconds int) (timedOut bool) {
 	now := time.Now().UTC()
 	elapsed := now.Sub(c.LastMoveAt).Milliseconds()
 	c.LastMoveAt = now
+
+	// Standard online chess lag compensation (up to 100ms network jitter grace)
+	const lagCompensationMs = int64(100)
+	if elapsed > lagCompensationMs {
+		elapsed -= lagCompensationMs
+	} else {
+		elapsed = 0
+	}
 
 	incMs := int64(incrementSeconds) * 1000
 

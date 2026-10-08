@@ -39,11 +39,40 @@
 	$: isTopTurn = $gameStore.status === 'playing' && $gameStore.turn === opponentColor;
 	$: isBottomTurn = $gameStore.status === 'playing' && $gameStore.turn === userColor;
 
+	let copiedInvite = false;
+
+	function copyInviteLink() {
+		if (typeof window !== 'undefined') {
+			navigator.clipboard.writeText(window.location.href);
+			copiedInvite = true;
+			setTimeout(() => {
+				copiedInvite = false;
+			}, 2500);
+		}
+	}
+
 	onMount(async () => {
 		resetGameStore();
 
 		try {
 			const info = await api.games.get(gameId);
+
+			// If current user is not white and black is guest, claim the challenge seat!
+			if (
+				$authStore.user &&
+				info.white?.userId !== $authStore.user.id &&
+				(info.black?.userId === 'guest-opponent' || !info.black?.userId)
+			) {
+				try {
+					const joined = await api.games.join(gameId);
+					if (joined && joined.black) {
+						info.black = joined.black;
+					}
+				} catch (e) {
+					console.warn('Could not join match:', e);
+				}
+			}
+
 			gameStore.update((s) => ({
 				...s,
 				gameId: info.id,
@@ -219,6 +248,22 @@
 					<span class="text-[11px] font-mono">Flip</span>
 				</button>
 			</div>
+
+			<!-- Challenge Invite Link Banner -->
+			{#if $gameStore.blackPlayer?.userId === 'guest-opponent' && $gameStore.status === 'playing'}
+				<div class="p-3 bg-sky-950/40 border-b border-sky-600/30 flex items-center justify-between text-xs animate-in fade-in duration-150">
+					<div class="flex items-center gap-2 text-sky-300 font-semibold">
+						<Icon name="sparkles" size={15} />
+						<span>Share Link to Play</span>
+					</div>
+					<button
+						class="px-2.5 py-1 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold rounded-lg text-xs transition shadow-sm"
+						on:click={copyInviteLink}
+					>
+						{copiedInvite ? 'Copied Link!' : 'Copy Link'}
+					</button>
+				</div>
+			{/if}
 
 			<!-- Draw Offer Banner -->
 			{#if $gameStore.drawOfferBy && $gameStore.drawOfferBy !== userColor}

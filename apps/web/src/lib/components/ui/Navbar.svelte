@@ -2,6 +2,7 @@
 	import { authStore } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/icons/Icon.svelte';
+	import QuickSettings from '$lib/components/ui/QuickSettings.svelte';
 
 	function handleLogout() {
 		authStore.logout();
@@ -46,8 +47,10 @@
 		</nav>
 	</div>
 
-	<!-- Auth Status -->
+	<!-- Actions & Auth Status -->
 	<div class="flex items-center gap-3">
+		<QuickSettings />
+
 		{#if $authStore.loading}
 			<div class="w-8 h-8 rounded-full bg-slate-800/60 animate-pulse"></div>
 		{:else if $authStore.user}

@@ -81,6 +81,33 @@ func (s *Service) GetActiveGame(id string) (*ActiveGame, error) {
 	return ag, nil
 }
 
+func (s *Service) JoinGame(gameID string, player PlayerInfo) (*ActiveGame, error) {
+	ag, err := s.GetActiveGame(gameID)
+	if err != nil {
+		return nil, err
+	}
+
+	ag.Lock()
+	defer ag.Unlock()
+
+	// If player is already white or black, return active game
+	if ag.White.UserID == player.UserID || ag.Black.UserID == player.UserID {
+		return ag, nil
+	}
+
+	// Claim open/guest seat
+	if ag.Black.UserID == "guest-opponent" || ag.Black.UserID == "" {
+		ag.Black = player
+		return ag, nil
+	}
+	if ag.White.UserID == "guest-opponent" || ag.White.UserID == "" {
+		ag.White = player
+		return ag, nil
+	}
+
+	return nil, errors.New("game room is already full")
+}
+
 func (s *Service) MakeMove(ctx context.Context, gameID, userID string, m chess.Move) (*MoveEvent, error) {
 	ag, err := s.GetActiveGame(gameID)
 	if err != nil {

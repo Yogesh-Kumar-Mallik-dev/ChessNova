@@ -14,6 +14,9 @@
 	let orientation: Color = 'white';
 	let turn: Color = 'white';
 	let lastMove: { from: string; to: string; san?: string; isCapture?: boolean; isPromotion?: boolean } | null = null;
+	let userRating = 1200;
+	let ratingDiff: number | null = null;
+	let solvedCount = 0;
 
 	async function loadRandomPuzzle() {
 		loading = true;
@@ -21,6 +24,7 @@
 		statusType = 'info';
 		solutionIndex = 0;
 		lastMove = null;
+		ratingDiff = null;
 		try {
 			const p = await api.puzzles.getRandom();
 			currentPuzzle = p;
@@ -56,6 +60,11 @@
 			if (solutionIndex >= currentPuzzle.solution.length) {
 				statusMessage = 'Brilliant! Puzzle completed successfully.';
 				statusType = 'success';
+				api.puzzles.solve(currentPuzzle.id, true).then((res) => {
+					userRating = res.newRating;
+					ratingDiff = res.diff;
+					solvedCount++;
+				}).catch(() => {});
 			} else {
 				statusMessage = 'Best move found! Continue the tactical sequence...';
 				statusType = 'info';
@@ -76,6 +85,10 @@
 		} else {
 			statusMessage = 'Not the optimal move. Try looking deeper!';
 			statusType = 'error';
+			api.puzzles.solve(currentPuzzle.id, false).then((res) => {
+				userRating = res.newRating;
+				ratingDiff = res.diff;
+			}).catch(() => {});
 		}
 	}
 
@@ -128,19 +141,31 @@
 		<div class="lg:col-span-4 bg-slate-900/80 border border-slate-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-2xl flex flex-col gap-5">
 			<div class="flex items-center justify-between pb-4 border-b border-slate-800/80">
 				<div>
-					<span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider">Turn to Play</span>
+					<span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider">Tactics Rating</span>
 					<div class="flex items-center gap-2 mt-1">
-						<span class="w-3.5 h-3.5 rounded-full {turn === 'white' ? 'bg-slate-100 shadow-sm shadow-white/40 ring-1 ring-white/50' : 'bg-slate-900 border border-slate-600'}"></span>
-						<span class="text-base font-bold text-white capitalize">{turn} to move</span>
+						<span class="text-xl font-mono font-black text-white">{userRating}</span>
+						{#if ratingDiff !== null}
+							<span
+								class="px-2 py-0.5 rounded-md text-xs font-mono font-bold {ratingDiff > 0
+									? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+									: 'bg-rose-500/20 text-rose-400 border border-rose-500/30'} animate-bounce"
+							>
+								{ratingDiff > 0 ? `+${ratingDiff}` : ratingDiff}
+							</span>
+						{/if}
+					</div>
+					<div class="text-[10px] text-slate-500 mt-0.5">
+						{solvedCount} solved today
 					</div>
 				</div>
 
 				{#if currentPuzzle}
 					<div class="text-right">
-						<span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Rating</span>
+						<span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Puzzle Level</span>
 						<div class="text-lg font-mono font-extrabold text-cyan-400">
 							{currentPuzzle.rating}
 						</div>
+						<div class="text-[10px] text-slate-500 capitalize">{turn} to move</div>
 					</div>
 				{/if}
 			</div>

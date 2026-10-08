@@ -8,10 +8,23 @@ export type MoveCategory = 'normal' | 'capture' | 'castle' | 'en_passant' | 'pro
 
 class ChessSoundPlayer {
 	private enabled = true;
+	private masterVolume = 0.85;
 	private audioCache = new Map<string, HTMLAudioElement[]>();
 
 	constructor() {
 		if (typeof window !== 'undefined') {
+			const savedVol = localStorage.getItem('chess_volume');
+			if (savedVol !== null) {
+				const parsed = parseFloat(savedVol);
+				if (!isNaN(parsed)) {
+					this.masterVolume = Math.max(0, Math.min(1, parsed));
+				}
+			}
+			const savedEnabled = localStorage.getItem('chess_sound_enabled');
+			if (savedEnabled !== null) {
+				this.enabled = savedEnabled === 'true';
+			}
+
 			this.preload('move', '/sounds/move.mp3');
 			this.preload('capture', '/sounds/capture.mp3');
 			this.preload('castle', '/sounds/castle.mp3');
@@ -35,10 +48,11 @@ class ChessSoundPlayer {
 
 	private play(key: string, volume = 0.85) {
 		if (!this.enabled || typeof window === 'undefined') return;
+		const finalVol = Math.max(0, Math.min(1, volume * this.masterVolume));
 		const pool = this.audioCache.get(key);
 		if (!pool || pool.length === 0) {
 			const a = new Audio(`/sounds/${key}.mp3`);
-			a.volume = volume;
+			a.volume = finalVol;
 			a.play().catch(() => {});
 			return;
 		}
@@ -46,7 +60,7 @@ class ChessSoundPlayer {
 		// Find an idle instance in the pool or cycle the first one
 		const audio = pool.find((a) => a.paused || a.ended) || pool[0];
 		audio.currentTime = 0;
-		audio.volume = volume;
+		audio.volume = finalVol;
 		audio.play().catch(() => {});
 	}
 
@@ -88,6 +102,9 @@ class ChessSoundPlayer {
 
 	public toggleSound(): boolean {
 		this.enabled = !this.enabled;
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('chess_sound_enabled', this.enabled ? 'true' : 'false');
+		}
 		return this.enabled;
 	}
 
@@ -97,6 +114,20 @@ class ChessSoundPlayer {
 
 	public setEnabled(val: boolean) {
 		this.enabled = val;
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('chess_sound_enabled', this.enabled ? 'true' : 'false');
+		}
+	}
+
+	public setVolume(val: number) {
+		this.masterVolume = Math.max(0, Math.min(1, val));
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('chess_volume', this.masterVolume.toString());
+		}
+	}
+
+	public getVolume(): number {
+		return this.masterVolume;
 	}
 }
 
