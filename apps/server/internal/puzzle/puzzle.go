@@ -75,7 +75,7 @@ func (r *MongoRepository) SeedInitialPuzzles(ctx context.Context) error {
 		},
 		Puzzle{
 			FEN:      "6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
-			Solution: []string{"e1e8#"},
+			Solution: []string{"e1e8"},
 			Rating:   1000,
 			Themes:   []string{"mateIn1", "backRankMate"},
 		},
@@ -90,6 +90,42 @@ func (r *MongoRepository) SeedInitialPuzzles(ctx context.Context) error {
 			Solution: []string{"a8d8", "a1d1", "d8d6"},
 			Rating:   1450,
 			Themes:   []string{"middlegame", "positional"},
+		},
+		Puzzle{
+			FEN:      "r1b2rk1/pp3ppp/8/1Bp5/3q4/8/PP3PPP/R2QR1K1 w - - 0 1",
+			Solution: []string{"d1e2", "c8e6", "a1d1"},
+			Rating:   1300,
+			Themes:   []string{"middlegame", "tactic"},
+		},
+		Puzzle{
+			FEN:      "3r2k1/5ppp/8/8/4N3/8/5PPP/1R4K1 w - - 0 1",
+			Solution: []string{"b1b8"},
+			Rating:   1100,
+			Themes:   []string{"mateIn1", "backRankMate"},
+		},
+		Puzzle{
+			FEN:      "r1bqk2r/pppp1ppp/8/4n3/1b2P3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 7",
+			Solution: []string{"d1d4", "b4c3", "d4c3"},
+			Rating:   1200,
+			Themes:   []string{"fork", "doubleAttack"},
+		},
+		Puzzle{
+			FEN:      "3r2k1/p4ppp/1p6/8/8/8/PP3PPP/2R3K1 w - - 0 1",
+			Solution: []string{"c1c8"},
+			Rating:   1050,
+			Themes:   []string{"deflection", "backRankMate"},
+		},
+		Puzzle{
+			FEN:      "r1b1kb1r/pppp1ppp/8/4q3/8/8/PPP2PPP/RNBQKB1R w KQkq - 0 8",
+			Solution: []string{"f1e2", "f8e7", "e1g1"},
+			Rating:   1150,
+			Themes:   []string{"defense", "castling"},
+		},
+		Puzzle{
+			FEN:      "r1bq1rk1/ppp2ppp/2n1pn2/3p4/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 0 7",
+			Solution: []string{"f1d3", "b7b6", "e1g1"},
+			Rating:   1220,
+			Themes:   []string{"opening", "development"},
 		},
 	}
 

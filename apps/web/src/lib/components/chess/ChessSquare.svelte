@@ -24,6 +24,7 @@
 	export let reviewClassification: MoveClassification | null = null;
 	export let showRankCoord = false;
 	export let showFileCoord = false;
+	export let theme: 'cyber' | 'wood' | 'emerald' | 'ocean' = 'cyber';
 
 	const dispatch = createEventDispatcher<{
 		click: string;
@@ -48,8 +49,33 @@
 		dispatch('dragover', e);
 	}
 
-	$: squareColorClass = isLight ? 'bg-[#cdd6e0]' : 'bg-[#2b3648]';
-	$: coordColorClass = isLight ? 'text-slate-600' : 'text-slate-300';
+	$: squareColorClass = (() => {
+		switch (theme) {
+			case 'wood':
+				return isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]';
+			case 'emerald':
+				return isLight ? 'bg-[#eeeed2]' : 'bg-[#769656]';
+			case 'ocean':
+				return isLight ? 'bg-[#dbeafe]' : 'bg-[#1e3a5f]';
+			case 'cyber':
+			default:
+				return isLight ? 'bg-[#cdd6e0]' : 'bg-[#2b3648]';
+		}
+	})();
+
+	$: coordColorClass = (() => {
+		switch (theme) {
+			case 'wood':
+				return isLight ? 'text-[#b58863]' : 'text-[#f0d9b5]';
+			case 'emerald':
+				return isLight ? 'text-[#769656]' : 'text-[#eeeed2]';
+			case 'ocean':
+				return isLight ? 'text-[#1e3a5f]' : 'text-[#dbeafe]';
+			case 'cyber':
+			default:
+				return isLight ? 'text-slate-600' : 'text-slate-300';
+		}
+	})();
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->

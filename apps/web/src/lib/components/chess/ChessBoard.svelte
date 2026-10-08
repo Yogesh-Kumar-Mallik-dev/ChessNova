@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import { Chess } from 'chess.js';
 	import { api } from '$lib/api/client';
 	import {
@@ -42,6 +42,16 @@
 		classification: MoveClassification;
 		bestMoveUci?: string;
 	} | null = null;
+	import { themeStore, type BoardTheme } from '$lib/stores/preferences';
+
+	export let theme: BoardTheme = $themeStore;
+
+	onMount(() => {
+		const unsub = themeStore.subscribe((val) => {
+			if (val) theme = val;
+		});
+		return () => unsub();
+	});
 
 	const dispatch = createEventDispatcher<{
 		move: { from: string; to: string; promotion?: PieceType; isCapture?: boolean; isPromotion?: boolean };
@@ -432,6 +442,7 @@
 					reviewClassification={reviewMove?.to === sq ? reviewMove.classification : null}
 					showRankCoord={showRank}
 					showFileCoord={showFile}
+					{theme}
 					on:click={() => handleSquareClick(sq)}
 					on:drop={(e) => handleDrop(e, sq)}
 				>

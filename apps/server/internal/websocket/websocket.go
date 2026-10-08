@@ -84,12 +84,19 @@ func NewHub(gameService *game.Service, authService *auth.Service) *Hub {
 	}
 
 	gameService.SetOnGameFinish(func(doc *game.GameDocument) {
+		winner := ""
+		if doc.Result == "1-0" {
+			winner = "white"
+		} else if doc.Result == "0-1" {
+			winner = "black"
+		}
 		h.Broadcast(doc.ID, ServerMessage{
 			Type:      "game_finished",
 			GameID:    doc.ID,
 			Status:    doc.Status,
 			Outcome:   doc.Outcome,
 			Result:    doc.Result,
+			Winner:    winner,
 			FEN:       doc.FinalFEN,
 		})
 	})
@@ -309,12 +316,17 @@ func (c *Client) handleMessage(msg ClientMessage) {
 			c.sendError(err.Error())
 			return
 		}
+		winner := "white"
+		if doc.Result == "0-1" {
+			winner = "black"
+		}
 		c.hub.Broadcast(c.gameID, ServerMessage{
 			Type:    "resignation",
 			GameID:  c.gameID,
 			Status:  doc.Status,
 			Outcome: doc.Outcome,
 			Result:  doc.Result,
+			Winner:  winner,
 			UserID:  c.userID,
 		})
 
