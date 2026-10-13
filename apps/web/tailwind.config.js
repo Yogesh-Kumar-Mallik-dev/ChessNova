@@ -37,6 +37,21 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				slate: {
+					50: '#f8fafc',
+					100: '#f1f5f9',
+					200: '#e2e8f0',
+					300: '#cbd5e1',
+					400: '#94a3b8',
+					500: '#64748b',
+					600: 'hsl(var(--app-slate-600, 215 20% 30%) / <alpha-value>)',
+					700: 'hsl(var(--app-slate-700, 215 25% 20%) / <alpha-value>)',
+					750: 'hsl(var(--app-slate-750, 217 30% 16%) / <alpha-value>)',
+					800: 'hsl(var(--app-slate-800, 217 33% 13%) / <alpha-value>)',
+					850: 'hsl(var(--app-slate-850, 220 38% 10%) / <alpha-value>)',
+					900: 'hsl(var(--app-slate-900, 222 47% 7%) / <alpha-value>)',
+					950: 'hsl(var(--app-slate-950, 222 47% 4%) / <alpha-value>)'
+				},
 				nova: {
 					void: '#06080d',
 					space: '#0a0d14',

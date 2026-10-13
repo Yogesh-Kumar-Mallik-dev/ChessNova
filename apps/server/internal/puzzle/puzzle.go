@@ -321,39 +321,81 @@ func (r *MongoRepository) GetDailyPuzzle(ctx context.Context) (*Puzzle, error) {
 		return &p, nil
 	}
 
-	// Fallback to random
-	return r.GetRandomPuzzle(ctx, QueryFilter{})
+	// Fallback to random in database
+	randP, err := r.GetRandomPuzzle(ctx, QueryFilter{})
+	if err == nil && randP != nil {
+		randP.IsDaily = true
+		randP.DailyDate = todayStr
+		return randP, nil
+	}
+
+	// In-memory deterministic daily puzzle based on day of year
+	if len(CuratedLichessPuzzles) > 0 {
+		dayOfYear := time.Now().UTC().YearDay()
+		chosen := CuratedLichessPuzzles[dayOfYear%len(CuratedLichessPuzzles)]
+		chosen.IsDaily = true
+		chosen.DailyDate = todayStr
+		return &chosen, nil
+	}
+	return nil, mongo.ErrNoDocuments
 }
 
 func (r *MongoRepository) GetWeeklyPuzzles(ctx context.Context) ([]Puzzle, error) {
 	cursor, err := r.collection.Find(ctx, bson.M{"weekIndex": bson.M{"$gte": 1, "$lte": 7}}, options.Find().SetSort(bson.M{"weekIndex": 1}))
-	if err != nil {
-		return nil, err
+	if err == nil {
+		defer cursor.Close(ctx)
+		var list []Puzzle
+		if err := cursor.All(ctx, &list); err == nil && len(list) >= 7 {
+			return list, nil
+		}
 	}
-	defer cursor.Close(ctx)
 
-	var list []Puzzle
-	if err := cursor.All(ctx, &list); err != nil || len(list) == 0 {
-		// Sample 7 random puzzles if weekly set is empty
-		pipeline := mongo.Pipeline{
-			{{Key: "$sample", Value: bson.D{{Key: "size", Value: 7}}}},
-		}
-		c2, err := r.collection.Aggregate(ctx, pipeline)
-		if err == nil {
-			defer c2.Close(ctx)
-			_ = c2.All(ctx, &list)
+	// Sample 7 random puzzles if weekly set is empty
+	pipeline := mongo.Pipeline{
+		{{Key: "$sample", Value: bson.D{{Key: "size", Value: 7}}}},
+	}
+	c2, err := r.collection.Aggregate(ctx, pipeline)
+	if err == nil {
+		defer c2.Close(ctx)
+		var list []Puzzle
+		if err := c2.All(ctx, &list); err == nil && len(list) >= 7 {
+			for i := range list {
+				list[i].WeekIndex = i + 1
+			}
+			return list, nil
 		}
 	}
-	return list, nil
+
+	// Fallback to in-memory curated puzzles
+	if len(CuratedLichessPuzzles) >= 7 {
+		_, week := time.Now().UTC().ISOWeek()
+		list := make([]Puzzle, 0, 7)
+		for i := 0; i < 7; i++ {
+			idx := (week*7 + i) % len(CuratedLichessPuzzles)
+			cp := CuratedLichessPuzzles[idx]
+			cp.WeekIndex = i + 1
+			list = append(list, cp)
+		}
+		return list, nil
+	}
+	return nil, mongo.ErrNoDocuments
 }
 
 func (r *MongoRepository) GetByID(ctx context.Context, id primitive.ObjectID) (*Puzzle, error) {
 	var p Puzzle
 	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&p)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		return &p, nil
 	}
-	return &p, nil
+
+	// Check in-memory curated puzzles
+	for i := range CuratedLichessPuzzles {
+		if CuratedLichessPuzzles[i].ID == id {
+			cp := CuratedLichessPuzzles[i]
+			return &cp, nil
+		}
+	}
+	return nil, err
 }
 
 func (r *MongoRepository) SeedInitialPuzzles(ctx context.Context) error {

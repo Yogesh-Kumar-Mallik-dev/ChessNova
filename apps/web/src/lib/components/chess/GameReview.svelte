@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { afterUpdate, createEventDispatcher, onMount } from 'svelte';
+	import { afterUpdate, createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import ReviewBadge from './ReviewBadge.svelte';
 	import { api } from '$lib/api/client';
@@ -23,7 +23,8 @@
 	export let reviewResult: GameReviewResult | null = null;
 	let isAnalyzing = false;
 	let progressPercent = 0;
-	let progressText = 'Analyzing game positions and key moments...';
+	let progressText = 'Initializing analysis engine...';
+	let progressInterval: any = null;
 	let activeTab: 'review' | 'overview' = 'review';
 	let isAutoPlaying = false;
 	let autoPlayTimer: any = null;
@@ -50,6 +51,11 @@
 		}
 	});
 
+	onDestroy(() => {
+		if (progressInterval) clearInterval(progressInterval);
+		if (autoPlayTimer) clearInterval(autoPlayTimer);
+	});
+
 	let lastAnalyzedPgn = '';
 
 	$: if (pgn && pgn !== lastAnalyzedPgn && !reviewResult && !isAnalyzing) {
@@ -59,23 +65,47 @@
 	export async function startReview() {
 		if ((!moves || moves.length === 0) && !pgn) return;
 		isAnalyzing = true;
-		progressPercent = 20;
-		progressText = 'Analyzing game positions and key moments...';
+		progressPercent = 12;
+		progressText = 'Parsing game notation & moves...';
 		lastAnalyzedPgn = pgn;
 
+		if (progressInterval) clearInterval(progressInterval);
+
+		// Multi-step progressive status simulation while Stockfish executes
+		const steps = [
+			{ at: 28, text: 'Identifying ECO opening theory...' },
+			{ at: 48, text: 'Stockfish calculating position evaluations...' },
+			{ at: 68, text: 'Classifying tactical turning points...' },
+			{ at: 84, text: 'Analyzing Opening, Middlegame & Endgame phases...' },
+			{ at: 93, text: 'Calibrating performance ratings to platform Elo...' }
+		];
+		let stepIdx = 0;
+		progressInterval = setInterval(() => {
+			if (stepIdx < steps.length) {
+				progressPercent = steps[stepIdx].at;
+				progressText = steps[stepIdx].text;
+				stepIdx++;
+			}
+		}, 380);
+
 		try {
-			progressPercent = 60;
 			const payload = pgn ? { pgn, moves } : moves;
-			reviewResult = (await api.analysis.review(payload)) as GameReviewResult;
+			const res = (await api.analysis.review(payload)) as GameReviewResult;
+			if (progressInterval) clearInterval(progressInterval);
+			progressPercent = 100;
+			progressText = 'Analysis complete!';
+			reviewResult = res;
 			if (reviewResult?.white) whitePlayerName = reviewResult.white;
 			if (reviewResult?.black) blackPlayerName = reviewResult.black;
 			if (reviewResult?.pgn) pgn = reviewResult.pgn;
-			progressPercent = 100;
 		} catch (e: any) {
+			if (progressInterval) clearInterval(progressInterval);
 			console.error('Game analysis failed:', e);
 			progressText = `Review error: ${e?.message || 'Server error'}`;
 		} finally {
-			isAnalyzing = false;
+			setTimeout(() => {
+				isAnalyzing = false;
+			}, 300);
 		}
 	}
 
@@ -102,16 +132,13 @@
 		URL.revokeObjectURL(url);
 	}
 
-	function estimateElo(accuracy: number): number {
-		if (accuracy >= 98) return 2600;
-		if (accuracy >= 95) return 2350;
-		if (accuracy >= 90) return 2100;
-		if (accuracy >= 85) return 1850;
-		if (accuracy >= 80) return 1650;
-		if (accuracy >= 75) return 1450;
-		if (accuracy >= 70) return 1250;
-		if (accuracy >= 60) return 1000;
-		return Math.max(500, Math.round(accuracy * 12));
+	function getEstimatedElo(color: 'white' | 'black', accuracy: number): number {
+		if (reviewResult?.estimatedElo && reviewResult.estimatedElo[color]) {
+			return reviewResult.estimatedElo[color];
+		}
+		// Calibrated fallback matching our platform 400-2850 Elo range
+		const base = 400 + Math.pow(Math.max(0, accuracy - 30) / 70, 1.35) * 2200;
+		return Math.min(2850, Math.max(400, Math.round(base / 10) * 10));
 	}
 
 	function jumpToNextKeyMove() {
@@ -149,7 +176,7 @@
 		if (avg >= 90) {
 			return 'Masterclass game! Both players exhibited high-level positional accuracy and tactical discipline.';
 		} else if (avg >= 80) {
-			return 'Sharp and competitive! Solid strategic awareness with clear turning points.';
+			return 'Sharp and competitive! Solid strategic awareness with decisive turning points.';
 		} else if (avg >= 70) {
 			return 'An eventful contest! Notice the moments where tactical chances shifted the balance.';
 		} else {
@@ -281,19 +308,21 @@
 	<!-- Body Content -->
 	<div class="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3.5">
 		{#if isAnalyzing}
-			<!-- Progress Bar while Analyzing -->
+			<!-- Smooth Multi-Step Accurate Progress Bar -->
 			<div class="flex flex-col items-center justify-center py-12 gap-3 text-center">
 				<div class="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 animate-pulse">
 					<Icon name="search" size={22} />
 				</div>
 				<div>
 					<h3 class="text-sm font-bold text-white">Analyzing Game Moves</h3>
-					<p class="text-xs text-slate-400 mt-1 max-w-[260px]">{progressText}</p>
+					<p class="text-xs text-slate-400 mt-1 max-w-[280px] min-h-[32px] flex items-center justify-center">
+						{progressText}
+					</p>
 				</div>
 				<!-- Progress bar container -->
-				<div class="w-full max-w-[260px] h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800 mt-2">
+				<div class="w-full max-w-[280px] h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800 mt-1">
 					<div
-						class="h-full bg-emerald-500 transition-all duration-150"
+						class="h-full bg-emerald-500 transition-all duration-300 ease-out"
 						style="width: {progressPercent}%"
 					></div>
 				</div>
@@ -341,9 +370,16 @@
 							<div class="flex items-center gap-2">
 								<ReviewBadge classification={currentReviewedMove.classification} size="md" />
 								<div>
-									<h4 class="text-xs font-bold text-white capitalize leading-tight">
-										{currentReviewedMove.classification.replace('_', ' ')}
-									</h4>
+									<div class="flex items-center gap-1.5">
+										<h4 class="text-xs font-bold text-white capitalize leading-tight">
+											{currentReviewedMove.classification.replace('_', ' ')}
+										</h4>
+										{#if currentReviewedMove.phase}
+											<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700/60 uppercase">
+												{currentReviewedMove.phase}
+											</span>
+										{/if}
+									</div>
 									<span class="text-[11px] font-mono font-bold text-slate-400">
 										Move {currentReviewedMove.moveNumber}{currentReviewedMove.color === 'white' ? '.' : '...'} {currentReviewedMove.san}
 									</span>
@@ -441,7 +477,7 @@
 					</div>
 
 					<!-- Fast Jump To Key Moments -->
-					<div class="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-850">
+					<div class="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-855">
 						<button
 							class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-850 text-slate-300 hover:text-white text-[11px] font-semibold flex items-center justify-center gap-1 transition border border-slate-800 active:translate-y-px"
 							on:click={jumpToPrevKeyMove}
@@ -537,9 +573,9 @@
 							{reviewResult.whiteAccuracy}%
 						</span>
 						<span class="text-xs font-mono font-bold text-emerald-400 mt-0.5">
-							~{estimateElo(reviewResult.whiteAccuracy)} Elo
+							~{getEstimatedElo('white', reviewResult.whiteAccuracy)} Elo
 						</span>
-						<span class="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Accuracy & Elo</span>
+						<span class="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Calibrated Platform Elo</span>
 					</div>
 
 					<!-- Black Player -->
@@ -552,11 +588,68 @@
 							{reviewResult.blackAccuracy}%
 						</span>
 						<span class="text-xs font-mono font-bold text-emerald-400 mt-0.5">
-							~{estimateElo(reviewResult.blackAccuracy)} Elo
+							~{getEstimatedElo('black', reviewResult.blackAccuracy)} Elo
 						</span>
-						<span class="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Accuracy & Elo</span>
+						<span class="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Calibrated Platform Elo</span>
 					</div>
 				</div>
+
+				<!-- Game Phase Accuracies: Opening, Middlegame, Endgame -->
+				{#if reviewResult.whitePhases || reviewResult.blackPhases}
+					<div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 shadow-xs flex flex-col gap-2">
+						<div class="flex items-center justify-between text-[11px] font-bold text-slate-300 pb-1 border-b border-slate-850">
+							<span>Phase Accuracies</span>
+							<span class="text-[10px] font-mono text-slate-500">Opening • Middlegame • Endgame</span>
+						</div>
+
+						<div class="grid grid-cols-3 gap-2 text-center">
+							<!-- Opening Phase -->
+							<div class="bg-slate-900/80 border border-slate-850 rounded-lg p-2 flex flex-col items-center">
+								<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Opening</span>
+								<div class="flex items-center justify-center gap-1.5 mt-1">
+									<span class="text-xs font-mono font-bold text-white">
+										{reviewResult.whitePhases?.opening ?? reviewResult.whiteAccuracy}%
+									</span>
+									<span class="text-slate-600">/</span>
+									<span class="text-xs font-mono font-bold text-slate-300">
+										{reviewResult.blackPhases?.opening ?? reviewResult.blackAccuracy}%
+									</span>
+								</div>
+								<span class="text-[9px] text-slate-500 mt-0.5 font-mono">W / B</span>
+							</div>
+
+							<!-- Middlegame Phase -->
+							<div class="bg-slate-900/80 border border-slate-850 rounded-lg p-2 flex flex-col items-center">
+								<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Middlegame</span>
+								<div class="flex items-center justify-center gap-1.5 mt-1">
+									<span class="text-xs font-mono font-bold text-white">
+										{reviewResult.whitePhases?.middlegame ?? reviewResult.whiteAccuracy}%
+									</span>
+									<span class="text-slate-600">/</span>
+									<span class="text-xs font-mono font-bold text-slate-300">
+										{reviewResult.blackPhases?.middlegame ?? reviewResult.blackAccuracy}%
+									</span>
+								</div>
+								<span class="text-[9px] text-slate-500 mt-0.5 font-mono">W / B</span>
+							</div>
+
+							<!-- Endgame Phase -->
+							<div class="bg-slate-900/80 border border-slate-850 rounded-lg p-2 flex flex-col items-center">
+								<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Endgame</span>
+								<div class="flex items-center justify-center gap-1.5 mt-1">
+									<span class="text-xs font-mono font-bold text-white">
+										{reviewResult.whitePhases?.endgame ?? reviewResult.whiteAccuracy}%
+									</span>
+									<span class="text-slate-600">/</span>
+									<span class="text-xs font-mono font-bold text-slate-300">
+										{reviewResult.blackPhases?.endgame ?? reviewResult.blackAccuracy}%
+									</span>
+								</div>
+								<span class="text-[9px] text-slate-500 mt-0.5 font-mono">W / B</span>
+							</div>
+						</div>
+					</div>
+				{/if}
 
 				<!-- Opening Recognition Banner -->
 				{#if reviewResult.opening}

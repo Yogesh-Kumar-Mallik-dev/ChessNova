@@ -314,6 +314,8 @@
 
 	function handleLoadSavedGame(rec: LocalGameRecord) {
 		loadPgnContent(rec.pgn);
+		if (rec.white) whitePlayerName = rec.white;
+		if (rec.black) blackPlayerName = rec.black;
 		rightPanelTab = 'review';
 	}
 

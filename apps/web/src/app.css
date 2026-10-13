@@ -4,11 +4,19 @@
 
 @layer base {
 	:root, [data-app-theme="dark-slate"] {
+		--app-slate-950: 222 47% 4%;   /* #050811 deep navy slate */
+		--app-slate-900: 222 47% 7%;   /* #0b111e */
+		--app-slate-850: 220 38% 10%;  /* #101827 */
+		--app-slate-800: 217 33% 13%;  /* #162032 */
+		--app-slate-750: 217 30% 16%;  /* #1d293d */
+		--app-slate-700: 215 25% 20%;  /* #26354d */
+		--app-slate-600: 215 20% 30%;  /* #3d4f6c */
+
 		--background: 222 47% 4%;
 		--foreground: 210 40% 98%;
-		--card: 222 47% 6%;
+		--card: 222 47% 7%;
 		--card-foreground: 210 40% 98%;
-		--popover: 222 47% 5%;
+		--popover: 222 47% 6%;
 		--popover-foreground: 210 40% 98%;
 		--primary: 142 71% 45%;
 		--primary-foreground: 210 40% 98%;
@@ -27,11 +35,19 @@
 	}
 
 	[data-app-theme="chess-dark"] {
-		--background: 30 10% 8%; /* #161512 Chess.com warm charcoal */
+		--app-slate-950: 30 10% 7%;    /* #141311 Chess.com authentic warm background */
+		--app-slate-900: 30 8% 12%;    /* #21201d Chess.com surface */
+		--app-slate-850: 30 7% 15%;    /* #272522 Chess.com panel */
+		--app-slate-800: 30 6% 19%;    /* #312e2b Chess.com borders */
+		--app-slate-750: 30 6% 23%;    /* #3c3935 */
+		--app-slate-700: 30 5% 28%;    /* #484541 */
+		--app-slate-600: 30 5% 42%;    /* #6d6964 */
+
+		--background: 30 10% 7%;
 		--foreground: 40 20% 96%;
-		--card: 30 7% 12%; /* #262421 */
+		--card: 30 8% 12%;
 		--card-foreground: 40 20% 96%;
-		--popover: 30 7% 10%;
+		--popover: 30 7% 11%;
 		--popover-foreground: 40 20% 96%;
 		--primary: 90 45% 50%; /* #81b64c classic green */
 		--primary-foreground: 0 0% 100%;
@@ -43,14 +59,22 @@
 		--accent-foreground: 40 20% 96%;
 		--destructive: 0 63% 31%;
 		--destructive-foreground: 40 20% 96%;
-		--border: 30 6% 18%;
-		--input: 30 6% 18%;
+		--border: 30 6% 19%;
+		--input: 30 6% 19%;
 		--ring: 90 45% 50%;
 		--radius: 0.75rem;
 	}
 
 	[data-app-theme="oled-black"] {
-		--background: 0 0% 2%; /* #050505 pitch black */
+		--app-slate-950: 0 0% 1%;      /* #030303 pure black */
+		--app-slate-900: 0 0% 5%;      /* #0d0d0d */
+		--app-slate-850: 0 0% 8%;      /* #141414 */
+		--app-slate-800: 0 0% 12%;     /* #1f1f1f */
+		--app-slate-750: 0 0% 15%;     /* #262626 */
+		--app-slate-700: 0 0% 20%;     /* #333333 */
+		--app-slate-600: 0 0% 35%;     /* #595959 */
+
+		--background: 0 0% 1%;
 		--foreground: 0 0% 98%;
 		--card: 0 0% 5%;
 		--card-foreground: 0 0% 98%;
@@ -73,9 +97,17 @@
 	}
 
 	[data-app-theme="emerald-studio"] {
-		--background: 160 50% 4%; /* #05140e deep forest */
+		--app-slate-950: 160 50% 3%;   /* #04100b deep pine */
+		--app-slate-900: 160 40% 7%;   /* #0a1f16 forest card */
+		--app-slate-850: 160 35% 10%;  /* #102a1e */
+		--app-slate-800: 160 30% 14%;  /* #143527 forest border */
+		--app-slate-750: 160 25% 17%;  /* #1d4333 */
+		--app-slate-700: 160 20% 22%;  /* #2c5443 */
+		--app-slate-600: 160 15% 35%;  /* #4a7562 */
+
+		--background: 160 50% 3%;
 		--foreground: 150 30% 96%;
-		--card: 160 35% 8%;
+		--card: 160 40% 7%;
 		--card-foreground: 150 30% 96%;
 		--popover: 160 35% 6%;
 		--popover-foreground: 150 30% 96%;
@@ -89,8 +121,8 @@
 		--accent-foreground: 150 30% 96%;
 		--destructive: 0 63% 31%;
 		--destructive-foreground: 150 30% 96%;
-		--border: 160 25% 16%;
-		--input: 160 25% 16%;
+		--border: 160 30% 14%;
+		--input: 160 30% 14%;
 		--ring: 150 65% 44%;
 		--radius: 0.75rem;
 	}
