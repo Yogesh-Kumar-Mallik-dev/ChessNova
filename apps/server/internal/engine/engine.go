@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -210,6 +211,36 @@ var BotLevels = map[int]BotDifficulty{
 }
 
 func (e *StockfishEngine) GenerateBotMove(ctx context.Context, fen string, level int) (string, error) {
+	// For beginner tiers, Stockfish's NNUE search is naturally far too strong (~1400+ Elo even at Skill Level 0).
+	// Chess.com's Martin (250-400 Elo) frequently plays sub-optimal moves, hangs pieces, and misses tactical threats.
+	// We simulate human novice play by injecting blunder/randomness rates:
+	if pos, err := chess.FromFEN(fen); err == nil {
+		legalMoves := chess.LegalMoves(pos)
+		if len(legalMoves) > 0 {
+			r := rand.Float64()
+			// Level 1 (~400 Elo - Novice / Martin style):
+			// 65% chance of making a random beginner legal move (can walk into Scholar's mate, hang pieces, push random pawns)
+			if level <= 1 && r < 0.65 {
+				return legalMoves[rand.Intn(len(legalMoves))].UCI(), nil
+			}
+			// Level 2 (~800 Elo - Casual):
+			// 35% chance of playing a random sub-optimal move
+			if level == 2 && r < 0.35 {
+				return legalMoves[rand.Intn(len(legalMoves))].UCI(), nil
+			}
+			// Level 3 (~1200 Elo - Intermediate):
+			// 12% chance of human inaccuracy
+			if level == 3 && r < 0.12 {
+				return legalMoves[rand.Intn(len(legalMoves))].UCI(), nil
+			}
+			// Level 4 (~1600 Elo - Advanced):
+			// 4% chance of slight inaccuracy
+			if level == 4 && r < 0.04 {
+				return legalMoves[rand.Intn(len(legalMoves))].UCI(), nil
+			}
+		}
+	}
+
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -304,7 +335,11 @@ func fallbackBotMove(fen string, level int) string {
 	}
 
 	if level <= 1 {
-		return moves[0].UCI()
+		return moves[rand.Intn(len(moves))].UCI()
+	}
+
+	if level == 2 && rand.Float64() < 0.40 {
+		return moves[rand.Intn(len(moves))].UCI()
 	}
 
 	bestUCI := moves[0].UCI()
