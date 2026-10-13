@@ -19,6 +19,13 @@
 	let ratingDiff: number | null = null;
 	let solvedCount = 0;
 
+	// Puzzle Modes: 'practice' (category & tiered filters), 'daily' (today's puzzle), 'weekly' (7 weekly challenges)
+	let puzzleMode: 'practice' | 'daily' | 'weekly' = 'practice';
+	let selectedCategory: string = 'all'; // all, mate, fork, pin, skewer, capture, position
+	let selectedTier: number = 0; // 0 = all, 1 = Novice, 2 = Intermediate, 3 = Advanced, 4 = Expert, 5 = Master
+	let weeklyList: any[] = [];
+	let currentWeeklyIndex = 0;
+
 	// Practice & Assistance state
 	let isRetrying = false;
 	let hasAssistance = false;
@@ -28,9 +35,15 @@
 	let isSolutionRevealed = false;
 	let solutionMoves: string[] = [];
 
-	async function loadRandomPuzzle() {
+	async function loadPuzzle(overrideMode?: 'practice' | 'daily' | 'weekly') {
+		const mode = overrideMode || puzzleMode;
+		puzzleMode = mode;
 		loading = true;
-		statusMessage = 'Find the best move in this position.';
+		statusMessage = mode === 'daily'
+			? "Today's Daily Challenge. Find the master combination!"
+			: mode === 'weekly'
+				? `Weekly Challenge ${currentWeeklyIndex + 1} of ${weeklyList.length || 7}. Calculate precisely!`
+				: 'Find the best tactical sequence in this position.';
 		statusType = 'info';
 		solutionIndex = 0;
 		lastMove = null;
@@ -44,7 +57,25 @@
 		solutionMoves = [];
 
 		try {
-			const p = await api.puzzles.getRandom();
+			let p: any = null;
+			if (mode === 'daily') {
+				p = await api.puzzles.getDaily();
+			} else if (mode === 'weekly') {
+				if (weeklyList.length === 0) {
+					weeklyList = await api.puzzles.getWeekly();
+				}
+				if (weeklyList && weeklyList.length > 0) {
+					p = weeklyList[currentWeeklyIndex % weeklyList.length];
+				} else {
+					p = await api.puzzles.getRandom();
+				}
+			} else {
+				p = await api.puzzles.getRandom({
+					category: selectedCategory !== 'all' ? selectedCategory : undefined,
+					tier: selectedTier > 0 ? selectedTier : undefined
+				});
+			}
+
 			currentPuzzle = p;
 			currentFen = p.fen;
 
@@ -58,6 +89,13 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function loadRandomPuzzle() {
+		if (puzzleMode === 'weekly' && weeklyList.length > 0) {
+			currentWeeklyIndex = (currentWeeklyIndex + 1) % weeklyList.length;
+		}
+		return loadPuzzle();
 	}
 
 	async function requestHint() {
@@ -241,6 +279,95 @@
 		</button>
 	</div>
 
+	<!-- Mode Switcher & Category / Tier Filter Bar -->
+	<div class="mb-3 bg-slate-900/70 border border-slate-800/80 rounded-2xl p-2.5 backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-3 shadow-lg">
+		<!-- Left: Mode Switcher -->
+		<div class="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80 w-full md:w-auto">
+			<button
+				class="flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 {puzzleMode === 'practice'
+					? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/25'
+					: 'text-slate-400 hover:text-slate-200'}"
+				on:click={() => loadPuzzle('practice')}
+			>
+				<Icon name="puzzle" size={13} />
+				<span>Practice Lab</span>
+			</button>
+
+			<button
+				class="flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 {puzzleMode === 'daily'
+					? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/25'
+					: 'text-slate-400 hover:text-slate-200'}"
+				on:click={() => loadPuzzle('daily')}
+			>
+				<Icon name="flame" size={13} />
+				<span>Daily Puzzle</span>
+			</button>
+
+			<button
+				class="flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 {puzzleMode === 'weekly'
+					? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25'
+					: 'text-slate-400 hover:text-slate-200'}"
+				on:click={() => loadPuzzle('weekly')}
+			>
+				<Icon name="trophy" size={13} />
+				<span>Weekly ({weeklyList.length || 7})</span>
+			</button>
+		</div>
+
+		{#if puzzleMode === 'practice'}
+			<!-- Right: Category and Tier Selectors -->
+			<div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+				<!-- Category Selector -->
+				<div class="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
+					<span class="text-[10px] font-bold text-slate-400 uppercase px-1.5">Theme:</span>
+					{#each ['all', 'mate', 'capture', 'fork', 'pin', 'skewer', 'position'] as cat}
+						<button
+							class="px-2 py-1 rounded-lg text-[11px] font-medium transition capitalize {selectedCategory === cat
+								? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+								: 'text-slate-400 hover:text-slate-200'}"
+							on:click={() => {
+								selectedCategory = cat;
+								loadPuzzle('practice');
+							}}
+						>
+							{cat}
+						</button>
+					{/each}
+				</div>
+
+				<!-- Progressive Tier Selector -->
+				<div class="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
+					<span class="text-[10px] font-bold text-slate-400 uppercase px-1.5">Tier:</span>
+					<button
+						class="px-2 py-1 rounded-lg text-[11px] font-medium transition {selectedTier === 0
+							? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+							: 'text-slate-400 hover:text-slate-200'}"
+						on:click={() => {
+							selectedTier = 0;
+							loadPuzzle('practice');
+						}}
+					>
+						All
+					</button>
+					{#each [1, 2, 3, 4, 5] as tierLvl}
+						<button
+							class="px-2 py-1 rounded-lg text-[11px] font-medium transition {selectedTier === tierLvl
+								? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+								: 'text-slate-400 hover:text-slate-200'}"
+							title={`Tier ${tierLvl}: ${tierLvl === 1 ? 'Novice (<900)' : tierLvl === 2 ? 'Intermediate (900-1300)' : tierLvl === 3 ? 'Advanced (1300-1650)' : tierLvl === 4 ? 'Expert (1650-2000)' : 'Master (2000+)'}`}
+							on:click={() => {
+								selectedTier = tierLvl;
+								loadPuzzle('practice');
+							}}
+						>
+							T{tierLvl}
+						</button>
+					{/each}
+				</div>
+			</div>
+		{/if}
+	</div>
+
 	<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-center justify-center my-auto">
 		<!-- Left: Puzzle Board -->
 		<div class="lg:col-span-7 xl:col-span-8 flex justify-center">
@@ -291,10 +418,22 @@
 				{#if currentPuzzle}
 					<div class="text-right">
 						<span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Puzzle Level</span>
-						<div class="text-lg font-mono font-extrabold text-cyan-400">
-							{currentPuzzle.rating}
+						<div class="text-lg font-mono font-extrabold text-cyan-400 flex items-center justify-end gap-1.5">
+							<span>{currentPuzzle.rating}</span>
+							{#if currentPuzzle.tier}
+								<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+									T{currentPuzzle.tier}
+								</span>
+							{/if}
 						</div>
-						<div class="text-[10px] text-slate-500 capitalize">{turn} to move</div>
+						<div class="text-[10px] text-slate-500 capitalize flex items-center justify-end gap-1.5 mt-0.5">
+							{#if currentPuzzle.category}
+								<span class="px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold uppercase text-[9px]">
+									{currentPuzzle.category}
+								</span>
+							{/if}
+							<span>{turn} to move</span>
+						</div>
 					</div>
 				{/if}
 			</div>

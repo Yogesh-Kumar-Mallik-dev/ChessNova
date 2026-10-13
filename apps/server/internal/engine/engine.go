@@ -213,29 +213,59 @@ var BotLevels = map[int]BotDifficulty{
 func (e *StockfishEngine) GenerateBotMove(ctx context.Context, fen string, level int) (string, error) {
 	// For beginner tiers, Stockfish's NNUE search is naturally far too strong (~1400+ Elo even at Skill Level 0).
 	// Chess.com's Martin (250-400 Elo) frequently plays sub-optimal moves, hangs pieces, and misses tactical threats.
-	// We simulate human novice play by injecting blunder/randomness rates:
+	// Natural humanized simulation:
+	// When players / bots take longer to move, the probability of a good move increases, but they can still play a worse move despite taking time.
+	// We simulate a realistic human think time (400ms - 2200ms depending on level) and correlate blunder probability inversely with think duration.
+	var thinkDuration time.Duration
+	var blunderChance float64
+
+	switch level {
+	case 1:
+		// Level 1 (~400 Elo - Novice / Martin style):
+		// Moves range between 400ms and 1400ms
+		thinkMs := 400 + rand.Intn(1000)
+		thinkDuration = time.Duration(thinkMs) * time.Millisecond
+		// Longer contemplation reduces blunder chance from 80% down towards 45%, but still leaves blunder chance high
+		normalized := float64(thinkMs-400) / 1000.0
+		blunderChance = 0.80 - (normalized * 0.35)
+	case 2:
+		// Level 2 (~800 Elo - Casual):
+		thinkMs := 500 + rand.Intn(1200)
+		thinkDuration = time.Duration(thinkMs) * time.Millisecond
+		normalized := float64(thinkMs-500) / 1200.0
+		blunderChance = 0.45 - (normalized * 0.25)
+	case 3:
+		// Level 3 (~1200 Elo - Intermediate):
+		thinkMs := 600 + rand.Intn(1200)
+		thinkDuration = time.Duration(thinkMs) * time.Millisecond
+		normalized := float64(thinkMs-600) / 1200.0
+		blunderChance = 0.18 - (normalized * 0.12)
+	case 4:
+		// Level 4 (~1600 Elo - Advanced):
+		thinkMs := 700 + rand.Intn(1100)
+		thinkDuration = time.Duration(thinkMs) * time.Millisecond
+		normalized := float64(thinkMs-700) / 1100.0
+		blunderChance = 0.06 - (normalized * 0.04)
+	default:
+		// Level 5 (~2000+ Elo - Master):
+		thinkMs := 800 + rand.Intn(1200)
+		thinkDuration = time.Duration(thinkMs) * time.Millisecond
+		blunderChance = 0.0
+	}
+
+	// Wait for the simulated thinking duration (or context cancellation)
+	select {
+	case <-time.After(thinkDuration):
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+
 	if pos, err := chess.FromFEN(fen); err == nil {
 		legalMoves := chess.LegalMoves(pos)
 		if len(legalMoves) > 0 {
 			r := rand.Float64()
-			// Level 1 (~400 Elo - Novice / Martin style):
-			// 65% chance of making a random beginner legal move (can walk into Scholar's mate, hang pieces, push random pawns)
-			if level <= 1 && r < 0.65 {
-				return legalMoves[rand.Intn(len(legalMoves))].UCI(), nil
-			}
-			// Level 2 (~800 Elo - Casual):
-			// 35% chance of playing a random sub-optimal move
-			if level == 2 && r < 0.35 {
-				return legalMoves[rand.Intn(len(legalMoves))].UCI(), nil
-			}
-			// Level 3 (~1200 Elo - Intermediate):
-			// 12% chance of human inaccuracy
-			if level == 3 && r < 0.12 {
-				return legalMoves[rand.Intn(len(legalMoves))].UCI(), nil
-			}
-			// Level 4 (~1600 Elo - Advanced):
-			// 4% chance of slight inaccuracy
-			if level == 4 && r < 0.04 {
+			if r < blunderChance {
+				// Blunder or suboptimal move played despite/during the think time
 				return legalMoves[rand.Intn(len(legalMoves))].UCI(), nil
 			}
 		}

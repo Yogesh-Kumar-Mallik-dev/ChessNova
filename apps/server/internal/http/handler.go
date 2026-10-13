@@ -129,6 +129,8 @@ func (rt *Router) routes() {
 
 	// Puzzles
 	rt.mux.HandleFunc("GET /api/v1/puzzles/random", rt.handleGetRandomPuzzle)
+	rt.mux.HandleFunc("GET /api/v1/puzzles/daily", rt.handleGetDailyPuzzle)
+	rt.mux.HandleFunc("GET /api/v1/puzzles/weekly", rt.handleGetWeeklyPuzzles)
 	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}", rt.handleGetPuzzleByID)
 	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}/hint", rt.handleGetPuzzleHint)
 	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}/solution", rt.handleGetPuzzleSolution)
@@ -632,12 +634,56 @@ func (rt *Router) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 // Puzzle Handlers
 func (rt *Router) handleGetRandomPuzzle(w http.ResponseWriter, r *http.Request) {
-	p, err := rt.puzzleRepo.GetRandomPuzzle(r.Context())
+	q := r.URL.Query()
+	filter := puzzle.QueryFilter{
+		Category: strings.ToLower(strings.TrimSpace(q.Get("category"))),
+	}
+	if tierStr := q.Get("tier"); tierStr != "" {
+		if val, err := strconv.Atoi(tierStr); err == nil && val >= 1 && val <= 5 {
+			filter.Tier = val
+		}
+	}
+	if minStr := q.Get("minRating"); minStr != "" {
+		if val, err := strconv.Atoi(minStr); err == nil && val > 0 {
+			filter.MinRating = val
+		}
+	}
+	if maxStr := q.Get("maxRating"); maxStr != "" {
+		if val, err := strconv.Atoi(maxStr); err == nil && val > 0 {
+			filter.MaxRating = val
+		}
+	}
+
+	p, err := rt.puzzleRepo.GetRandomPuzzle(r.Context(), filter)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "NOT_FOUND", "no puzzle found")
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "no puzzle found matching criteria")
 		return
 	}
 	writeJSON(w, http.StatusOK, p.ToPublic())
+}
+
+func (rt *Router) handleGetDailyPuzzle(w http.ResponseWriter, r *http.Request) {
+	p, err := rt.puzzleRepo.GetDailyPuzzle(r.Context())
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "no daily puzzle found")
+		return
+	}
+	pub := p.ToPublic()
+	pub.IsDaily = true
+	writeJSON(w, http.StatusOK, pub)
+}
+
+func (rt *Router) handleGetWeeklyPuzzles(w http.ResponseWriter, r *http.Request) {
+	puzzles, err := rt.puzzleRepo.GetWeeklyPuzzles(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	publicList := make([]puzzle.PublicPuzzle, 0, len(puzzles))
+	for _, p := range puzzles {
+		publicList = append(publicList, p.ToPublic())
+	}
+	writeJSON(w, http.StatusOK, publicList)
 }
 
 func (rt *Router) handleGetPuzzleByID(w http.ResponseWriter, r *http.Request) {
