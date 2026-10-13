@@ -4,37 +4,84 @@ export default {
 	theme: {
 		extend: {
 			colors: {
+				border: 'hsl(var(--border))',
+				input: 'hsl(var(--input))',
+				ring: 'hsl(var(--ring))',
+				background: 'hsl(var(--background))',
+				foreground: 'hsl(var(--foreground))',
+				primary: {
+					DEFAULT: 'hsl(var(--primary))',
+					foreground: 'hsl(var(--primary-foreground))'
+				},
+				secondary: {
+					DEFAULT: 'hsl(var(--secondary))',
+					foreground: 'hsl(var(--secondary-foreground))'
+				},
+				destructive: {
+					DEFAULT: 'hsl(var(--destructive))',
+					foreground: 'hsl(var(--destructive-foreground))'
+				},
+				muted: {
+					DEFAULT: 'hsl(var(--muted))',
+					foreground: 'hsl(var(--muted-foreground))'
+				},
+				accent: {
+					DEFAULT: 'hsl(var(--accent))',
+					foreground: 'hsl(var(--accent-foreground))'
+				},
+				popover: {
+					DEFAULT: 'hsl(var(--popover))',
+					foreground: 'hsl(var(--popover-foreground))'
+				},
+				card: {
+					DEFAULT: 'hsl(var(--card))',
+					foreground: 'hsl(var(--card-foreground))'
+				},
 				nova: {
-					void: '#07090e',
-					space: '#0c1017',
-					surface: '#121824',
-					surfaceHover: '#182030',
-					surfaceElevated: '#1e283d',
-					border: '#1f293d',
-					borderLight: '#2c3a56',
-					text: '#f1f5f9',
+					void: '#06080d',
+					space: '#0a0d14',
+					surface: '#0f141f',
+					surfaceHover: '#151c2b',
+					surfaceElevated: '#1a2235',
+					border: '#1e293b',
+					borderLight: '#334155',
+					text: '#f8fafc',
 					textMuted: '#94a3b8',
-					textSubtle: '#64748b',
-					cyan: '#38bdf8',
-					indigo: '#6366f1',
-					emerald: '#10b981',
-					amber: '#f59e0b',
-					crimson: '#f43f5e',
-					boardDark: '#2b3648',
-					boardLight: '#cdd6e0',
-					boardHighlight: 'rgba(99, 102, 241, 0.4)',
-					boardLastMove: 'rgba(56, 189, 248, 0.35)',
-					boardCheck: 'rgba(244, 63, 94, 0.65)'
+					textSubtle: '#64748b'
 				}
+			},
+			borderRadius: {
+				lg: 'var(--radius)',
+				md: 'calc(var(--radius) - 2px)',
+				sm: 'calc(var(--radius) - 4px)'
 			},
 			fontFamily: {
 				sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
 				mono: ['JetBrains Mono', 'Fira Code', 'monospace']
 			},
-			backgroundImage: {
-				'nova-gradient': 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
-				'nova-card': 'linear-gradient(180deg, rgba(18, 24, 36, 0.85) 0%, rgba(12, 16, 23, 0.95) 100%)',
-				'nova-radial': 'radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.12) 0%, transparent 70%)'
+			keyframes: {
+				'accordion-down': {
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
+				},
+				'accordion-up': {
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
+				},
+				'fade-in': {
+					from: { opacity: '0', transform: 'translateY(6px)' },
+					to: { opacity: '1', transform: 'translateY(0)' }
+				},
+				'glow-pulse': {
+					'0%, 100%': { opacity: '0.4' },
+					'50%': { opacity: '0.85' }
+				}
+			},
+			animation: {
+				'accordion-down': 'accordion-down 0.2s ease-out',
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+				'glow-pulse': 'glow-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite'
 			}
 		}
 	},

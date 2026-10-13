@@ -1,91 +1,139 @@
 <script lang="ts">
 	import { authStore } from '$lib/stores/auth';
+	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import QuickSettings from '$lib/components/ui/QuickSettings.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+
+	let mobileMenuOpen = false;
 
 	function handleLogout() {
 		authStore.logout();
 		goto('/login');
 	}
+
+	$: currentPath = $page.url.pathname;
+
+	const navItems: Array<{ href: string; label: string; icon: 'swords' | 'zap' | 'puzzle' | 'search' | 'trophy' }> = [
+		{ href: '/play', label: 'Play', icon: 'swords' },
+		{ href: '/play/online', label: 'Online', icon: 'zap' },
+		{ href: '/puzzles', label: 'Puzzles', icon: 'puzzle' },
+		{ href: '/analysis', label: 'Analysis', icon: 'search' },
+		{ href: '/leaderboard', label: 'Leaderboard', icon: 'trophy' }
+	];
 </script>
 
-<header class="h-16 bg-[#0c1017]/90 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 select-none">
-	<div class="flex items-center gap-8">
+<header class="h-16 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 select-none">
+	<div class="flex items-center gap-6 lg:gap-8">
 		<!-- Brand Logo -->
-		<a href="/" class="flex items-center gap-2.5 text-white font-black text-xl tracking-tight group">
-			<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-sky-400 flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.4)] group-hover:shadow-[0_0_20px_rgba(56,189,248,0.6)] transition-all">
-				<Icon name="crown" size={20} className="text-white drop-shadow" />
+		<a href="/" class="flex items-center gap-2.5 text-white font-bold text-lg sm:text-xl tracking-tight group">
+			<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md shadow-sky-500/25 group-hover:scale-105 transition-transform">
+				<Icon name="crown" size={18} className="text-white drop-shadow" />
 			</div>
-			<span class="bg-gradient-to-r from-white via-slate-200 to-sky-300 bg-clip-text text-transparent font-extrabold">
+			<span class="font-extrabold text-white">
 				Chess<span class="text-sky-400">Nova</span>
 			</span>
 		</a>
 
-		<!-- Navigation links -->
-		<nav class="hidden md:flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-400">
-			<a href="/play" class="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:text-white hover:bg-slate-800/60 transition">
-				<Icon name="swords" size={14} className="text-slate-500" />
-				<span>Local</span>
-			</a>
-			<a href="/play/online" class="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:text-white hover:bg-slate-800/60 transition">
-				<Icon name="zap" size={14} className="text-sky-400" />
-				<span>Online</span>
-			</a>
-			<a href="/puzzles" class="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:text-white hover:bg-slate-800/60 transition">
-				<Icon name="puzzle" size={14} className="text-emerald-400" />
-				<span>Puzzles</span>
-			</a>
-			<a href="/analysis" class="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:text-white hover:bg-slate-800/60 transition">
-				<Icon name="search" size={14} className="text-indigo-400" />
-				<span>Analysis</span>
-			</a>
-			<a href="/leaderboard" class="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:text-white hover:bg-slate-800/60 transition">
-				<Icon name="trophy" size={14} className="text-amber-400" />
-				<span>Rankings</span>
-			</a>
+		<!-- Desktop Navigation -->
+		<nav class="hidden md:flex items-center gap-1">
+			{#each navItems as item}
+				{@const active = currentPath === item.href || (item.href !== '/' && currentPath.startsWith(item.href) && item.href !== '/play')}
+				<a
+					href={item.href}
+					class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 {active
+						? 'bg-slate-800 text-white shadow-sm'
+						: 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'}"
+				>
+					<Icon name={item.icon} size={14} className={active ? 'text-sky-400' : 'text-slate-500'} />
+					<span>{item.label}</span>
+				</a>
+			{/each}
 		</nav>
 	</div>
 
 	<!-- Actions & Auth Status -->
-	<div class="flex items-center gap-3">
+	<div class="flex items-center gap-2.5 sm:gap-3">
 		<QuickSettings />
 
 		{#if $authStore.loading}
 			<div class="w-8 h-8 rounded-full bg-slate-800/60 animate-pulse"></div>
 		{:else if $authStore.user}
-			<div class="flex items-center gap-3">
+			<div class="flex items-center gap-2 sm:gap-3">
 				<a
-					href="/profile/{$authStore.user.username}"
-					class="flex items-center gap-2.5 py-1.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-750 border border-slate-700/80 text-xs font-semibold text-slate-200 transition shadow-sm"
+					href="/play/online"
+					class="flex items-center gap-2 py-1.5 px-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/70 text-xs font-semibold text-slate-200 transition shadow-sm"
 				>
 					<span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
-					<span>{$authStore.user.username}</span>
-					<span class="bg-slate-900 px-2 py-0.5 rounded-md text-[11px] font-mono text-sky-400 font-bold border border-slate-800">
+					<span class="max-w-[100px] sm:max-w-none truncate">{$authStore.user.username}</span>
+					<span class="bg-slate-950 px-2 py-0.5 rounded-md text-[11px] font-mono text-sky-400 font-bold border border-slate-800">
 						{$authStore.ratings?.blitz || 400}
 					</span>
 				</a>
 
-				<button
-					class="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800/60 transition"
+				<Button
+					variant="ghost"
+					size="icon"
+					className="text-slate-400 hover:text-rose-400 hover:bg-slate-850"
 					on:click={handleLogout}
 					title="Sign Out"
 				>
-					<Icon name="log-out" size={16} />
-				</button>
+					<Icon name="log-out" size={15} />
+				</Button>
 			</div>
 		{:else}
-			<div class="flex items-center gap-2.5 text-xs font-bold">
-				<a href="/login" class="px-3.5 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition">
-					Log In
+			<div class="hidden sm:flex items-center gap-2">
+				<a href="/login">
+					<Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
+						Log In
+					</Button>
 				</a>
-				<a
-					href="/register"
-					class="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white transition shadow-[0_0_15px_rgba(56,189,248,0.3)] font-extrabold"
-				>
-					Join Free
+				<a href="/register">
+					<Button variant="glow" size="sm">
+						Play Free
+					</Button>
+				</a>
+			</div>
+		{/if}
+
+		<!-- Mobile Menu Toggle Button -->
+		<button
+			class="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-850 transition"
+			on:click={() => (mobileMenuOpen = !mobileMenuOpen)}
+			aria-label="Toggle navigation menu"
+		>
+			<Icon name={mobileMenuOpen ? 'x' : 'swords'} size={18} />
+		</button>
+	</div>
+</header>
+
+<!-- Mobile Navigation Drawer -->
+{#if mobileMenuOpen}
+	<div class="md:hidden fixed inset-x-0 top-16 z-30 bg-slate-950/95 border-b border-slate-800/80 backdrop-blur-2xl p-4 shadow-2xl animate-fade-in flex flex-col gap-2">
+		{#each navItems as item}
+			{@const active = currentPath === item.href}
+			<a
+				href={item.href}
+				class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition {active
+					? 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
+					: 'text-slate-300 hover:bg-slate-900'}"
+				on:click={() => (mobileMenuOpen = false)}
+			>
+				<Icon name={item.icon} size={18} className={active ? 'text-sky-400' : 'text-slate-400'} />
+				<span>{item.label}</span>
+			</a>
+		{/each}
+
+		{#if !$authStore.user}
+			<div class="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-slate-800">
+				<a href="/login" class="w-full" on:click={() => (mobileMenuOpen = false)}>
+					<Button variant="outline" className="w-full">Log In</Button>
+				</a>
+				<a href="/register" class="w-full" on:click={() => (mobileMenuOpen = false)}>
+					<Button variant="glow" className="w-full">Play Free</Button>
 				</a>
 			</div>
 		{/if}
 	</div>
-</header>
+{/if}

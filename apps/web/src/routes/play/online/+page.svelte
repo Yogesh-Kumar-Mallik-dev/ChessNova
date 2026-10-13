@@ -4,6 +4,9 @@
 	import { authStore } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/icons/Icon.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 
 	interface Preset {
 		label: string;
@@ -64,10 +67,22 @@
 				waitSeconds++;
 			}, 1000);
 
-			pollTimer = setInterval(checkStatus, 1500);
+			pollTimer = setInterval(async () => {
+				try {
+					const status = await api.matchmaking.status();
+					if (status && status.status === 'matched') {
+						stopTimers();
+						isSearching = false;
+						goto(`/game/${status.gameId}`);
+					}
+				} catch (e) {
+					// keep polling
+				}
+			}, 1500);
 		} catch (err: any) {
-			error = err.message || 'Failed to join matchmaking queue';
+			error = err.message || 'Failed to queue for match';
 			isSearching = false;
+			stopTimers();
 		}
 	}
 
@@ -76,20 +91,8 @@
 		isSearching = false;
 		try {
 			await api.matchmaking.leave();
-		} catch {
-			// ignore
-		}
-	}
-
-	async function checkStatus() {
-		try {
-			const res = await api.matchmaking.status();
-			if (res.status === 'matched') {
-				stopTimers();
-				goto(`/game/${res.gameId}`);
-			}
-		} catch {
-			// ignore
+		} catch (err) {
+			console.error('Failed to leave matchmaking queue:', err);
 		}
 	}
 
@@ -123,25 +126,25 @@
 
 <div class="flex-1 max-w-4xl mx-auto w-full px-4 py-8 flex flex-col justify-center">
 	<div class="text-center mb-8">
-		<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-xs font-mono text-sky-400 font-bold mb-3">
+		<Badge variant="default" className="mb-3">
 			<Icon name="zap" size={13} />
-			<span>SERVER-MATCHED ARENA</span>
-		</div>
+			<span>Online Matchmaking</span>
+		</Badge>
 		<h1 class="text-3xl sm:text-4xl font-black text-white tracking-tight">Play Online</h1>
 		<p class="text-xs sm:text-sm text-slate-400 mt-1 max-w-md mx-auto">
-			Choose your time control to enter the matchmaking queue.
+			Select your preferred time control to find a rated match.
 		</p>
 	</div>
 
 	{#if error}
-		<div class="mb-6 p-4 bg-rose-950/40 border border-rose-700/50 rounded-xl text-sm text-rose-200 text-center max-w-md mx-auto shadow-md">
+		<div class="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-sm text-rose-300 text-center max-w-md mx-auto shadow-md">
 			{error}
 		</div>
 	{/if}
 
 	{#if isSearching}
-		<!-- Cosmic Matchmaking Radar Modal -->
-		<div class="max-w-md mx-auto w-full bg-gradient-to-b from-[#141c2c] to-[#0c1017] border border-sky-500/40 rounded-3xl p-8 sm:p-10 shadow-[0_0_50px_rgba(56,189,248,0.2)] text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
+		<!-- Matchmaking Search Radar Modal -->
+		<Card className="max-w-md mx-auto w-full p-8 sm:p-10 text-center flex flex-col items-center animate-fade-in border-sky-500/40">
 			<!-- Radar Scanner Graphic -->
 			<div class="relative w-28 h-28 rounded-full border border-sky-500/30 flex items-center justify-center mb-6">
 				<div class="absolute inset-2 rounded-full border border-sky-500/20"></div>
@@ -157,33 +160,35 @@
 			</div>
 
 			<!-- Dynamic Stats Grid -->
-			<div class="w-full grid grid-cols-3 gap-2 bg-[#090d15] border border-slate-800 rounded-xl p-3.5 mb-6 text-center">
+			<div class="w-full grid grid-cols-3 gap-2 bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 mb-6 text-center">
 				<div>
 					<span class="block text-white font-mono text-base font-extrabold">{waitSeconds}s</span>
-					<span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Wait Time</span>
+					<span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Wait Time</span>
 				</div>
 				<div>
 					<span class="block text-sky-400 font-mono text-base font-extrabold">±{tolerance}</span>
-					<span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Tolerance</span>
+					<span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Tolerance</span>
 				</div>
 				<div>
 					<span class="block text-indigo-400 font-mono text-base font-extrabold">{userRating}</span>
-					<span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Your Rating</span>
+					<span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Your Rating</span>
 				</div>
 			</div>
 
-			<button
-				class="w-full py-3 bg-slate-800/80 hover:bg-slate-750 text-slate-300 font-bold text-xs uppercase tracking-wider rounded-xl transition border border-slate-700/80 active:scale-95"
+			<Button
+				variant="outline"
+				size="lg"
+				className="w-full text-slate-300 hover:text-white"
 				on:click={cancelMatchmaking}
 			>
 				Cancel Search
-			</button>
-		</div>
+			</Button>
+		</Card>
 	{:else}
 		<!-- Time Control Selector -->
-		<div class="bg-gradient-to-b from-[#121824] to-[#0c1017] border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl mx-auto w-full shadow-2xl">
+		<Card className="p-6 sm:p-8 max-w-xl mx-auto w-full shadow-2xl border-slate-800">
 			<div class="flex items-center justify-between mb-4">
-				<h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-400">Select Discipline</h2>
+				<h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-400">Select Time Control</h2>
 				<span class="text-[11px] font-mono text-sky-400 font-semibold">
 					Your Rating: {userRating}
 				</span>
@@ -194,10 +199,10 @@
 				{#each presets as preset}
 					{@const isSelected = selectedPreset.label === preset.label}
 					<button
-						class="flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-150 text-center group
+						class="flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-150 text-center group cursor-pointer
 						{isSelected
 							? 'bg-sky-500/15 border-sky-400 text-white shadow-[0_0_15px_rgba(56,189,248,0.25)] scale-[1.02]'
-							: 'bg-[#090d15] border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 hover:bg-slate-850'}"
+							: 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 hover:bg-slate-900'}"
 						on:click={() => (selectedPreset = preset)}
 					>
 						<div class="w-8 h-8 rounded-lg flex items-center justify-center mb-1 {isSelected ? 'text-sky-400' : 'text-slate-500 group-hover:text-slate-300'}">
@@ -211,22 +216,26 @@
 
 			<!-- Launch Actions -->
 			<div class="flex flex-col gap-3">
-				<button
-					class="w-full py-4 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black text-base rounded-xl transition-all shadow-[0_4px_25px_rgba(56,189,248,0.35)] hover:shadow-[0_6px_35px_rgba(56,189,248,0.5)] active:scale-[0.98] flex items-center justify-center gap-2"
+				<Button
+					variant="glow"
+					size="lg"
+					className="w-full"
 					on:click={startMatchmaking}
 				>
 					<Icon name="zap" size={18} />
-					<span>Queue for {selectedPreset.label} {selectedPreset.type}</span>
-				</button>
+					<span>Play {selectedPreset.label} {selectedPreset.type}</span>
+				</Button>
 
-				<button
-					class="w-full py-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2"
+				<Button
+					variant="secondary"
+					size="default"
+					className="w-full"
 					on:click={createDirectGame}
 				>
-					<Icon name="swords" size={14} className="text-slate-500" />
-					<span>Instant Match vs Guest</span>
-				</button>
+					<Icon name="swords" size={14} className="text-slate-400" />
+					<span>Direct Match vs Guest</span>
+				</Button>
 			</div>
-		</div>
+		</Card>
 	{/if}
 </div>
