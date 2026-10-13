@@ -36,6 +36,8 @@
 	export let gameOutcome = '';
 	export let gameWinner = '';
 	export let disableGameOverModal = false;
+	export let hintSquare: string | null = null;
+	export let hintArrow: { from: string; to: string } | null = null;
 	export let reviewMove: {
 		from: string;
 		to: string;
@@ -434,6 +436,7 @@
 					isLastMoveTo={isLastTo}
 					{isLegal}
 					{isCapture}
+					isHintSquare={hintSquare === sq}
 					{legalCategory}
 					isCheck={isCheckSquare && !isCheckmate}
 					isWinningKing={winningKingSquare === sq}
@@ -467,6 +470,30 @@
 			{/each}
 		{/each}
 	</div>
+
+	<!-- Tactical Hint Arrow Overlay (Luminous cyan tactical vector arrow) -->
+	{#if hintArrow && hintArrow.from && hintArrow.to}
+		{@const hp1 = squareToPercent(hintArrow.from, orientation === 'white')}
+		{@const hp2 = squareToPercent(hintArrow.to, orientation === 'white')}
+		<svg class="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
+			<defs>
+				<marker id="hint-target-arrow" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+					<polygon points="0 0, 6 3, 0 6" fill="#06b6d4" />
+				</marker>
+			</defs>
+			<line
+				x1="{hp1.x}%"
+				y1="{hp1.y}%"
+				x2="{hp2.x}%"
+				y2="{hp2.y}%"
+				stroke="#06b6d4"
+				stroke-width="6"
+				stroke-linecap="round"
+				marker-end="url(#hint-target-arrow)"
+				opacity="0.9"
+			/>
+		</svg>
+	{/if}
 
 	<!-- Review Best Move Arrow Overlay (Chess.com green arrow) -->
 	{#if reviewMove && reviewMove.bestMoveUci && reviewMove.bestMoveUci.length >= 4 && reviewMove.bestMoveUci !== `${reviewMove.from}${reviewMove.to}`}

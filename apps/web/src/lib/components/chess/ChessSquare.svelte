@@ -15,6 +15,7 @@
 	export let isLastMoveTo = false;
 	export let isLegal = false;
 	export let isCapture = false;
+	export let isHintSquare = false;
 	export let legalCategory: 'normal' | 'capture' | 'castle' | 'en_passant' = 'normal';
 	export let isCheck = false;
 	export let isWinningKing = false;
@@ -89,6 +90,11 @@
 	<!-- Selected square highlight (warm gold aura) -->
 	{#if isSelected}
 		<div class="absolute inset-0 bg-amber-400/40 border-2 border-amber-300/80 z-0"></div>
+	{/if}
+
+	<!-- Tactical Hint Square highlight (luminous cyan pulsating halo) -->
+	{#if isHintSquare}
+		<div class="absolute inset-0 bg-cyan-400/35 border-2 border-cyan-300/90 shadow-[inset_0_0_15px_rgba(34,211,238,0.5)] animate-pulse z-0 pointer-events-none"></div>
 	{/if}
 
 	<!-- Last move highlights: origin square warm gold, target square luminous sky-blue -->
