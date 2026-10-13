@@ -117,6 +117,7 @@ func (rt *Router) routes() {
 	// Authoritative Chess Engine & Legal Move Rules
 	rt.mux.HandleFunc("POST /api/v1/chess/legal-moves", rt.handleLegalMoves)
 	rt.mux.HandleFunc("POST /api/v1/chess/move", rt.handleExecuteMove)
+	rt.mux.HandleFunc("POST /api/v1/chess/bot-move", rt.handleBotMove)
 
 	// Authoritative Stockfish Analysis & Game Review
 	rt.mux.HandleFunc("POST /api/v1/analysis/evaluate", rt.handleEvaluatePosition)
@@ -634,7 +635,7 @@ func (rt *Router) handleGetRandomPuzzle(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "no puzzle found")
 		return
 	}
-	writeJSON(w, http.StatusOK, p)
+	writeJSON(w, http.StatusOK, p.ToPublic())
 }
 
 func (rt *Router) handleGetPuzzleByID(w http.ResponseWriter, r *http.Request) {
@@ -649,88 +650,124 @@ func (rt *Router) handleGetPuzzleByID(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
 		return
 	}
-	writeJSON(w, http.StatusOK, p)
+	writeJSON(w, http.StatusOK, p.ToPublic())
 }
 
 type solvePuzzleReq struct {
-	Success bool `json:"success"`
+	Move     string `json:"move,omitempty"`    // e.g. "e1e8" or "f2g3" (UCI format)
+	PlyIndex int    `json:"plyIndex"`         // 0, 2, 4... player's move turn index
+	Success  *bool  `json:"success,omitempty"` // backward-compatibility fallback
 }
 
 func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
-	_, err := primitive.ObjectIDFromHex(idStr)
+	oid, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid puzzle ID")
+		return
+	}
+
+	p, err := rt.puzzleRepo.GetByID(r.Context(), oid)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
 		return
 	}
 
 	var req solvePuzzleReq
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
+	// Determine if solved correctly
+	isCorrect := false
+	isFinished := false
+	replyMove := ""
+
+	if req.Move != "" {
+		normalizedMove := strings.ToLower(strings.TrimSpace(req.Move))
+		if req.PlyIndex < 0 || req.PlyIndex >= len(p.Solution) {
+			writeError(w, http.StatusBadRequest, "INVALID_PLY", "invalid ply index for puzzle")
+			return
+		}
+		expectedMove := strings.ToLower(strings.TrimSpace(p.Solution[req.PlyIndex]))
+		if normalizedMove == expectedMove {
+			isCorrect = true
+			nextIndex := req.PlyIndex + 1
+			if nextIndex < len(p.Solution) {
+				replyMove = p.Solution[nextIndex]
+			} else {
+				isFinished = true
+			}
+		}
+	} else if req.Success != nil {
+		isCorrect = *req.Success
+		isFinished = *req.Success
+	}
+
+	// Elo calculation based on player's rating vs puzzle's rating
+	var claims *auth.Claims
 	authHeader := r.Header.Get("Authorization")
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		claims, err := rt.authService.ValidateAccessToken(tokenStr)
-		if err == nil && claims != nil {
-			userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
-			uRat, _ := rt.ratingRepo.GetRating(r.Context(), userOID, rating.Puzzles)
-			if uRat == nil {
-				uRat = &rating.UserRating{
-					UserID:   userOID,
-					Username: claims.Username,
-					Category: rating.Puzzles,
-					Rating:   rating.DefaultRating,
-				}
-			}
+		claims, _ = rt.authService.ValidateAccessToken(tokenStr)
+	}
 
-			oldRating := uRat.Rating
-			diff := 10
-			if req.Success {
-				uRat.Rating += 12
+	playerRating := rating.DefaultRating
+	var uRat *rating.UserRating
+
+	if claims != nil {
+		userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+		uRat, _ = rt.ratingRepo.GetRating(r.Context(), userOID, rating.Puzzles)
+		if uRat == nil {
+			uRat = &rating.UserRating{
+				UserID:   userOID,
+				Username: claims.Username,
+				Category: rating.Puzzles,
+				Rating:   rating.DefaultRating,
+			}
+		}
+		playerRating = uRat.Rating
+	}
+
+	// Calculate Elo change
+	var score float64
+	if isCorrect && isFinished {
+		score = 1.0
+	} else if !isCorrect {
+		score = 0.0
+	}
+
+	newRating := playerRating
+	diff := 0
+
+	// Only apply rating adjustments on completion or on incorrect attempt
+	if (isCorrect && isFinished) || !isCorrect {
+		newRating, _, diff, _ = rating.CalculateElo(playerRating, p.Rating, score, rating.DefaultKFactor)
+		if uRat != nil {
+			uRat.Rating = newRating
+			if score == 1.0 {
 				uRat.Wins++
-				diff = 12
 			} else {
-				uRat.Rating -= 10
-				if uRat.Rating < rating.MinRating {
-					uRat.Rating = rating.MinRating
-				}
 				uRat.Losses++
-				diff = uRat.Rating - oldRating
 			}
 			uRat.Games++
 			uRat.UpdatedAt = time.Now().UTC()
 			_ = rt.ratingRepo.UpsertRating(r.Context(), uRat)
-
-			writeJSON(w, http.StatusOK, map[string]interface{}{
-				"success":   req.Success,
-				"newRating": uRat.Rating,
-				"diff":      diff,
-				"games":     uRat.Games,
-			})
-			return
 		}
 	}
 
-	// Guest fallback
-	diff := 10
-	guestRating := rating.DefaultRating
-	if req.Success {
-		diff = 12
-		guestRating += diff
-	} else {
-		diff = -10
-		guestRating += diff
-		if guestRating < rating.MinRating {
-			guestRating = rating.MinRating
-			diff = guestRating - rating.DefaultRating
-		}
-	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"success":   req.Success,
-		"newRating": guestRating,
+	response := map[string]interface{}{
+		"correct":   isCorrect,
+		"finished":  isFinished,
+		"newRating": newRating,
 		"diff":      diff,
-		"games":     1,
-	})
+	}
+	if replyMove != "" {
+		response["replyMove"] = replyMove
+	}
+	if !isCorrect {
+		response["solution"] = p.Solution
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 // WebSocket Handler
@@ -923,6 +960,96 @@ func (rt *Router) handleExecuteMove(w http.ResponseWriter, r *http.Request) {
 		"isCheckmate": isCheckmate,
 		"isStalemate": isStalemate,
 		"isDraw":      isDraw,
+		"turn":        turnStr,
+	})
+}
+
+type botMoveReq struct {
+	FEN   string `json:"fen"`
+	Level int    `json:"level"`
+}
+
+func (rt *Router) handleBotMove(w http.ResponseWriter, r *http.Request) {
+	var req botMoveReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
+		return
+	}
+
+	if req.FEN == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_FEN", "fen is required")
+		return
+	}
+	if req.Level < 1 || req.Level > 5 {
+		req.Level = 2
+	}
+
+	pos, err := chess.FromFEN(req.FEN)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_FEN", err.Error())
+		return
+	}
+
+	botUCI, err := rt.engineService.GenerateBotMove(r.Context(), req.FEN, req.Level)
+	if err != nil || botUCI == "" {
+		writeError(w, http.StatusInternalServerError, "ENGINE_ERROR", "failed to generate bot move")
+		return
+	}
+
+	parsedM, err := chess.ParseUCIMove(botUCI)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "ENGINE_ERROR", "invalid move format from engine: "+err.Error())
+		return
+	}
+
+	san, err := chess.MoveToSAN(pos, parsedM)
+	if err != nil {
+		san = botUCI
+	}
+
+	nextPos, err := chess.ApplyMove(pos, parsedM)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "MOVE_ERROR", err.Error())
+		return
+	}
+
+	fromPiece := pos.Board.Get(parsedM.From)
+	isCapture := !pos.Board.IsEmpty(parsedM.To) || (fromPiece.Type == chess.Pawn && pos.EnPassant != nil && parsedM.To == *pos.EnPassant)
+	isPromotion := parsedM.Promotion != nil
+
+	turnStr := "white"
+	if nextPos.SideToMove == chess.Black {
+		turnStr = "black"
+	}
+
+	promoStr := ""
+	if parsedM.Promotion != nil {
+		switch *parsedM.Promotion {
+		case chess.Queen:
+			promoStr = "q"
+		case chess.Rook:
+			promoStr = "r"
+		case chess.Bishop:
+			promoStr = "b"
+		case chess.Knight:
+			promoStr = "n"
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"valid":       true,
+		"uci":         botUCI,
+		"from":        parsedM.From.String(),
+		"to":          parsedM.To.String(),
+		"promotion":   promoStr,
+		"san":         san,
+		"newFen":      chess.ToFEN(nextPos),
+		"isCapture":   isCapture,
+		"isPromotion": isPromotion,
+		"isCheck":     chess.IsCheck(nextPos),
+		"isCheckmate": chess.IsCheckmate(nextPos),
+		"isStalemate": chess.IsStalemate(nextPos),
+		"isDraw":      chess.IsDraw(nextPos),
 		"turn":        turnStr,
 	})
 }

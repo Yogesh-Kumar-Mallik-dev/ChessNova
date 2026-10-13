@@ -43,53 +43,59 @@
 		}
 	}
 
-	function handleMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
+	async function handleMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
 		if (!currentPuzzle || statusType === 'success') return;
 		const { from, to, promotion } = event.detail;
 		const uci = `${from}${to}${promotion ? promotion.toLowerCase() : ''}`;
 
-		const expected = currentPuzzle.solution[solutionIndex];
+		const res = executeMoveClient(currentFen, from, to, promotion);
+		if (!res) return;
 
-		if (expected && expected.startsWith(uci)) {
-			const res = executeMoveClient(currentFen, from, to, promotion);
-			if (res) {
-				currentFen = res.newFen;
-				lastMove = { from, to, san: res.san, isCapture: res.isCapture, isPromotion: res.isPromotion };
-				turn = res.turn;
-			}
-			solutionIndex++;
-			if (solutionIndex >= currentPuzzle.solution.length) {
-				statusMessage = 'Brilliant! Puzzle completed successfully.';
-				statusType = 'success';
-				api.puzzles.solve(currentPuzzle.id, true).then((res) => {
-					userRating = res.newRating;
-					ratingDiff = res.diff;
+		currentFen = res.newFen;
+		lastMove = { from, to, san: res.san, isCapture: res.isCapture, isPromotion: res.isPromotion };
+		turn = res.turn;
+
+		try {
+			const check = await api.puzzles.solve(currentPuzzle.id, {
+				move: uci,
+				plyIndex: solutionIndex
+			});
+
+			if (check.correct) {
+				if (check.finished) {
+					statusMessage = 'Brilliant! Puzzle completed successfully.';
+					statusType = 'success';
+					userRating = check.newRating;
+					ratingDiff = check.diff;
 					solvedCount++;
-				}).catch(() => {});
-			} else {
-				statusMessage = 'Best move found! Continue the tactical sequence...';
-				statusType = 'info';
-				const replyUci = currentPuzzle.solution[solutionIndex];
-				setTimeout(() => {
-					const replyFrom = replyUci.slice(0, 2);
-					const replyTo = replyUci.slice(2, 4);
-					const replyPromo = replyUci.slice(4) || undefined;
-					const replyRes = executeMoveClient(currentFen, replyFrom, replyTo, replyPromo);
-					if (replyRes) {
-						currentFen = replyRes.newFen;
-						lastMove = { from: replyFrom, to: replyTo, san: replyRes.san, isCapture: replyRes.isCapture, isPromotion: replyRes.isPromotion };
-						turn = replyRes.turn;
-						solutionIndex++;
+				} else {
+					statusMessage = 'Best move found! Continue the tactical sequence...';
+					statusType = 'info';
+					solutionIndex += 2;
+					if (check.replyMove) {
+						const replyUci = check.replyMove;
+						setTimeout(() => {
+							const replyFrom = replyUci.slice(0, 2);
+							const replyTo = replyUci.slice(2, 4);
+							const replyPromo = replyUci.slice(4) || undefined;
+							const replyRes = executeMoveClient(currentFen, replyFrom, replyTo, replyPromo);
+							if (replyRes) {
+								currentFen = replyRes.newFen;
+								lastMove = { from: replyFrom, to: replyTo, san: replyRes.san, isCapture: replyRes.isCapture, isPromotion: replyRes.isPromotion };
+								turn = replyRes.turn;
+							}
+						}, 350);
 					}
-				}, 350);
+				}
+			} else {
+				statusMessage = 'Not the optimal move. Try looking deeper!';
+				statusType = 'error';
+				userRating = check.newRating;
+				ratingDiff = check.diff;
 			}
-		} else {
-			statusMessage = 'Not the optimal move. Try looking deeper!';
+		} catch (err: any) {
+			statusMessage = 'Verification error: ' + (err.message || 'unknown');
 			statusType = 'error';
-			api.puzzles.solve(currentPuzzle.id, false).then((res) => {
-				userRating = res.newRating;
-				ratingDiff = res.diff;
-			}).catch(() => {});
 		}
 	}
 

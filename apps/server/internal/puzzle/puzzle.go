@@ -17,6 +17,24 @@ type Puzzle struct {
 	Themes   []string           `bson:"themes" json:"themes"`
 }
 
+type PublicPuzzle struct {
+	ID         primitive.ObjectID `json:"id"`
+	FEN        string             `json:"fen"`
+	Rating     int                `json:"rating"`
+	Themes     []string           `json:"themes"`
+	TotalMoves int                `json:"totalMoves"`
+}
+
+func (p *Puzzle) ToPublic() PublicPuzzle {
+	return PublicPuzzle{
+		ID:         p.ID,
+		FEN:        p.FEN,
+		Rating:     p.Rating,
+		Themes:     p.Themes,
+		TotalMoves: len(p.Solution),
+	}
+}
+
 type Repository interface {
 	GetRandomPuzzle(ctx context.Context) (*Puzzle, error)
 	GetByID(ctx context.Context, id primitive.ObjectID) (*Puzzle, error)
@@ -126,6 +144,36 @@ func (r *MongoRepository) SeedInitialPuzzles(ctx context.Context) error {
 			Solution: []string{"f1d3", "b7b6", "e1g1"},
 			Rating:   1220,
 			Themes:   []string{"opening", "development"},
+		},
+		Puzzle{
+			FEN:      "r1b2rk1/2q1bppp/p2p1n2/np2p3/4P3/1BN1BN2/PPP2PPP/R2Q1RK1 w - - 0 13",
+			Solution: []string{"c3d5", "f6d5", "b3d5"},
+			Rating:   1400,
+			Themes:   []string{"middlegame", "outpost"},
+		},
+		Puzzle{
+			FEN:      "6k1/1p3p1p/p5p1/8/8/1P3qP1/P1Q2P1P/6K1 w - - 0 1",
+			Solution: []string{"c2c8", "g8g7", "c8c3"},
+			Rating:   1320,
+			Themes:   []string{"endgame", "queenEndgame"},
+		},
+		Puzzle{
+			FEN:      "r2q1rk1/1pp2ppp/p1np1n2/4p3/1bP1P3/2NP1B2/PP3PPP/R1BQ1RK1 w - - 0 10",
+			Solution: []string{"c1g5", "h7h6", "g5f6"},
+			Rating:   1250,
+			Themes:   []string{"pin", "kingside"},
+		},
+		Puzzle{
+			FEN:      "r4rk1/pp1b1ppp/1qn1pn2/2bp4/8/2NBPN2/PPPB1PPP/R2Q1RK1 w - - 0 10",
+			Solution: []string{"c3a4", "b6c7", "a4c5"},
+			Rating:   1380,
+			Themes:   []string{"fork", "trappedPiece"},
+		},
+		Puzzle{
+			FEN:      "5rk1/5ppp/8/8/8/8/5PPP/3RR1K1 w - - 0 1",
+			Solution: []string{"d1d8", "f8d8", "e1e8"},
+			Rating:   950,
+			Themes:   []string{"mateIn2", "backRankMate"},
 		},
 	}
 

@@ -123,3 +123,22 @@ export function stageGameForReview(pgn: string, white = 'White', black = 'Black'
 		console.warn('Failed to stage game for review:', e);
 	}
 }
+
+/**
+ * Retrieve staged game review data from sessionStorage.
+ */
+export function getStagedGameForReview(): { pgn: string; white: string; black: string } | null {
+	if (typeof window === 'undefined') return null;
+	try {
+		const pgn = sessionStorage.getItem('review_pgn');
+		if (!pgn) return null;
+		const raw = sessionStorage.getItem('review_players');
+		let players = { white: 'White', black: 'Black' };
+		if (raw) {
+			players = JSON.parse(raw);
+		}
+		return { pgn, white: players.white, black: players.black };
+	} catch {
+		return null;
+	}
+}

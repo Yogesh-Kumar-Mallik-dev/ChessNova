@@ -34,7 +34,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 		throw new Error(errMsg);
 	}
 
-	return res.json() as Promise<T>;
+	return await res.json() as Promise<T>;
 }
 
 export const api = {
@@ -105,6 +105,11 @@ export const api = {
 			request<{ valid: boolean; newFen: string; san: string; isCapture?: boolean; isPromotion?: boolean; isCheck: boolean; isCheckmate: boolean; isStalemate: boolean; isDraw: boolean; turn: string }>('/chess/move', {
 				method: 'POST',
 				body: JSON.stringify({ fen, from, to, promotion })
+			}),
+		botMove: (fen: string, level = 2) =>
+			request<{ valid: boolean; uci: string; from: string; to: string; promotion?: string; san: string; newFen: string; isCapture?: boolean; isPromotion?: boolean; isCheck: boolean; isCheckmate: boolean; isStalemate: boolean; isDraw: boolean; turn: string }>('/chess/bot-move', {
+				method: 'POST',
+				body: JSON.stringify({ fen, level })
 			})
 	},
 	analysis: {
@@ -151,10 +156,12 @@ export const api = {
 	puzzles: {
 		getRandom: () => request<any>('/puzzles/random'),
 		getById: (id: string) => request<any>(`/puzzles/${id}`),
-		solve: (id: string, success: boolean) =>
-			request<{ success: boolean; newRating: number; diff: number; games: number }>(`/puzzles/${id}/solve`, {
+		solve: (id: string, payload: { move?: string; plyIndex?: number; success?: boolean } | boolean) => {
+			const body = typeof payload === 'boolean' ? { success: payload } : payload;
+			return request<{ correct: boolean; finished: boolean; replyMove?: string; newRating: number; diff: number; solution?: string[] }>(`/puzzles/${id}/solve`, {
 				method: 'POST',
-				body: JSON.stringify({ success })
-			})
+				body: JSON.stringify(body)
+			});
+		}
 	}
 };
