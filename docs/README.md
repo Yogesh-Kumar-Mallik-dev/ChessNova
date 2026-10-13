@@ -18,6 +18,7 @@ Explore the detailed architecture, specifications, and operational manuals:
 | **[Rating & Matchmaking](file:///home/yogesh/ChessNova/docs/RATING_AND_MATCHMAKING.md)** | Chess.com-adapted Elo formulas (400 baseline, 100 floor, K-32), time-control categories, Redis matchmaking queues, expanding tolerance windows. |
 | **[REST API & WebSocket Protocol](file:///home/yogesh/ChessNova/docs/API_AND_WEBSOCKET_PROTOCOL.md)** | Full specification for HTTP endpoints (Auth, Games, Review, Puzzles, Leaderboards) and bidirectional WebSocket events. |
 | **[Frontend & UI/UX Design System](file:///home/yogesh/ChessNova/docs/FRONTEND_AND_UI_DESIGN.md)** | SvelteKit client architecture, Midnight Slate theme, custom vector Staunton SVG pieces, viewport clamping, review laboratory, and local guest archives. |
+| **[Bot Persona & Personality Blueprint](file:///home/yogesh/ChessNova/docs/BOT_PERSONA_BLUEPRINT.md)** | Architecture for human-like bots, phase blunder curves, sacrifice biases, tactical vs positional heuristics, and trash-talk engine. |
 | **[Operations & Orchestration](file:///home/yogesh/ChessNova/docs/OPERATIONS_AND_SCRIPTS.md)** | Developer lifecycle runbook via `./script.sh` (`dev`, `build`, `check`, `test`, `deps`, `envi`, `uenvi`, `flush`), Docker compose, and environment setup. |
 
 ---
