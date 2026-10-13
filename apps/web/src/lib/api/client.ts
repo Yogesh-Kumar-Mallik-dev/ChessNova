@@ -154,7 +154,17 @@ export const api = {
 		get: (category: string = 'blitz') => request<any[]>(`/leaderboard?category=${category}`)
 	},
 	puzzles: {
-		getRandom: () => request<any>('/puzzles/random'),
+		getRandom: (params?: { category?: string; tier?: number; minRating?: number; maxRating?: number }) => {
+			const query = new URLSearchParams();
+			if (params?.category && params.category !== 'all') query.set('category', params.category);
+			if (params?.tier) query.set('tier', params.tier.toString());
+			if (params?.minRating) query.set('minRating', params.minRating.toString());
+			if (params?.maxRating) query.set('maxRating', params.maxRating.toString());
+			const qs = query.toString();
+			return request<any>(`/puzzles/random${qs ? `?${qs}` : ''}`);
+		},
+		getDaily: () => request<any>('/puzzles/daily'),
+		getWeekly: () => request<any[]>('/puzzles/weekly'),
 		getById: (id: string) => request<any>(`/puzzles/${id}`),
 		getHint: (id: string, plyIndex: number = 0) =>
 			request<{ plyIndex: number; from: string; to: string; hint: string }>(`/puzzles/${id}/hint?plyIndex=${plyIndex}`),

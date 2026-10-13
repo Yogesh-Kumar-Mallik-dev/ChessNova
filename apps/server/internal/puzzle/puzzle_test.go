@@ -54,3 +54,43 @@ func TestCuratedLichessPuzzlesIntegrity(t *testing.T) {
 		}
 	}
 }
+
+func TestDetermineCategory(t *testing.T) {
+	tests := []struct {
+		themes   []string
+		expected string
+	}{
+		{[]string{"mate", "mateIn1", "kingsideAttack"}, "mate"},
+		{[]string{"endgame", "fork", "short"}, "fork"},
+		{[]string{"pin", "middlegame"}, "pin"},
+		{[]string{"skewer", "endgame"}, "skewer"},
+		{[]string{"hangingPiece", "advantage"}, "capture"},
+		{[]string{"crushing", "quietMove"}, "position"},
+		{[]string{"zugzwang", "endgame"}, "position"},
+	}
+
+	for _, tt := range tests {
+		got := DetermineCategory(tt.themes)
+		if got != tt.expected {
+			t.Errorf("DetermineCategory(%v) = %s; want %s", tt.themes, got, tt.expected)
+		}
+	}
+}
+
+func TestDetermineTier(t *testing.T) {
+	if DetermineTier(600) != 1 {
+		t.Errorf("expected 600 to be Tier 1")
+	}
+	if DetermineTier(1150) != 2 {
+		t.Errorf("expected 1150 to be Tier 2")
+	}
+	if DetermineTier(1450) != 3 {
+		t.Errorf("expected 1450 to be Tier 3")
+	}
+	if DetermineTier(1850) != 4 {
+		t.Errorf("expected 1850 to be Tier 4")
+	}
+	if DetermineTier(2400) != 5 {
+		t.Errorf("expected 2400 to be Tier 5")
+	}
+}
