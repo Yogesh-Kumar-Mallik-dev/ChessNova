@@ -6,16 +6,18 @@ A production-grade, server-authoritative online chess platform featuring a custo
 
 ## Documentation
 
-Comprehensive architectural specifications, mathematical formulations, and operational guides are documented in the [`docs/`](file:///home/yogesh/ChessNova/docs/README.md) directory:
+Comprehensive architectural specifications, mathematical formulations, and operational guides are documented in the [`docs/`](./docs/README.md) directory:
 
-- 📖 **[Documentation Portal (`docs/README.md`)](file:///home/yogesh/ChessNova/docs/README.md)** — Master guide, technology stack, and high-level topology.
-- 🏗️ **[System Architecture (`docs/ARCHITECTURE.md`)](file:///home/yogesh/ChessNova/docs/ARCHITECTURE.md)** — Modular Go monolith, concurrency model, data flow, MongoDB and Redis schemas.
-- ♟️ **[Chess Engine & FIDE Rules (`docs/ENGINE_AND_RULES.md`)](file:///home/yogesh/ChessNova/docs/ENGINE_AND_RULES.md)** — Pure Go rules engine: move generation, castling lifecycle, en passant, promotions, check/checkmate/stalemate, terminal detection, SAN disambiguation, and PGN.
-- 🔬 **[Game Review & Evaluation Laboratory (`docs/GAME_REVIEW_AND_EVALUATION.md`)](file:///home/yogesh/ChessNova/docs/GAME_REVIEW_AND_EVALUATION.md)** — Stockfish 19 UCI integration, move classifications (Brilliant, Great, Best, etc.), CAPS win-chance curves, and ECO opening book.
-- 📈 **[Rating & Matchmaking (`docs/RATING_AND_MATCHMAKING.md`)](file:///home/yogesh/ChessNova/docs/RATING_AND_MATCHMAKING.md)** — Chess.com-adapted Elo formulas (400 default, 100 floor, K-32), time categories, Redis matchmaking queues, and expanding tolerance windows.
-- 🔌 **[REST API & WebSocket Protocol (`docs/API_AND_WEBSOCKET_PROTOCOL.md`)](file:///home/yogesh/ChessNova/docs/API_AND_WEBSOCKET_PROTOCOL.md)** — Complete specification of HTTP REST endpoints and real-time bidirectional WebSocket events.
-- 🎨 **[Frontend & UI/UX Design System (`docs/FRONTEND_AND_UI_DESIGN.md`)](file:///home/yogesh/ChessNova/docs/FRONTEND_AND_UI_DESIGN.md)** — SvelteKit client architecture, Midnight Slate palette, bespoke vector Staunton SVG pieces, viewport clamping, and local guest archives.
-- 🛠️ **[Operations & Orchestration (`docs/OPERATIONS_AND_SCRIPTS.md`)](file:///home/yogesh/ChessNova/docs/OPERATIONS_AND_SCRIPTS.md)** — Developer lifecycle runbook via `./script.sh` (`dev`, `build`, `check`, `test`, `deps`, `envi`, `uenvi`, `flush`), Docker Compose, and environment variables.
+- 📖 **[Documentation Portal (`docs/README.md`)](./docs/README.md)** — Master guide, technology stack, and high-level topology.
+- 🏗️ **[System Architecture (`docs/ARCHITECTURE.md`)](./docs/ARCHITECTURE.md)** — Modular Go monolith, concurrency model, data flow, MongoDB and Redis schemas.
+- ♟️ **[Chess Engine & FIDE Rules (`docs/ENGINE_AND_RULES.md`)](./docs/ENGINE_AND_RULES.md)** — Pure Go rules engine: move generation, castling lifecycle, en passant, promotions, check/checkmate/stalemate, terminal detection, SAN disambiguation, and PGN.
+- 🔬 **[Game Review & Evaluation Laboratory (`docs/GAME_REVIEW_AND_EVALUATION.md`)](./docs/GAME_REVIEW_AND_EVALUATION.md)** — Stockfish 19 UCI integration, move classifications (Brilliant, Great, Best, etc.), CAPS win-chance curves, ECO opening book, phase accuracies, and calibrated platform Elo rating.
+- 📈 **[Rating & Matchmaking (`docs/RATING_AND_MATCHMAKING.md`)](./docs/RATING_AND_MATCHMAKING.md)** — Chess.com-adapted Elo formulas (400 default, 100 floor, K-32), time categories, Redis matchmaking queues, and expanding tolerance windows.
+- 🔌 **[REST API & WebSocket Protocol (`docs/API_AND_WEBSOCKET_PROTOCOL.md`)](./docs/API_AND_WEBSOCKET_PROTOCOL.md)** — Complete specification of HTTP REST endpoints, external platforms integration, and real-time bidirectional WebSocket events.
+- 🔒 **[Security & Data Practices (`docs/SECURITY_AND_DATA_PRACTICES.md`)](./docs/SECURITY_AND_DATA_PRACTICES.md)** — JWT authentication, bcrypt passwords, ownership authorization, S3-compatible avatar storage, magic-byte sniffing, and security headers.
+- 🎨 **[Frontend & UI/UX Design System (`docs/FRONTEND_AND_UI_DESIGN.md`)](./docs/FRONTEND_AND_UI_DESIGN.md)** — SvelteKit client architecture, dynamic multi-theme engine (Dark Slate, Chess Classic, OLED Black, Emerald Studio), bespoke vector Staunton SVG pieces, viewport clamping, and local guest archives.
+- 🤖 **[Bot Persona & Personality Blueprint (`docs/BOT_PERSONA_BLUEPRINT.md`)](./docs/BOT_PERSONA_BLUEPRINT.md)** — Architecture for human-like bots, phase blunder curves, sacrifice biases, tactical vs positional heuristics, and trash-talk engine.
+- 🛠️ **[Operations & Orchestration (`docs/OPERATIONS_AND_SCRIPTS.md`)](./docs/OPERATIONS_AND_SCRIPTS.md)** — Developer lifecycle runbook via `./script.sh` (`dev`, `build`, `check`, `test`, `deps`, `envi`, `uenvi`, `flush`), Docker Compose, and environment variables.
 
 ---
 
@@ -33,13 +35,13 @@ Comprehensive architectural specifications, mathematical formulations, and opera
                             │
                         Go Backend
                             │
-       ┌────────────────────┼────────────────────┐
-       │                    │                    │
-       ▼                    ▼                    ▼
-   Game Service       Matchmaking Service    Auth Service
-       │                    │
-       │                    ▼
-       │                  Redis (Match queues, ephemeral state)
+       ┌────────────────────┼────────────────────┬────────────────────┐
+       │                    │                    │                    │
+       ▼                    ▼                    ▼                    ▼
+   Game Service       Matchmaking Service    Auth Service      Storage & External
+       │                    │                                   (S3 / MinIO /
+       │                    ▼                                    Chess.com /
+       │                  Redis (Match queues, ephemeral state)  Lichess APIs)
        │
        ▼
    Game Manager
@@ -63,33 +65,29 @@ Comprehensive architectural specifications, mathematical formulations, and opera
   - Comprehensive unit test suite covering full game sequences and complex edge cases.
 - **Stockfish 19 Game Review Laboratory (`internal/engine`, `internal/review`, `internal/openings`)**:
   - Stockfish 19 UCI engine subprocess with pure-Go minimax & PST fallback.
-  - Official CAPS win-probability curve:
-    $$\text{WinChance}(cp) = 50 + 50 \times \left( \frac{2}{1 + e^{-0.00368208 \times cp}} - 1 \right)$$
+  - Official CAPS win-probability curve with calibrated platform Elo ratings ($400\text{--}2850$).
+  - Separate accuracy percentages computed for **Opening**, **Middlegame**, and **Endgame** phases.
+  - Automatic Stockfish depth boosting ($14\text{ plies}$) when $\le 10$ pieces remain on the board for theoretical endgame precision.
   - Full move classification tiers: Brilliant (`!!`), Great (`!`), Best (`★`), Excellent (`✓`), Good (`✓`), Book (`📖`), Forced (`□`), Inaccuracy (`?!`), Mistake (`?`), Miss (`⨉`), and Blunder (`??`).
   - ECO opening theory catalog (A00–E99) recognizing hundreds of openings and variations.
-- **Chess.com-Adapted Elo System (`internal/rating`)**:
-  - New players start at **400 Elo** rather than Lichess's 1500.
-  - Strict minimum rating floor of **100 Elo** preventing negative or demoralizing micro-scores.
-  - Dedicated rating tracking across Bullet, Blitz, Rapid, Classical, and Tactical Puzzles.
-- **Server Authority**:
-  - Browser never submits positions or FENs.
-  - Clients send intent `{ type: "move", from: "e2", to: "e4" }`.
-  - Go server verifies player identity, turn order, legality via the pure engine, clock elapsed time, and broadcasts authoritative state.
-- **Authoritative Real-Time Clocks**:
-  - Server calculates remaining time from `lastMoveAt` and base time.
-  - Periodic timeout detector triggers loss on time automatically.
-- **Dynamic Matchmaking (`internal/matchmaking`)**:
-  - Redis-backed matchmaking queue by time control (Bullet, Blitz, Rapid, Classical).
-  - Expanding rating tolerance window: 0-10s (±50), 10-20s (±100), 20-30s (±200), 30+s (±300).
-- **Persistent Storage (`internal/repository/mongodb`)**:
-  - Complete game records with full move list, ply count, SAN, FEN after each move, time spent, and PGN export.
-  - Elo rating tracking per user and category with MongoDB compound indexes.
-- **Modern ChessNova Design System (`apps/web`)**:
-  - Midnight slate aesthetic (`slate-950` / `slate-900` with luminous sky & indigo accents) rather than drab greens.
+- **S3-Compatible Object Storage & Defense-in-Depth (`internal/storage`, `internal/http`)**:
+  - Object storage client (`minio-go/v7`) compatible with AWS S3, Cloudflare R2, MinIO, Wasabi, etc.
+  - Automatic zero-config local storage fallback (`uploads/avatars/`) when S3 is unconfigured.
+  - Magic-byte sniffing via `http.DetectContentType` enforcing genuine JPEG/PNG/WebP/GIF files.
+  - Hardened security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, `Referrer-Policy`) and strict payload size clamping (`MaxBytesReader`).
+- **External Platform Linking & 1-Click Game Review (`internal/external`)**:
+  - Link Chess.com and Lichess accounts with public existence verification.
+  - Live **Tri-Platform Elo Matrix** comparing ratings side-by-side across Rapid, Blitz, Bullet, and Tactics.
+  - Import recent games with PGN from Chess.com and Lichess archives and launch deep Stockfish Game Reviews directly in ChessNova with a single click.
+- **Tactical Puzzles System (`internal/puzzle`)**:
+  - Progressive difficulty tiers (Tier 1 to 5) and tactical categories (Mate, Fork, Pin, Skewer, Hanging Piece, etc.).
+  - Daily and Weekly curated puzzles with deterministic in-memory calendar fallbacks.
+  - Independent puzzle rating tracking, hints, and step-by-step solutions.
+- **Dynamic Multi-Theme Design System (`apps/web`)**:
+  - Dynamic HSL theme palettes: **Dark Slate**, **Chess Classic** (`#161512` / `#21201d`), **OLED Black** (`#000000`), and **Emerald Studio** (`#05140e`).
   - Bespoke vector Staunton SVG chess pieces with dual-layer gradients and subtle drop shadows.
   - Responsive viewport clamping (`calc(100dvh - 180px)`) ensuring the full board is always 100% visible without scrolling.
-  - Local guest game archive (`localGames.ts`) preserving up to 50 games for instant offline or post-game review.
-  - Clean, zero-emoji UI with custom vector SVG icons (`Icon.svelte`).
+  - Local guest game archive (`localGames.ts`) preserving up to 50 games for instant offline or post-game review without requiring an account.
 
 ---
 

@@ -36,6 +36,7 @@ apps/server/
 │   ├── auth/                 # Password hashing (bcrypt) and JWT claims generation/validation
 │   ├── chess/                # 100% pure Go FIDE chess rules engine (zero network/DB knowledge)
 │   ├── engine/               # Stockfish 19 UCI bridge + pure Go minimax fallback
+│   ├── external/             # Chess.com & Lichess public API integration & game archives
 │   ├── game/                 # Game lifecycle, ActiveGame memory cache, authoritative clocks
 │   ├── http/                 # REST HTTP router, endpoints, authentication middleware
 │   ├── matchmaking/          # In-memory + Redis queue, dynamic tolerance window matcher
@@ -43,6 +44,7 @@ apps/server/
 │   ├── puzzle/               # Tactical puzzle models, random picker, and validation
 │   ├── rating/               # Elo calculation (400 baseline, 100 floor, K-32), leaderboards
 │   ├── review/               # Game Review laboratory: CAPS accuracy, move classifications
+│   ├── storage/              # S3-compatible avatar uploads with local filesystem fallback
 │   ├── user/                 # User domain entity, MongoDB repository
 │   └── websocket/            # Gorilla WebSocket hub, game rooms, broadcast engine
 └── bin/
