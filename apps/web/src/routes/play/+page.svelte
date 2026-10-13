@@ -2,6 +2,9 @@
 	import ChessBoard from '$lib/components/chess/ChessBoard.svelte';
 	import MoveList from '$lib/components/game/MoveList.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import { api } from '$lib/api/client';
 	import { INITIAL_FEN, executeMoveClient, type Color, type PieceType } from '$lib/chess/engine';
 	import { soundEffects } from '$lib/audio/sounds';
@@ -254,15 +257,15 @@
 			</div>
 			<div>
 				<div class="flex items-center gap-2">
-					<h1 class="text-lg sm:text-xl font-extrabold text-white tracking-tight">
-						{gameMode === 'vs_computer' ? `Stockfish Bot (Level ${botLevel})` : 'Pass & Play'}
+					<h1 class="text-lg sm:text-xl font-black text-white tracking-tight">
+						{gameMode === 'vs_computer' ? `Bot Play (Level ${botLevel})` : 'Pass & Play'}
 					</h1>
-					<span class="text-[10px] font-mono px-2 py-0.5 rounded-full {gameMode === 'vs_computer' ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30' : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'} font-bold">
+					<Badge variant={gameMode === 'vs_computer' ? 'default' : 'secondary'}>
 						{gameMode === 'vs_computer' ? `~${botLevels[botLevel - 1].elo} ELO` : 'Local Match'}
-					</span>
+					</Badge>
 				</div>
 				<p class="text-[11px] sm:text-xs text-slate-400">
-					{gameMode === 'vs_computer' ? botLevels[botLevel - 1].desc : 'Standard FIDE rules with move reticles & check detection'}
+					{gameMode === 'vs_computer' ? botLevels[botLevel - 1].desc : 'Standard FIDE rules with move indicator reticles'}
 				</p>
 			</div>
 		</div>
@@ -271,33 +274,36 @@
 		<div class="flex items-center gap-2">
 			<div class="inline-flex p-0.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
 				<button
-					class="px-2.5 py-1 rounded-lg font-medium transition {gameMode === 'vs_computer' ? 'bg-sky-500 text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-white'}"
+					class="px-2.5 py-1 rounded-lg font-medium transition cursor-pointer {gameMode === 'vs_computer' ? 'bg-sky-500 text-white font-bold shadow-sm' : 'text-slate-400 hover:text-white'}"
 					on:click={() => setGameMode('vs_computer')}
 				>
 					Play Bot
 				</button>
 				<button
-					class="px-2.5 py-1 rounded-lg font-medium transition {gameMode === 'pass_and_play' ? 'bg-sky-500 text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-white'}"
+					class="px-2.5 py-1 rounded-lg font-medium transition cursor-pointer {gameMode === 'pass_and_play' ? 'bg-sky-500 text-white font-bold shadow-sm' : 'text-slate-400 hover:text-white'}"
 					on:click={() => setGameMode('pass_and_play')}
 				>
 					Pass & Play
 				</button>
 			</div>
 
-			<button
-				class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-medium text-slate-200 transition shadow-sm"
+			<Button
+				variant="outline"
+				size="sm"
 				on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 			>
 				<Icon name="rotate-cw" size={13} className="text-slate-400" />
 				<span>Flip</span>
-			</button>
-			<button
-				class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-medium text-slate-200 transition shadow-sm"
+			</Button>
+
+			<Button
+				variant="outline"
+				size="sm"
 				on:click={resetLocalGame}
 			>
 				<Icon name="rotate-ccw" size={13} className="text-slate-400" />
 				<span>Reset</span>
-			</button>
+			</Button>
 		</div>
 	</div>
 
@@ -309,7 +315,7 @@
 				<div class="flex items-center gap-1">
 					{#each botLevels as bl}
 						<button
-							class="px-2 py-0.5 rounded-lg text-xs font-mono font-medium transition {botLevel === bl.level ? 'bg-indigo-600 text-white font-bold ring-1 ring-indigo-400/50' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'}"
+							class="px-2 py-0.5 rounded-lg text-xs font-mono font-medium transition cursor-pointer {botLevel === bl.level ? 'bg-sky-500 text-white font-bold ring-1 ring-sky-400/50' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'}"
 							on:click={() => setBotLevel(bl.level)}
 						>
 							Lvl {bl.level} ({bl.elo})
@@ -322,13 +328,13 @@
 				<span class="text-slate-400 font-medium text-[11px] uppercase tracking-wider">You Play:</span>
 				<div class="inline-flex p-0.5 rounded-lg bg-slate-800 border border-slate-700 text-xs">
 					<button
-						class="px-2 py-0.5 rounded font-medium transition {playerColor === 'white' ? 'bg-white text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}"
+						class="px-2 py-0.5 rounded font-medium transition cursor-pointer {playerColor === 'white' ? 'bg-white text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}"
 						on:click={() => setPlayerColor('white')}
 					>
 						White
 					</button>
 					<button
-						class="px-2 py-0.5 rounded font-medium transition {playerColor === 'black' ? 'bg-slate-950 text-white font-bold' : 'text-slate-400 hover:text-white'}"
+						class="px-2 py-0.5 rounded font-medium transition cursor-pointer {playerColor === 'black' ? 'bg-slate-950 text-white font-bold' : 'text-slate-400 hover:text-white'}"
 						on:click={() => setPlayerColor('black')}
 					>
 						Black

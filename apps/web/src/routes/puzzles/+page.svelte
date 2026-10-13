@@ -4,6 +4,9 @@
 	import { authStore } from '$lib/stores/auth';
 	import ChessBoard from '$lib/components/chess/ChessBoard.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import { executeMoveClient, type Color, type PieceType } from '$lib/chess/engine';
 
 	let currentPuzzle: any = null;
@@ -495,44 +498,52 @@
 			<!-- Tactical Laboratory Actions -->
 			<div class="flex flex-col gap-2 pt-2">
 				<div class="grid grid-cols-2 gap-2">
-					<button
-						class="py-2.5 px-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-200 font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+					<Button
+						variant="outline"
+						size="sm"
 						disabled={statusType === 'success' || isSolutionRevealed}
 						on:click={requestHint}
+						className="w-full text-slate-200"
 						title="Get tactical hint without penalty"
 					>
 						<Icon name="sparkles" size={14} className="text-amber-400" />
 						<span>{hintCount === 0 ? 'Get Hint' : 'Target Hint'}</span>
-					</button>
+					</Button>
 
-					<button
-						class="py-2.5 px-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-200 font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+					<Button
+						variant="outline"
+						size="sm"
 						disabled={isSolutionRevealed}
 						on:click={revealSolution}
+						className="w-full text-slate-200"
 						title="Reveal the winning move sequence"
 					>
 						<Icon name="eye" size={14} className="text-cyan-400" />
 						<span>Show Solution</span>
-					</button>
+					</Button>
 				</div>
 
 				<div class="grid grid-cols-2 gap-2">
-					<button
-						class="py-2.5 px-3 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-200 font-medium text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+					<Button
+						variant="secondary"
+						size="sm"
 						on:click={resetToInitial}
+						className="w-full text-slate-200"
 						title="Retry the current position from the start"
 					>
 						<Icon name="rotate-ccw" size={14} />
 						<span>Retry Puzzle</span>
-					</button>
+					</Button>
 
-					<button
-						class="py-2.5 px-3 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl transition duration-150 shadow-md shadow-sky-500/20 flex items-center justify-center gap-1.5"
+					<Button
+						variant="glow"
+						size="sm"
+						className="w-full"
 						on:click={loadRandomPuzzle}
 					>
 						<span>Next Puzzle</span>
 						<Icon name="arrow-right" size={14} />
-					</button>
+					</Button>
 				</div>
 			</div>
 		</div>
