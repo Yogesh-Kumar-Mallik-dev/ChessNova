@@ -5,6 +5,7 @@ export interface PlayerInfo {
 	userId: string;
 	username: string;
 	rating: number;
+	avatar?: string;
 }
 
 export interface GameMoveRecord {

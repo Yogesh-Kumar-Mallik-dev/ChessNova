@@ -10,6 +10,8 @@
 	import { soundEffects } from '$lib/audio/sounds';
 	import { goto } from '$app/navigation';
 	import { Chess } from 'chess.js';
+	import { authStore } from '$lib/stores/auth';
+	import UserBadge from '$lib/components/ui/UserBadge.svelte';
 	import { saveLocalGame, stageGameForReview } from '$lib/stores/localGames';
 
 	// Game Modes
@@ -457,16 +459,22 @@
 				<!-- Opponent Indicator Bar -->
 				<div class="w-full flex items-center justify-between py-1.5 px-2 text-xs select-none mb-1">
 					<div class="flex items-center gap-2">
-						<div class="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
-							<Icon name={gameMode === 'vs_computer' ? activeBot.icon : 'user'} size={13} />
-						</div>
-						<span class="font-bold text-white">
-							{gameMode === 'vs_computer' ? activeBot.name : 'Opponent'}
-						</span>
 						{#if gameMode === 'vs_computer'}
-							<span class="text-[10px] font-mono text-sky-400 px-1.5 py-0.2 rounded bg-sky-500/10 border border-sky-500/20">
-								{activeBot.elo}
-							</span>
+							<UserBadge
+								username={activeBot.name}
+								rating={activeBot.elo}
+								ratingCategory="rapid"
+								title="BOT"
+								size="sm"
+								interactive={false}
+							/>
+						{:else}
+							<div class="flex items-center gap-2 text-white font-bold leading-tight">
+								<div class="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
+									<Icon name="user" size={13} />
+								</div>
+								<span>Opponent</span>
+							</div>
 						{/if}
 					</div>
 
@@ -499,10 +507,23 @@
 				<!-- Self Indicator Bar -->
 				<div class="w-full flex items-center justify-between py-1.5 px-2 text-xs select-none mt-1">
 					<div class="flex items-center gap-2">
-						<div class="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
-							<Icon name="crown" size={13} />
-						</div>
-						<span class="font-bold text-white">You</span>
+						{#if $authStore.user}
+							<UserBadge
+								username={$authStore.user.username}
+								avatar={$authStore.user.avatar}
+								rating={$authStore.ratings?.blitz || 400}
+								ratingCategory="blitz"
+								size="sm"
+								target="_blank"
+							/>
+						{:else}
+							<div class="flex items-center gap-2 text-white font-bold leading-tight">
+								<div class="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
+									<Icon name="crown" size={13} />
+								</div>
+								<span>You</span>
+							</div>
+						{/if}
 					</div>
 					<span class="text-[11px] text-slate-500">
 						{turn === playerColor ? 'Your turn' : 'Waiting for move'}

@@ -5,6 +5,7 @@
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import QuickSettings from '$lib/components/ui/QuickSettings.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import UserBadge from '$lib/components/ui/UserBadge.svelte';
 
 	let mobileMenuOpen = false;
 
@@ -61,16 +62,14 @@
 			<div class="w-8 h-8 rounded-full bg-slate-800/60 animate-pulse"></div>
 		{:else if $authStore.user}
 			<div class="flex items-center gap-2 sm:gap-3">
-				<a
-					href="/play/online"
-					class="flex items-center gap-2 py-1.5 px-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/70 text-xs font-semibold text-slate-200 transition shadow-sm"
-				>
-					<span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
-					<span class="max-w-[100px] sm:max-w-none truncate">{$authStore.user.username}</span>
-					<span class="bg-slate-950 px-2 py-0.5 rounded-md text-[11px] font-mono text-sky-400 font-bold border border-slate-800">
-						{$authStore.ratings?.blitz || 400}
-					</span>
-				</a>
+				<UserBadge
+					username={$authStore.user.username}
+					avatar={$authStore.user.avatar}
+					rating={$authStore.ratings?.blitz || 400}
+					ratingCategory="blitz"
+					size="md"
+					href="/profile/{$authStore.user.username}"
+				/>
 
 				<Button
 					variant="ghost"
@@ -125,7 +124,33 @@
 			</a>
 		{/each}
 
-		{#if !$authStore.user}
+		{#if $authStore.user}
+			<div class="pt-3 mt-2 border-t border-slate-800 flex items-center justify-between gap-3">
+				<div class="flex-1" on:click={() => (mobileMenuOpen = false)} role="presentation">
+					<UserBadge
+						username={$authStore.user.username}
+						avatar={$authStore.user.avatar}
+						rating={$authStore.ratings?.blitz || 400}
+						ratingCategory="blitz"
+						size="md"
+						href="/profile/{$authStore.user.username}"
+						className="w-full justify-between"
+					/>
+				</div>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="text-slate-400 hover:text-rose-400 hover:bg-slate-900 shrink-0"
+					on:click={() => {
+						mobileMenuOpen = false;
+						handleLogout();
+					}}
+					title="Sign Out"
+				>
+					<Icon name="log-out" size={15} />
+				</Button>
+			</div>
+		{:else}
 			<div class="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-slate-800">
 				<a href="/login" class="w-full" on:click={() => (mobileMenuOpen = false)}>
 					<Button variant="outline" className="w-full">Log In</Button>

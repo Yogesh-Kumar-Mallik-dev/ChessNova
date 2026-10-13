@@ -13,6 +13,7 @@
 	import CapturedPieces from '$lib/components/game/CapturedPieces.svelte';
 	import GameResult from '$lib/components/game/GameResult.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
+	import UserBadge from '$lib/components/ui/UserBadge.svelte';
 	import { INITIAL_FEN, type Color, type PieceType } from '$lib/chess/engine';
 	import { saveLocalGame, stageGameForReview } from '$lib/stores/localGames';
 
@@ -197,20 +198,29 @@
 			<div class="w-full max-w-[min(92vw,calc(100dvh-170px),570px)] flex flex-col items-center">
 				<!-- Top Player Bar (Opponent) -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mb-1">
-					<div class="flex items-center gap-2.5">
-						<div class="w-8 h-8 rounded-xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-xs font-mono font-bold text-slate-300 shadow-md">
-							<Icon name="user" size={15} />
-						</div>
-						<div>
+					<div class="flex items-center gap-2">
+						{#if topPlayer?.username && topPlayer.username !== 'guest-opponent' && topPlayer.username !== 'Opponent'}
+							<UserBadge
+								username={topPlayer.username}
+								avatar={topPlayer.avatar}
+								rating={topPlayer.rating || 400}
+								ratingCategory="blitz"
+								size="sm"
+								target="_blank"
+							/>
+						{:else}
 							<div class="flex items-center gap-2 text-white font-bold leading-tight">
+								<div class="w-7 h-7 rounded-lg bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-xs font-mono font-bold text-slate-300 shadow-sm">
+									<Icon name="user" size={13} />
+								</div>
 								<span class="truncate max-w-[140px] sm:max-w-none">{topPlayer?.username || 'Opponent'}</span>
 								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
 									{topPlayer?.rating || 400}
 								</span>
 							</div>
-							<div class="mt-0.5">
-								<CapturedPieces fen={$gameStore.fen} forColor={opponentColor} />
-							</div>
+						{/if}
+						<div class="ml-1">
+							<CapturedPieces fen={$gameStore.fen} forColor={opponentColor} />
 						</div>
 					</div>
 
@@ -238,20 +248,29 @@
 
 				<!-- Bottom Player Bar (Self) -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mt-1">
-					<div class="flex items-center gap-2.5">
-						<div class="w-8 h-8 rounded-xl bg-sky-500/15 border border-sky-500/40 flex items-center justify-center text-xs font-mono font-bold text-sky-400 shadow-md">
-							<Icon name="crown" size={15} />
-						</div>
-						<div>
+					<div class="flex items-center gap-2">
+						{#if bottomPlayer?.username && bottomPlayer.username !== 'guest-opponent'}
+							<UserBadge
+								username={bottomPlayer.username}
+								avatar={bottomPlayer.avatar}
+								rating={bottomPlayer.rating || 400}
+								ratingCategory="blitz"
+								size="sm"
+								target="_blank"
+							/>
+						{:else}
 							<div class="flex items-center gap-2 text-white font-bold leading-tight">
+								<div class="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/40 flex items-center justify-center text-xs font-mono font-bold text-sky-400 shadow-sm">
+									<Icon name="crown" size={13} />
+								</div>
 								<span class="truncate max-w-[140px] sm:max-w-none">{bottomPlayer?.username || 'You'}</span>
 								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30">
 									{bottomPlayer?.rating || 400}
 								</span>
 							</div>
-							<div class="mt-0.5">
-								<CapturedPieces fen={$gameStore.fen} forColor={userColor} />
-							</div>
+						{/if}
+						<div class="ml-1">
+							<CapturedPieces fen={$gameStore.fen} forColor={userColor} />
 						</div>
 					</div>
 

@@ -4,6 +4,7 @@
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import UserBadge from '$lib/components/ui/UserBadge.svelte';
 
 	let activeCategory = 'blitz';
 	let leaderboard: any[] = [];
@@ -114,10 +115,14 @@
 										<span class="font-mono text-xs text-slate-500 font-semibold">#{i + 1}</span>
 									{/if}
 								</td>
-								<td class="py-3.5 px-4">
-									<span class="font-bold text-white hover:text-sky-400 transition cursor-default">
-										{entry.username}
-									</span>
+								<td class="py-2 px-4">
+									<UserBadge
+										username={entry.username}
+										avatar={entry.avatar}
+										showRating={false}
+										size="sm"
+										className="bg-transparent border-transparent hover:bg-slate-800/70 hover:border-slate-700/60"
+									/>
 								</td>
 								<td class="py-3.5 px-4 text-right font-mono font-extrabold text-cyan-400">
 									{entry.rating}
