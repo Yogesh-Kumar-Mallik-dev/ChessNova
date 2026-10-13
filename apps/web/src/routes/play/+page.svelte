@@ -241,11 +241,51 @@
 	}
 
 	function handleAnalyze() {
-		const pgn = getGamePgn('*');
+		const chk = new Chess(fen);
+		let resultStr = '*';
+		let outcomeStr = 'In Progress';
+		let winnerStr: string | undefined = undefined;
+
+		if (chk.isGameOver()) {
+			resultStr = '1/2-1/2';
+			outcomeStr = 'draw';
+			winnerStr = 'draw';
+			if (chk.isCheckmate()) {
+				outcomeStr = 'checkmate';
+				if (chk.turn() === 'b') {
+					resultStr = '1-0';
+					winnerStr = 'white';
+				} else {
+					resultStr = '0-1';
+					winnerStr = 'black';
+				}
+			} else if (chk.isStalemate()) {
+				outcomeStr = 'stalemate';
+			} else if (chk.isInsufficientMaterial()) {
+				outcomeStr = 'insufficient_material';
+			} else if (chk.isThreefoldRepetition()) {
+				outcomeStr = 'threefold_repetition';
+			}
+		}
+
+		const pgn = getGamePgn(resultStr);
 		const whiteName = gameMode === 'vs_computer' ? (playerColor === 'white' ? 'Player' : `${activeBot.name} (${activeBot.elo})`) : 'White';
 		const blackName = gameMode === 'vs_computer' ? (playerColor === 'black' ? 'Player' : `${activeBot.name} (${activeBot.elo})`) : 'Black';
 
 		if (moves.length >= 2) {
+			saveLocalGame({
+				date: new Date().toISOString(),
+				event: gameMode === 'vs_computer' ? `VS ${activeBot.name}` : 'Local Match',
+				white: whiteName,
+				black: blackName,
+				result: resultStr,
+				outcome: outcomeStr,
+				winner: winnerStr,
+				timeControl: gameMode === 'vs_computer' ? 'Bot Match' : 'Pass & Play',
+				movesCount: moves.length,
+				pgn,
+				startFen: INITIAL_FEN
+			});
 			stageGameForReview(pgn, whiteName, blackName);
 		}
 		goto('/analysis?review=1');

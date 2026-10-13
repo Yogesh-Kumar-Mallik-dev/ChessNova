@@ -1,5 +1,28 @@
 package puzzle
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
+func init() {
+	for i := range CuratedLichessPuzzles {
+		if CuratedLichessPuzzles[i].ID.IsZero() {
+			var b [12]byte
+			copy(b[:], "puzzle")
+			b[6] = byte(i >> 8)
+			b[7] = byte(i)
+			if len(CuratedLichessPuzzles[i].LichessID) >= 4 {
+				copy(b[8:], CuratedLichessPuzzles[i].LichessID[:4])
+			}
+			CuratedLichessPuzzles[i].ID = primitive.ObjectID(b)
+		}
+		if CuratedLichessPuzzles[i].Category == "" {
+			CuratedLichessPuzzles[i].Category = DetermineCategory(CuratedLichessPuzzles[i].Themes)
+		}
+		if CuratedLichessPuzzles[i].Tier == 0 {
+			CuratedLichessPuzzles[i].Tier = DetermineTier(CuratedLichessPuzzles[i].Rating)
+		}
+	}
+}
+
 // CuratedLichessPuzzles contains verified tactical puzzles directly sourced from the Lichess Open Database.
 var CuratedLichessPuzzles = []Puzzle{
 	{

@@ -23,6 +23,7 @@ export interface ReviewedMove {
 	ply: number;
 	moveNumber: number;
 	color: 'white' | 'black';
+	phase?: 'opening' | 'middlegame' | 'endgame';
 	from: string;
 	to: string;
 	san: string;
@@ -39,9 +40,21 @@ export interface ReviewedMove {
 	explanation: string;
 }
 
+export interface PhaseAccuracy {
+	opening: number;
+	middlegame: number;
+	endgame: number;
+}
+
 export interface GameReviewResult {
 	whiteAccuracy: number;
 	blackAccuracy: number;
+	whitePhases?: PhaseAccuracy;
+	blackPhases?: PhaseAccuracy;
+	estimatedElo?: {
+		white: number;
+		black: number;
+	};
 	opening: {
 		eco: string;
 		name: string;
@@ -68,10 +81,10 @@ export interface GameReviewResult {
  * Executes authoritative Game Review via the Go backend Stockfish service.
  */
 export async function performGameReview(
-	input:
+	payload:
 		| string
-		| { pgn?: string; moves?: Array<{ from: string; to: string; san: string; fen?: string }> }
-		| Array<{ from: string; to: string; san: string; fen?: string }>
+		| { pgn?: string; moves?: { from: string; to: string; san: string; fen?: string }[] }
+		| { from: string; to: string; san: string; fen?: string }[]
 ): Promise<GameReviewResult> {
-	return (await api.analysis.review(input)) as GameReviewResult;
+	return (await api.analysis.review(payload)) as GameReviewResult;
 }

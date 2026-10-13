@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"chess-platform/server/internal/chess"
@@ -31,6 +32,7 @@ type ReviewedMove struct {
 	Ply             int                `json:"ply"`
 	MoveNumber      int                `json:"moveNumber"`
 	Color           string             `json:"color"`
+	Phase           string             `json:"phase"` // "opening", "middlegame", "endgame"
 	From            string             `json:"from"`
 	To              string             `json:"to"`
 	SAN             string             `json:"san"`
@@ -47,9 +49,23 @@ type ReviewedMove struct {
 	Explanation     string             `json:"explanation"`
 }
 
+type PhaseAccuracy struct {
+	Opening    float64 `json:"opening"`
+	Middlegame float64 `json:"middlegame"`
+	Endgame    float64 `json:"endgame"`
+}
+
+type PerformanceRating struct {
+	White int `json:"white"`
+	Black int `json:"black"`
+}
+
 type ReviewResult struct {
 	WhiteAccuracy float64                               `json:"whiteAccuracy"`
 	BlackAccuracy float64                               `json:"blackAccuracy"`
+	WhitePhases   PhaseAccuracy                         `json:"whitePhases"`
+	BlackPhases   PhaseAccuracy                         `json:"blackPhases"`
+	EstimatedElo  PerformanceRating                     `json:"estimatedElo"`
 	Opening       *openings.Opening                     `json:"opening,omitempty"`
 	Moves         []ReviewedMove                        `json:"moves"`
 	Stats         map[string]map[MoveClassification]int `json:"stats"`
@@ -122,6 +138,77 @@ func calculateMoveAccuracy(winBefore, winAfter float64, isWhite bool) float64 {
 		acc = 100
 	}
 	return math.Round(acc*10) / 10
+}
+
+func countPiecesInFen(fen string) int {
+	parts := strings.Split(fen, " ")
+	if len(parts) == 0 {
+		return 32
+	}
+	count := 0
+	for _, ch := range parts[0] {
+		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') {
+			count++
+		}
+	}
+	return count
+}
+
+func determineGamePhase(ply int, fen string) string {
+	parts := strings.Split(fen, " ")
+	if len(parts) == 0 {
+		return "opening"
+	}
+	pieceCount := 0
+	hasWhiteQueen := false
+	hasBlackQueen := false
+	for _, ch := range parts[0] {
+		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') {
+			pieceCount++
+			if ch == 'Q' {
+				hasWhiteQueen = true
+			}
+			if ch == 'q' {
+				hasBlackQueen = true
+			}
+		}
+	}
+
+	// Endgame: <= 12 total pieces, or <= 16 pieces with queens traded off
+	if pieceCount <= 12 || (!hasWhiteQueen && !hasBlackQueen && pieceCount <= 16) {
+		return "endgame"
+	}
+
+	if ply <= 20 {
+		return "opening"
+	}
+
+	return "middlegame"
+}
+
+// EstimatePlayerPerformanceElo calculates calibrated performance rating (400-2850)
+func EstimatePlayerPerformanceElo(accuracy float64, blunders, mistakes, inaccuracies, movesCount int) int {
+	if movesCount == 0 {
+		return 400
+	}
+	// Base rating mathematically mapped to accuracy %
+	base := 400.0 + (math.Pow(math.Max(0, accuracy-30)/70.0, 1.35) * 2200.0)
+
+	// Blunder/mistake penalty normalized by game length
+	blunderPenalty := float64(blunders) * 120.0
+	mistakePenalty := float64(mistakes) * 55.0
+	inaccuracyPenalty := float64(inaccuracies) * 20.0
+
+	penalty := (blunderPenalty + mistakePenalty + inaccuracyPenalty) * (15.0 / float64(math.Max(10, float64(movesCount))))
+	perf := base - penalty
+
+	if perf < 400 {
+		perf = 400
+	}
+	if perf > 2850 {
+		perf = 2850
+	}
+	return int(math.Round(perf/10) * 10)
 }
 
 // isPieceSacrifice returns true if a minor or major piece moved into an attacked square
@@ -221,6 +308,12 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 	var totalWhiteAcc, totalBlackAcc float64
 	var whiteCount, blackCount int
 
+	// Phase-by-phase accuracy accumulators
+	var wOpenAcc, wMidAcc, wEndAcc float64
+	var wOpenCnt, wMidCnt, wEndCnt int
+	var bOpenAcc, bMidAcc, bEndAcc float64
+	var bOpenCnt, bMidCnt, bEndCnt int
+
 	for i, m := range moves {
 		ply := i + 1
 		moveNum := (i / 2) + 1
@@ -263,7 +356,13 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 			}
 		}
 
-		afterEval, _ := s.engine.EvaluateFen(ctx, m.FEN, 10)
+		// Depth scaling: Boost evaluation depth to 14 when <= 10 pieces remain (Endgame precision)
+		evalDepth := 10
+		if countPiecesInFen(m.FEN) <= 10 {
+			evalDepth = 14
+		}
+
+		afterEval, _ := s.engine.EvaluateFen(ctx, m.FEN, evalDepth)
 
 		winBefore := CentipawnsToWinChance(prevEval.ScoreCp)
 		winAfter := CentipawnsToWinChance(afterEval.ScoreCp)
@@ -359,18 +458,43 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 
 		stats[color][classification]++
 
+		// Game phase classification
+		phase := determineGamePhase(ply, prevFEN)
 		if isWhite {
 			totalWhiteAcc += acc
 			whiteCount++
+			switch phase {
+			case "opening":
+				wOpenAcc += acc
+				wOpenCnt++
+			case "middlegame":
+				wMidAcc += acc
+				wMidCnt++
+			case "endgame":
+				wEndAcc += acc
+				wEndCnt++
+			}
 		} else {
 			totalBlackAcc += acc
 			blackCount++
+			switch phase {
+			case "opening":
+				bOpenAcc += acc
+				bOpenCnt++
+			case "middlegame":
+				bMidAcc += acc
+				bMidCnt++
+			case "endgame":
+				bEndAcc += acc
+				bEndCnt++
+			}
 		}
 
 		reviewedMoves = append(reviewedMoves, ReviewedMove{
 			Ply:             ply,
 			MoveNumber:      moveNum,
 			Color:           color,
+			Phase:           phase,
 			From:            m.From,
 			To:              m.To,
 			SAN:             m.SAN,
@@ -407,6 +531,39 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 		blackAccuracy = math.Round((totalBlackAcc/float64(blackCount))*10) / 10
 	}
 
+	calcPhase := func(sum float64, count int, defaultVal float64) float64 {
+		if count > 0 {
+			return math.Round((sum/float64(count))*10) / 10
+		}
+		return defaultVal
+	}
+
+	whitePhases := PhaseAccuracy{
+		Opening:    calcPhase(wOpenAcc, wOpenCnt, whiteAccuracy),
+		Middlegame: calcPhase(wMidAcc, wMidCnt, whiteAccuracy),
+		Endgame:    calcPhase(wEndAcc, wEndCnt, whiteAccuracy),
+	}
+	blackPhases := PhaseAccuracy{
+		Opening:    calcPhase(bOpenAcc, bOpenCnt, blackAccuracy),
+		Middlegame: calcPhase(bMidAcc, bMidCnt, blackAccuracy),
+		Endgame:    calcPhase(bEndAcc, bEndCnt, blackAccuracy),
+	}
+
+	whiteElo := EstimatePlayerPerformanceElo(
+		whiteAccuracy,
+		stats["white"][ClassBlunder],
+		stats["white"][ClassMistake],
+		stats["white"][ClassInaccuracy],
+		whiteCount,
+	)
+	blackElo := EstimatePlayerPerformanceElo(
+		blackAccuracy,
+		stats["black"][ClassBlunder],
+		stats["black"][ClassMistake],
+		stats["black"][ClassInaccuracy],
+		blackCount,
+	)
+
 	// Always generate clean authoritative PGN for the reviewed game
 	pgnBuilder := chess.NewPGNGame()
 	if openingInfo != nil {
@@ -424,11 +581,17 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 	return &ReviewResult{
 		WhiteAccuracy: whiteAccuracy,
 		BlackAccuracy: blackAccuracy,
-		Opening:       openingInfo,
-		Moves:         reviewedMoves,
-		Stats:         stats,
-		EvalGraph:     evalGraph,
-		PGN:           pgnBuilder.Export(),
+		WhitePhases:   whitePhases,
+		BlackPhases:   blackPhases,
+		EstimatedElo: PerformanceRating{
+			White: whiteElo,
+			Black: blackElo,
+		},
+		Opening:   openingInfo,
+		Moves:     reviewedMoves,
+		Stats:     stats,
+		EvalGraph: evalGraph,
+		PGN:       pgnBuilder.Export(),
 	}, nil
 }
 
