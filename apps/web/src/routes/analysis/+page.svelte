@@ -376,19 +376,19 @@
 		<div class="flex items-center gap-2">
 			<!-- Advanced Mode Toggle -->
 			<button
-				class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer {showAdvanced
-					? 'bg-sky-500/15 border-sky-400 text-sky-300 shadow-sm shadow-sky-500/20'
-					: 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'}"
+				class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer active:translate-y-px {showAdvanced
+					? 'bg-slate-800 border-slate-600 text-slate-100 shadow-xs'
+					: 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'}"
 				on:click={toggleAdvanced}
 				title="Toggle advanced FEN, PGN, and position tools"
 			>
-				<Icon name="settings" size={13} />
+				<Icon name="settings" size={13} className={showAdvanced ? 'text-emerald-400' : 'text-slate-400'} />
 				<span>Advanced Tools</span>
-				<span class="w-1.5 h-1.5 rounded-full {showAdvanced ? 'bg-sky-400 shadow-[0_0_8px_#38bdf8]' : 'bg-slate-600'}"></span>
+				<span class="w-1.5 h-1.5 rounded-full {showAdvanced ? 'bg-emerald-400' : 'bg-slate-600'}"></span>
 			</button>
 
 			<button
-				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-bold text-slate-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 transition shadow-xs active:translate-y-px"
 				on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 				title="Flip Board"
 			>
@@ -397,7 +397,7 @@
 			</button>
 
 			<button
-				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-bold text-slate-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 transition shadow-xs active:translate-y-px"
 				on:click={resetToStart}
 				title="Reset to Starting Position"
 			>
@@ -432,46 +432,46 @@
 			<!-- Panel Tab Navigation -->
 			<div class="flex items-center p-1 bg-slate-950/80 border border-slate-800 rounded-xl mb-2.5 shrink-0 overflow-x-auto">
 				<button
-					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'review'
-						? 'bg-sky-500 text-white shadow-md shadow-sky-500/25'
-						: 'text-slate-400 hover:text-white'}"
+					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'review'
+						? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
+						: 'text-slate-400 hover:text-slate-200'}"
 					on:click={() => (rightPanelTab = 'review')}
 				>
-					<Icon name="search" size={13} />
+					<Icon name="search" size={13} className={rightPanelTab === 'review' ? 'text-emerald-400' : ''} />
 					<span>Review</span>
 				</button>
 
 				<button
-					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'moves'
-						? 'bg-sky-500 text-white shadow-md shadow-sky-500/25'
-						: 'text-slate-400 hover:text-white'}"
+					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'moves'
+						? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
+						: 'text-slate-400 hover:text-slate-200'}"
 					on:click={() => (rightPanelTab = 'moves')}
 				>
-					<Icon name="play" size={13} />
+					<Icon name="play" size={13} className={rightPanelTab === 'moves' ? 'text-emerald-400' : ''} />
 					<span>Moves ({moves.length})</span>
 				</button>
 
 				<button
-					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'history'
-						? 'bg-sky-500 text-white shadow-md shadow-sky-500/25'
-						: 'text-slate-400 hover:text-white'}"
+					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'history'
+						? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
+						: 'text-slate-400 hover:text-slate-200'}"
 					on:click={() => {
 						refreshLocalGames();
 						rightPanelTab = 'history';
 					}}
 				>
-					<Icon name="clock" size={13} />
+					<Icon name="clock" size={13} className={rightPanelTab === 'history' ? 'text-emerald-400' : ''} />
 					<span>Saved</span>
 				</button>
 
 				{#if showAdvanced}
 					<button
-						class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'advanced'
-							? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
-							: 'text-indigo-400 hover:text-indigo-300'}"
+						class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'advanced'
+							? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
+							: 'text-slate-400 hover:text-slate-200'}"
 						on:click={() => (rightPanelTab = 'advanced')}
 					>
-						<Icon name="settings" size={13} />
+						<Icon name="settings" size={13} className={rightPanelTab === 'advanced' ? 'text-emerald-400' : ''} />
 						<span>Advanced</span>
 					</button>
 				{/if}
@@ -509,7 +509,13 @@
 						</div>
 
 						<div class="flex-1 overflow-hidden py-2">
-							<MoveList {moves} activePly={currentPly} on:selectPly={(e) => goToPly(e.detail)} />
+							<MoveList
+								{moves}
+								activePly={currentPly}
+								whiteName={whitePlayerName}
+								blackName={blackPlayerName}
+								on:selectPly={(e) => goToPly(e.detail)}
+							/>
 						</div>
 
 						<!-- Step Controls -->
@@ -609,7 +615,7 @@
 
 										<div class="flex items-center gap-1.5 shrink-0">
 											<button
-												class="px-2.5 py-1.5 bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white font-extrabold text-[11px] uppercase tracking-wider rounded-lg shadow transition flex items-center gap-1"
+												class="px-3 py-1.5 bg-[#81b64c] hover:bg-[#72a441] active:bg-[#639037] text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 active:translate-y-px"
 												on:click={() => handleLoadSavedGame(rec)}
 												title="Review this game"
 											>

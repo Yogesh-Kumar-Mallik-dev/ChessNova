@@ -25,7 +25,7 @@
 	export let reviewClassification: MoveClassification | null = null;
 	export let showRankCoord = false;
 	export let showFileCoord = false;
-	export let theme: 'cyber' | 'wood' | 'emerald' | 'ocean' = 'cyber';
+	export let theme: 'emerald' | 'wood' | 'ocean' | 'slate' | 'charcoal' | 'coral' | 'cyber' = 'emerald';
 
 	const dispatch = createEventDispatcher<{
 		click: string;
@@ -54,13 +54,19 @@
 		switch (theme) {
 			case 'wood':
 				return isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]';
-			case 'emerald':
-				return isLight ? 'bg-[#eeeed2]' : 'bg-[#769656]';
 			case 'ocean':
-				return isLight ? 'bg-[#dbeafe]' : 'bg-[#1e3a5f]';
+				return isLight ? 'bg-[#dbeafe]' : 'bg-[#467499]';
+			case 'slate':
+				return isLight ? 'bg-[#cdd6e0]' : 'bg-[#475569]';
+			case 'charcoal':
+				return isLight ? 'bg-[#cbd5e1]' : 'bg-[#262626]';
+			case 'coral':
+				return isLight ? 'bg-[#f5e6e8]' : 'bg-[#b36675]';
 			case 'cyber':
-			default:
 				return isLight ? 'bg-[#cdd6e0]' : 'bg-[#2b3648]';
+			case 'emerald':
+			default:
+				return isLight ? 'bg-[#eeeed2]' : 'bg-[#769656]';
 		}
 	})();
 
@@ -68,13 +74,19 @@
 		switch (theme) {
 			case 'wood':
 				return isLight ? 'text-[#b58863]' : 'text-[#f0d9b5]';
-			case 'emerald':
-				return isLight ? 'text-[#769656]' : 'text-[#eeeed2]';
 			case 'ocean':
-				return isLight ? 'text-[#1e3a5f]' : 'text-[#dbeafe]';
+				return isLight ? 'text-[#467499]' : 'text-[#dbeafe]';
+			case 'slate':
+				return isLight ? 'text-[#475569]' : 'text-[#cdd6e0]';
+			case 'charcoal':
+				return isLight ? 'text-[#262626]' : 'text-[#cbd5e1]';
+			case 'coral':
+				return isLight ? 'text-[#b36675]' : 'text-[#f5e6e8]';
 			case 'cyber':
-			default:
 				return isLight ? 'text-slate-600' : 'text-slate-300';
+			case 'emerald':
+			default:
+				return isLight ? 'text-[#769656]' : 'text-[#eeeed2]';
 		}
 	})();
 </script>

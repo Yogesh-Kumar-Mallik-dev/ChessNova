@@ -8,7 +8,6 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import BorderBeam from '$lib/components/magicui/BorderBeam.svelte';
-	import ShimmerButton from '$lib/components/magicui/ShimmerButton.svelte';
 
 	interface Preset {
 		label: string;
@@ -203,13 +202,13 @@
 				{#each presets as preset}
 					{@const isSelected = selectedPreset.label === preset.label}
 					<button
-						class="flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-150 text-center group cursor-pointer
+						class="flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-150 text-center group cursor-pointer active:translate-y-px
 						{isSelected
-							? 'bg-sky-500/15 border-sky-400 text-white shadow-[0_0_15px_rgba(56,189,248,0.25)] scale-[1.02]'
-							: 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 hover:bg-slate-900'}"
+							? 'bg-slate-800 border-emerald-500 text-white ring-1 ring-emerald-500/40 shadow-xs'
+							: 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white hover:border-slate-750 hover:bg-slate-900'}"
 						on:click={() => (selectedPreset = preset)}
 					>
-						<div class="w-8 h-8 rounded-lg flex items-center justify-center mb-1 {isSelected ? 'text-sky-400' : 'text-slate-500 group-hover:text-slate-300'}">
+						<div class="w-8 h-8 rounded-lg flex items-center justify-center mb-1 {isSelected ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-300'}">
 							<Icon name={preset.icon} size={18} />
 						</div>
 						<span class="text-sm font-extrabold text-white leading-tight">{preset.label}</span>
@@ -220,14 +219,15 @@
 
 			<!-- Launch Actions -->
 			<div class="flex flex-col gap-3">
-				<ShimmerButton
-					shimmerColor="#38bdf8"
-					class="w-full text-sm font-bold shadow-lg"
-					onclick={startMatchmaking}
+				<Button
+					variant="primary"
+					size="lg"
+					className="w-full text-sm font-bold shadow-xs"
+					on:click={startMatchmaking}
 				>
-					<Icon name="zap" size={18} className="text-sky-400" />
+					<Icon name="zap" size={18} />
 					<span>Play {selectedPreset.label} {selectedPreset.type}</span>
-				</ShimmerButton>
+				</Button>
 
 				<Button
 					variant="secondary"

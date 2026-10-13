@@ -75,7 +75,7 @@
 				/>
 			</div>
 
-			<Button variant="glow" size="lg" type="submit" disabled={loading} className="w-full mt-2">
+			<Button variant="primary" size="lg" type="submit" disabled={loading} className="w-full mt-2">
 				{#if loading}
 					<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
 					<span>Signing In...</span>

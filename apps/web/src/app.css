@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 @layer base {
-	:root {
+	:root, [data-app-theme="dark-slate"] {
 		--background: 222 47% 4%;
 		--foreground: 210 40% 98%;
 		--card: 222 47% 6%;
 		--card-foreground: 210 40% 98%;
 		--popover: 222 47% 5%;
 		--popover-foreground: 210 40% 98%;
-		--primary: 199 89% 48%;
+		--primary: 142 71% 45%;
 		--primary-foreground: 210 40% 98%;
 		--secondary: 217 33% 13%;
 		--secondary-foreground: 210 40% 98%;
@@ -22,11 +22,77 @@
 		--destructive-foreground: 210 40% 98%;
 		--border: 217 33% 15%;
 		--input: 217 33% 15%;
-		--ring: 199 89% 48%;
+		--ring: 142 71% 45%;
 		--radius: 0.75rem;
+	}
 
-		--nova-board-dark: #2b3648;
-		--nova-board-light: #cdd6e0;
+	[data-app-theme="chess-dark"] {
+		--background: 30 10% 8%; /* #161512 Chess.com warm charcoal */
+		--foreground: 40 20% 96%;
+		--card: 30 7% 12%; /* #262421 */
+		--card-foreground: 40 20% 96%;
+		--popover: 30 7% 10%;
+		--popover-foreground: 40 20% 96%;
+		--primary: 90 45% 50%; /* #81b64c classic green */
+		--primary-foreground: 0 0% 100%;
+		--secondary: 30 6% 16%;
+		--secondary-foreground: 40 20% 96%;
+		--muted: 30 6% 14%;
+		--muted-foreground: 30 10% 60%;
+		--accent: 30 6% 18%;
+		--accent-foreground: 40 20% 96%;
+		--destructive: 0 63% 31%;
+		--destructive-foreground: 40 20% 96%;
+		--border: 30 6% 18%;
+		--input: 30 6% 18%;
+		--ring: 90 45% 50%;
+		--radius: 0.75rem;
+	}
+
+	[data-app-theme="oled-black"] {
+		--background: 0 0% 2%; /* #050505 pitch black */
+		--foreground: 0 0% 98%;
+		--card: 0 0% 5%;
+		--card-foreground: 0 0% 98%;
+		--popover: 0 0% 4%;
+		--popover-foreground: 0 0% 98%;
+		--primary: 142 71% 45%;
+		--primary-foreground: 0 0% 100%;
+		--secondary: 0 0% 10%;
+		--secondary-foreground: 0 0% 98%;
+		--muted: 0 0% 8%;
+		--muted-foreground: 0 0% 60%;
+		--accent: 0 0% 12%;
+		--accent-foreground: 0 0% 98%;
+		--destructive: 0 63% 31%;
+		--destructive-foreground: 0 0% 98%;
+		--border: 0 0% 12%;
+		--input: 0 0% 12%;
+		--ring: 142 71% 45%;
+		--radius: 0.75rem;
+	}
+
+	[data-app-theme="emerald-studio"] {
+		--background: 160 50% 4%; /* #05140e deep forest */
+		--foreground: 150 30% 96%;
+		--card: 160 35% 8%;
+		--card-foreground: 150 30% 96%;
+		--popover: 160 35% 6%;
+		--popover-foreground: 150 30% 96%;
+		--primary: 150 65% 44%;
+		--primary-foreground: 0 0% 100%;
+		--secondary: 160 25% 14%;
+		--secondary-foreground: 150 30% 96%;
+		--muted: 160 25% 12%;
+		--muted-foreground: 150 15% 60%;
+		--accent: 160 25% 16%;
+		--accent-foreground: 150 30% 96%;
+		--destructive: 0 63% 31%;
+		--destructive-foreground: 150 30% 96%;
+		--border: 160 25% 16%;
+		--input: 160 25% 16%;
+		--ring: 150 65% 44%;
+		--radius: 0.75rem;
 	}
 
 	* {
@@ -39,6 +105,7 @@
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Helvetica, Arial, sans-serif;
 		user-select: none;
 		-webkit-tap-highlight-color: transparent;
+		transition: background-color 200ms ease, color 200ms ease;
 	}
 }
 
@@ -47,7 +114,7 @@
 	transition: transform 120ms cubic-bezier(0.2, 0, 0, 1), box-shadow 120ms ease;
 }
 .interactive-tap:active {
-	transform: scale(0.97);
+	transform: scale(0.98);
 }
 
 .glass-panel {
@@ -67,12 +134,12 @@
 	height: 6px;
 }
 ::-webkit-scrollbar-track {
-	background: #0c1017;
+	background: rgba(0, 0, 0, 0.2);
 }
 ::-webkit-scrollbar-thumb {
-	background: #1f293d;
+	background: rgba(148, 163, 184, 0.2);
 	border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-	background: #2c3a56;
+	background: rgba(148, 163, 184, 0.35);
 }
