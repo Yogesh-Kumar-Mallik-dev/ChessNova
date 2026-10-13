@@ -106,27 +106,24 @@
 		<div class="absolute inset-0 bg-sky-400/30 z-0"></div>
 	{/if}
 
-	<!-- CHESS.COM CHECK / CHECKMATE SQUARE HIGHLIGHT: Signature red circular radial glow -->
+	<!-- CHECK / CHECKMATE SQUARE HIGHLIGHT: Circular radial glow -->
 	{#if isCheck || isLosingKing}
-		<div class="absolute inset-0 chess-com-check-glow z-0 pointer-events-none"></div>
+		<div class="absolute inset-0 check-glow z-0 pointer-events-none"></div>
 	{/if}
 
-	<!-- CHESS.COM WINNING KING BADGE: Top-right corner circular gold badge with crown -->
+	<!-- WINNING KING BADGE: Top-right corner circular gold badge with crown -->
 	{#if isWinningKing}
 		<div class="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 z-30 pointer-events-none">
 			<div
 				class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-b from-[#ffcf44] to-[#f59e0b] border border-[#fde68a] shadow-[0_2px_6px_rgba(0,0,0,0.6)] flex items-center justify-center badge-pop"
 				title="Winner"
 			>
-				<!-- Chess.com crisp royal crown SVG -->
-				<svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#3a2500] fill-current drop-shadow-[0_0.5px_0.5px_rgba(255,255,255,0.4)]" viewBox="0 0 24 24">
-					<path d="M5 19h14v2H5v-2zm14.5-12c-.83 0-1.5.67-1.5 1.5 0 .24.06.47.16.67L15 11l-2.6-4.34c.37-.3.6-.76.6-1.28 0-.89-.72-1.62-1.62-1.62-.89 0-1.62.73-1.62 1.62 0 .52.23.98.6 1.28L7.38 11l-3.16-1.83c.1-.2.16-.43.16-.67 0-.83-.67-1.5-1.5-1.5S1.38 7.67 1.38 8.5c0 .76.57 1.39 1.3 1.48L4.3 17h15.4l1.62-7.02c.73-.09 1.3-.72 1.3-1.48 0-.83-.67-1.5-1.5-1.5z"/>
-				</svg>
+				<Icon name="crown" size={13} className="text-[#3a2500]" />
 			</div>
 		</div>
 	{/if}
 
-	<!-- CHESS.COM LOSING KING BADGE: Top-right corner circular red badge with '#' / flag / clock -->
+	<!-- LOSING KING BADGE: Top-right corner circular red badge with '#' / flag / clock -->
 	{#if isLosingKing}
 		<div class="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 z-30 pointer-events-none">
 			<div
@@ -138,14 +135,13 @@
 				{:else if losingKingReason === 'timeout'}
 					<Icon name="clock" size={12} className="text-white" />
 				{:else}
-					<!-- FIDE checkmate hashtag symbol -->
 					<span class="text-white text-[11px] sm:text-[13px] font-black font-sans leading-none select-none">#</span>
 				{/if}
 			</div>
 		</div>
 	{/if}
 
-	<!-- CHESS.COM DRAW KING BADGE: Top-right corner circular slate badge with '½' -->
+	<!-- DRAW KING BADGE: Top-right corner circular slate badge with '½' -->
 	{#if isDrawKing}
 		<div class="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 z-30 pointer-events-none">
 			<div
@@ -157,7 +153,7 @@
 		</div>
 	{/if}
 
-	<!-- CHESS.COM REVIEW BADGE: Renders move classification badge on the piece square during review -->
+	<!-- REVIEW CLASSIFICATION BADGE -->
 	{#if reviewClassification && !isWinningKing && !isLosingKing}
 		<div class="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 z-30 pointer-events-none badge-pop">
 			<ReviewBadge classification={reviewClassification} size="md" />
@@ -190,12 +186,12 @@
 </div>
 
 <style>
-	/* Exact Chess.com check & checkmate radial red gradient */
-	.chess-com-check-glow {
+	/* Radial red check glow */
+	.check-glow {
 		background: radial-gradient(ellipse at center, #ff0000 0%, #e70000 25%, rgba(169, 0, 0, 0) 89%, rgba(169, 0, 0, 0) 100%);
 	}
 
-	/* Chess.com spring badge pop-in */
+	/* Spring badge pop-in */
 	.badge-pop {
 		animation: badgePop 280ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 	}

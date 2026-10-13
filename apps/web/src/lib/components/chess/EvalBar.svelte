@@ -13,7 +13,7 @@
 		}
 		// Clamp centipawns between -1000 (-10 pawns) and +1000 (+10 pawns)
 		const clamped = Math.max(-1000, Math.min(1000, scoreCp));
-		// Sigmoid curve similar to Lichess/Chess.com advantage percentage
+		// Sigmoid curve for smooth advantage percentage
 		const p = 50 + 50 * (2 / (1 + Math.exp(-0.004 * clamped)) - 1);
 		return Math.max(4, Math.min(96, Math.round(p)));
 	})();
@@ -34,15 +34,15 @@
 </script>
 
 <div
-	class="relative w-6 sm:w-7 h-full bg-[#1b1a18] rounded-xl overflow-hidden border border-[#3d3b37] flex flex-col justify-end shadow-md select-none"
+	class="relative w-6 sm:w-7 h-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex flex-col justify-end shadow-md select-none"
 	title="Advantage: {formattedScore}"
 >
 	<!-- Black Portion (Top if White orientation) -->
-	<div class="absolute inset-0 bg-[#2b2926]"></div>
+	<div class="absolute inset-0 bg-slate-900"></div>
 
 	<!-- White Portion (Bottom if White orientation) -->
 	<div
-		class="w-full bg-[#ffffff] transition-all duration-300 ease-out"
+		class="w-full bg-slate-100 transition-all duration-300 ease-out"
 		style="height: {bottomPercent}%;"
 	></div>
 

@@ -9,7 +9,7 @@
 	});
 </script>
 
-<div class="min-h-screen flex flex-col bg-[#161512] text-[#bababa]">
+<div class="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-sky-500/20 selection:text-sky-300 relative overflow-x-hidden">
 	<Navbar />
 	<main class="flex-1 flex flex-col">
 		<slot />

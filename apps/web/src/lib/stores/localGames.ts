@@ -1,8 +1,7 @@
 // ==============================================================================
 // ChessNova Local Game Archive & History Store
 // Automatically preserves completed games in localStorage for non-signed (and signed)
-// users, enabling full Stockfish Game Reviews, PGN exports, and local game history
-// inspired by Chess.com and Lichess.
+// users, enabling full Game Reviews, PGN exports, and local game history.
 // ==============================================================================
 
 export interface LocalGameRecord {

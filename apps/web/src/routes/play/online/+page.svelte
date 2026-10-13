@@ -7,6 +7,8 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import BorderBeam from '$lib/components/magicui/BorderBeam.svelte';
+	import ShimmerButton from '$lib/components/magicui/ShimmerButton.svelte';
 
 	interface Preset {
 		label: string;
@@ -143,8 +145,10 @@
 	{/if}
 
 	{#if isSearching}
-		<!-- Matchmaking Search Radar Modal -->
-		<Card className="max-w-md mx-auto w-full p-8 sm:p-10 text-center flex flex-col items-center animate-fade-in border-sky-500/40">
+		<!-- Matchmaking Search Radar Modal with BorderBeam -->
+		<div class="relative max-w-md mx-auto w-full p-8 sm:p-10 text-center flex flex-col items-center animate-fade-in bg-slate-900/80 backdrop-blur-xl border border-sky-500/40 rounded-2xl shadow-2xl overflow-hidden">
+			<BorderBeam size={180} duration={6} colorFrom="#38bdf8" colorTo="#818cf8" />
+
 			<!-- Radar Scanner Graphic -->
 			<div class="relative w-28 h-28 rounded-full border border-sky-500/30 flex items-center justify-center mb-6">
 				<div class="absolute inset-2 rounded-full border border-sky-500/20"></div>
@@ -183,7 +187,7 @@
 			>
 				Cancel Search
 			</Button>
-		</Card>
+		</div>
 	{:else}
 		<!-- Time Control Selector -->
 		<Card className="p-6 sm:p-8 max-w-xl mx-auto w-full shadow-2xl border-slate-800">
@@ -216,15 +220,14 @@
 
 			<!-- Launch Actions -->
 			<div class="flex flex-col gap-3">
-				<Button
-					variant="glow"
-					size="lg"
-					className="w-full"
-					on:click={startMatchmaking}
+				<ShimmerButton
+					shimmerColor="#38bdf8"
+					class="w-full text-sm font-bold shadow-lg"
+					onclick={startMatchmaking}
 				>
-					<Icon name="zap" size={18} />
+					<Icon name="zap" size={18} className="text-sky-400" />
 					<span>Play {selectedPreset.label} {selectedPreset.type}</span>
-				</Button>
+				</ShimmerButton>
 
 				<Button
 					variant="secondary"
