@@ -14,7 +14,7 @@ import (
 func setupTestRouter() *Router {
 	eng := engine.NewStockfishEngine()
 	reviewSrv := review.NewReviewService(eng)
-	return NewRouter(nil, nil, nil, nil, nil, nil, nil, eng, reviewSrv, nil, "*")
+	return NewRouter(nil, nil, nil, nil, nil, nil, nil, eng, reviewSrv, nil, nil, nil, "*")
 }
 
 func TestHandleHealth(t *testing.T) {
@@ -194,5 +194,82 @@ func TestHandleReviewGamePGN(t *testing.T) {
 	}
 	if resp.White != "Ding Liren" || resp.Black != "Nepomniachtchi" {
 		t.Errorf("unexpected players: %s vs %s", resp.White, resp.Black)
+	}
+}
+
+func TestSecurityHeaders(t *testing.T) {
+	router := setupTestRouter()
+	req := httptest.NewRequest("GET", "/health", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Errorf("expected X-Content-Type-Options: nosniff, got %s", w.Header().Get("X-Content-Type-Options"))
+	}
+	if w.Header().Get("X-Frame-Options") != "DENY" {
+		t.Errorf("expected X-Frame-Options: DENY, got %s", w.Header().Get("X-Frame-Options"))
+	}
+	if w.Header().Get("Referrer-Policy") != "strict-origin-when-cross-origin" {
+		t.Errorf("expected Referrer-Policy: strict-origin-when-cross-origin, got %s", w.Header().Get("Referrer-Policy"))
+	}
+}
+
+func TestRegisterValidation(t *testing.T) {
+	router := setupTestRouter()
+
+	// 1. Invalid username
+	body, _ := json.Marshal(map[string]string{
+		"username": "a!", // invalid chars
+		"email":    "test@example.com",
+		"password": "validPassword123",
+	})
+	req := httptest.NewRequest("POST", "/api/v1/auth/register", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid username, got %d", w.Code)
+	}
+
+	// 2. Invalid email
+	body, _ = json.Marshal(map[string]string{
+		"username": "validUser",
+		"email":    "notanemail",
+		"password": "validPassword123",
+	})
+	req = httptest.NewRequest("POST", "/api/v1/auth/register", bytes.NewReader(body))
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid email, got %d", w.Code)
+	}
+
+	// 3. Short password
+	body, _ = json.Marshal(map[string]string{
+		"username": "validUser",
+		"email":    "test@example.com",
+		"password": "123",
+	})
+	req = httptest.NewRequest("POST", "/api/v1/auth/register", bytes.NewReader(body))
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for short password, got %d", w.Code)
+	}
+}
+
+func TestUnauthorizedProfileUpdate(t *testing.T) {
+	router := setupTestRouter()
+	body, _ := json.Marshal(map[string]string{
+		"bio":     "New Bio",
+		"country": "US",
+	})
+	req := httptest.NewRequest("PUT", "/api/v1/users/profile", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 Unauthorized for profile update without token, got %d", w.Code)
 	}
 }

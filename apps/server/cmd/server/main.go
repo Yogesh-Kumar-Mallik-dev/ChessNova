@@ -12,11 +12,13 @@ import (
 	"chess-platform/server/internal/auth"
 	"chess-platform/server/internal/engine"
 	"chess-platform/server/internal/game"
+	"chess-platform/server/internal/external"
 	internalHttp "chess-platform/server/internal/http"
 	"chess-platform/server/internal/matchmaking"
 	"chess-platform/server/internal/puzzle"
 	"chess-platform/server/internal/rating"
 	"chess-platform/server/internal/review"
+	"chess-platform/server/internal/storage"
 	"chess-platform/server/internal/user"
 	"chess-platform/server/internal/websocket"
 
@@ -107,7 +109,20 @@ func main() {
 	engineService := engine.NewStockfishEngine()
 	reviewService := review.NewReviewService(engineService)
 
-	// 6. Initialize Router
+	// 6. Initialize Storage & External Platform Services
+	storageService := storage.NewStorageService(storage.Config{
+		Endpoint:         getEnv("S3_ENDPOINT", ""),
+		Bucket:           getEnv("S3_BUCKET", "chessnova-avatars"),
+		AccessKey:        getEnv("S3_ACCESS_KEY", ""),
+		SecretKey:        getEnv("S3_SECRET_KEY", ""),
+		Region:           getEnv("S3_REGION", "us-east-1"),
+		UseSSL:           getEnv("S3_USE_SSL", "true") == "true",
+		PublicURL:        getEnv("S3_PUBLIC_URL", ""),
+		LocalFallbackDir: getEnv("LOCAL_UPLOAD_DIR", "uploads/avatars"),
+	})
+	externalService := external.NewService()
+
+	// 7. Initialize Router
 	router := internalHttp.NewRouter(
 		authService,
 		userRepo,
@@ -118,6 +133,8 @@ func main() {
 		puzzleService,
 		engineService,
 		reviewService,
+		storageService,
+		externalService,
 		wsHub,
 		corsOrigin,
 	)

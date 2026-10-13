@@ -14,30 +14,43 @@ import (
 	"chess-platform/server/internal/auth"
 	"chess-platform/server/internal/chess"
 	"chess-platform/server/internal/engine"
+	"chess-platform/server/internal/external"
 	"chess-platform/server/internal/game"
 	"chess-platform/server/internal/matchmaking"
 	"chess-platform/server/internal/puzzle"
 	"chess-platform/server/internal/rating"
 	"chess-platform/server/internal/review"
+	"chess-platform/server/internal/storage"
 	"chess-platform/server/internal/user"
 	"chess-platform/server/internal/websocket"
+	"io"
+	"regexp"
+	"sort"
+	"sync"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+var (
+	usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,30}$`)
+	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+)
+
 type Router struct {
-	mux           *http.ServeMux
-	authService   *auth.Service
-	userService   user.Repository
-	gameService   *game.Service
-	gameRepo      game.Repository
-	ratingRepo    rating.Repository
-	mmService     *matchmaking.Service
-	puzzleService *puzzle.Service
-	engineService *engine.StockfishEngine
-	reviewService *review.ReviewService
-	wsHub         *websocket.Hub
-	corsOrigin    string
+	mux             *http.ServeMux
+	authService     *auth.Service
+	userService     user.Repository
+	gameService     *game.Service
+	gameRepo        game.Repository
+	ratingRepo      rating.Repository
+	mmService       *matchmaking.Service
+	puzzleService   *puzzle.Service
+	engineService   *engine.StockfishEngine
+	reviewService   *review.ReviewService
+	storageService  storage.StorageService
+	externalService *external.Service
+	wsHub           *websocket.Hub
+	corsOrigin      string
 }
 
 func NewRouter(
@@ -50,32 +63,49 @@ func NewRouter(
 	puzzleService *puzzle.Service,
 	engineService *engine.StockfishEngine,
 	reviewService *review.ReviewService,
+	storageService storage.StorageService,
+	externalService *external.Service,
 	wsHub *websocket.Hub,
 	corsOrigin string,
 ) *Router {
+	if storageService == nil {
+		storageService = storage.NewStorageService(storage.Config{})
+	}
+	if externalService == nil {
+		externalService = external.NewService()
+	}
+
 	r := &Router{
-		mux:           http.NewServeMux(),
-		authService:   authService,
-		userService:   userService,
-		gameService:   gameService,
-		gameRepo:      gameRepo,
-		ratingRepo:    ratingRepo,
-		mmService:     mmService,
-		puzzleService: puzzleService,
-		engineService: engineService,
-		reviewService: reviewService,
-		wsHub:         wsHub,
-		corsOrigin:    corsOrigin,
+		mux:             http.NewServeMux(),
+		authService:     authService,
+		userService:     userService,
+		gameService:     gameService,
+		gameRepo:        gameRepo,
+		ratingRepo:      ratingRepo,
+		mmService:       mmService,
+		puzzleService:   puzzleService,
+		engineService:   engineService,
+		reviewService:   reviewService,
+		storageService:  storageService,
+		externalService: externalService,
+		wsHub:           wsHub,
+		corsOrigin:      corsOrigin,
 	}
 	r.routes()
 	return r
 }
 
 func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Security Headers Best Practices
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
+	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+
 	// Global CORS Handler
 	w.Header().Set("Access-Control-Allow-Origin", rt.corsOrigin)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 	if r.Method == http.MethodOptions {
@@ -96,9 +126,17 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("POST /api/v1/auth/refresh", rt.handleRefresh)
 	rt.mux.HandleFunc("POST /api/v1/auth/logout", rt.handleLogout)
 
-	// Users
+	// Users & Profiles
 	rt.mux.HandleFunc("GET /api/v1/users/me", rt.withAuth(rt.handleGetMe))
 	rt.mux.HandleFunc("GET /api/v1/users/{username}", rt.handleGetUser)
+	rt.mux.HandleFunc("PUT /api/v1/users/profile", rt.withAuth(rt.handleUpdateProfile))
+	rt.mux.HandleFunc("POST /api/v1/users/avatar", rt.withAuth(rt.handleUploadAvatar))
+	rt.mux.HandleFunc("POST /api/v1/users/link-accounts", rt.withAuth(rt.handleLinkAccounts))
+	rt.mux.HandleFunc("GET /api/v1/users/{username}/external-stats", rt.handleGetExternalStats)
+	rt.mux.HandleFunc("GET /api/v1/users/{username}/external-games", rt.handleGetExternalGames)
+
+	// Static local avatars fallback
+	rt.mux.Handle("GET /uploads/avatars/", http.StripPrefix("/uploads/avatars/", http.FileServer(http.Dir("uploads/avatars"))))
 
 	// Matchmaking
 	rt.mux.HandleFunc("POST /api/v1/matchmaking/join", rt.withAuth(rt.handleMatchmakingJoin))
@@ -174,6 +212,7 @@ type registerReq struct {
 }
 
 func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB payload limit
 	var req registerReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
@@ -181,9 +220,20 @@ func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Username = strings.TrimSpace(req.Username)
-	req.Email = strings.TrimSpace(req.Email)
-	if len(req.Username) < 3 || len(req.Password) < 6 || !strings.Contains(req.Email, "@") {
-		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid username (min 3), email, or password (min 6)")
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+	if !usernameRegex.MatchString(req.Username) {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid username: 3-30 characters (letters, numbers, underscores, hyphens)")
+		return
+	}
+
+	if !emailRegex.MatchString(req.Email) {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid email address format")
+		return
+	}
+
+	if len(req.Password) < 6 || len(req.Password) > 128 {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "password must be between 6 and 128 characters")
 		return
 	}
 
@@ -301,6 +351,256 @@ func (rt *Router) handleGetUser(w http.ResponseWriter, r *http.Request) {
 		"ratings":     ratingsList,
 		"recentGames": recentGames,
 	})
+}
+
+type updateProfileReq struct {
+	Bio     string `json:"bio"`
+	Country string `json:"country"`
+}
+
+func (rt *Router) handleUpdateProfile(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req updateProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
+		return
+	}
+
+	if len(req.Bio) > 500 {
+		writeError(w, http.StatusBadRequest, "BIO_TOO_LONG", "bio cannot exceed 500 characters")
+		return
+	}
+	if len(req.Country) > 50 {
+		writeError(w, http.StatusBadRequest, "COUNTRY_TOO_LONG", "country cannot exceed 50 characters")
+		return
+	}
+
+	userOID, err := primitive.ObjectIDFromHex(claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "invalid user id")
+		return
+	}
+
+	if err := rt.userService.UpdateProfile(r.Context(), userOID, strings.TrimSpace(req.Bio), strings.TrimSpace(req.Country)); err != nil {
+		writeError(w, http.StatusInternalServerError, "UPDATE_FAILED", "failed to update profile")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "profile updated successfully"})
+}
+
+func (rt *Router) handleUploadAvatar(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	// 6MB maximum request size (5MB file + multipart boundary headers)
+	r.Body = http.MaxBytesReader(w, r.Body, 6*1024*1024)
+	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil {
+		writeError(w, http.StatusBadRequest, "FILE_TOO_LARGE", "avatar file exceeds maximum limit of 5MB")
+		return
+	}
+
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "MISSING_FILE", "avatar image file is required in 'avatar' field")
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "READ_ERROR", "failed to read uploaded file")
+		return
+	}
+
+	userOID, err := primitive.ObjectIDFromHex(claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "invalid user id")
+		return
+	}
+
+	avatarURL, err := rt.storageService.UploadAvatar(r.Context(), claims.UserID, fileBytes, header.Header.Get("Content-Type"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "UPLOAD_FAILED", err.Error())
+		return
+	}
+
+	if err := rt.userService.UpdateAvatar(r.Context(), userOID, avatarURL); err != nil {
+		writeError(w, http.StatusInternalServerError, "UPDATE_FAILED", "failed to save avatar to user profile")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"avatar": avatarURL,
+	})
+}
+
+type linkAccountsReq struct {
+	ChessComUsername string `json:"chessComUsername"`
+	LichessUsername  string `json:"lichessUsername"`
+}
+
+func (rt *Router) handleLinkAccounts(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req linkAccountsReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
+		return
+	}
+
+	chessComUser := strings.TrimSpace(req.ChessComUsername)
+	lichessUser := strings.TrimSpace(req.LichessUsername)
+
+	// Verify accounts if provided
+	if chessComUser != "" {
+		if _, err := rt.externalService.FetchChessComStats(r.Context(), chessComUser); err != nil {
+			writeError(w, http.StatusBadRequest, "CHESSCOM_VERIFICATION_FAILED", fmt.Sprintf("Chess.com account '%s' could not be verified", chessComUser))
+			return
+		}
+	}
+
+	if lichessUser != "" {
+		if _, err := rt.externalService.FetchLichessStats(r.Context(), lichessUser); err != nil {
+			writeError(w, http.StatusBadRequest, "LICHESS_VERIFICATION_FAILED", fmt.Sprintf("Lichess account '%s' could not be verified", lichessUser))
+			return
+		}
+	}
+
+	userOID, err := primitive.ObjectIDFromHex(claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "invalid user id")
+		return
+	}
+
+	if err := rt.userService.UpdateLinkedAccounts(r.Context(), userOID, chessComUser, lichessUser); err != nil {
+		writeError(w, http.StatusInternalServerError, "UPDATE_FAILED", "failed to link external accounts")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"message":          "accounts linked successfully",
+		"chessComUsername": chessComUser,
+		"lichessUsername":  lichessUser,
+	})
+}
+
+func (rt *Router) handleGetExternalStats(w http.ResponseWriter, r *http.Request) {
+	username := r.PathValue("username")
+	u, err := rt.userService.FindByUsername(r.Context(), username)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "USER_NOT_FOUND", "user not found")
+		return
+	}
+
+	// Fetch ChessNova ratings
+	var novaRatings external.PlatformRatings
+	for _, cat := range []rating.Category{rating.Bullet, rating.Blitz, rating.Rapid, rating.Classical} {
+		ur, _ := rt.ratingRepo.GetRating(r.Context(), u.ID, cat)
+		val := rating.DefaultRating
+		if ur != nil {
+			val = ur.Rating
+		}
+		switch cat {
+		case rating.Bullet:
+			novaRatings.Bullet = val
+		case rating.Blitz:
+			novaRatings.Blitz = val
+		case rating.Rapid:
+			novaRatings.Rapid = val
+		case rating.Classical:
+			novaRatings.Classical = val
+		}
+	}
+
+	comparison := external.PlatformComparison{
+		Username:     u.Username,
+		ChessNova:    novaRatings,
+		ChessComUser: u.ChessComUsername,
+		LichessUser:  u.LichessUsername,
+	}
+
+	var wg sync.WaitGroup
+	if u.ChessComUsername != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			stats, _ := rt.externalService.FetchChessComStats(r.Context(), u.ChessComUsername)
+			if stats != nil {
+				comparison.ChessCom = stats
+			}
+		}()
+	}
+
+	if u.LichessUsername != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			stats, _ := rt.externalService.FetchLichessStats(r.Context(), u.LichessUsername)
+			if stats != nil {
+				comparison.Lichess = stats
+			}
+		}()
+	}
+
+	wg.Wait()
+	writeJSON(w, http.StatusOK, comparison)
+}
+
+func (rt *Router) handleGetExternalGames(w http.ResponseWriter, r *http.Request) {
+	username := r.PathValue("username")
+	u, err := rt.userService.FindByUsername(r.Context(), username)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "USER_NOT_FOUND", "user not found")
+		return
+	}
+
+	limit := 10
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 20 {
+			limit = parsed
+		}
+	}
+
+	platform := strings.ToLower(r.URL.Query().Get("platform"))
+	var allGames []external.ExternalGame
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	if (platform == "" || platform == "all" || platform == "lichess") && u.LichessUsername != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			games, _ := rt.externalService.FetchLichessRecentGames(r.Context(), u.LichessUsername, limit)
+			if len(games) > 0 {
+				mu.Lock()
+				allGames = append(allGames, games...)
+				mu.Unlock()
+			}
+		}()
+	}
+
+	if (platform == "" || platform == "all" || platform == "chesscom") && u.ChessComUsername != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			games, _ := rt.externalService.FetchChessComRecentGames(r.Context(), u.ChessComUsername, limit)
+			if len(games) > 0 {
+				mu.Lock()
+				allGames = append(allGames, games...)
+				mu.Unlock()
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// Sort newest first
+	sort.Slice(allGames, func(i, j int) bool {
+		return allGames[i].PlayedAt.After(allGames[j].PlayedAt)
+	})
+
+	if len(allGames) > limit {
+		allGames = allGames[:limit]
+	}
+
+	writeJSON(w, http.StatusOK, allGames)
 }
 
 // Matchmaking Handlers

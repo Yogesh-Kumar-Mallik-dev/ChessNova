@@ -6,6 +6,10 @@ export interface User {
 	username: string;
 	email: string;
 	avatar?: string;
+	bio?: string;
+	country?: string;
+	chessComUsername?: string;
+	lichessUsername?: string;
 }
 
 interface AuthState {
@@ -60,6 +64,12 @@ function createAuthStore() {
 				token: tokens.accessToken,
 				loading: false
 			});
+		},
+		updateUser: (fields: Partial<User>) => {
+			update((state) => ({
+				...state,
+				user: state.user ? { ...state.user, ...fields } : null
+			}));
 		},
 		logout: () => {
 			if (typeof window !== 'undefined') {

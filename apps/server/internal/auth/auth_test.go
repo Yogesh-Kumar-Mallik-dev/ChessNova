@@ -54,6 +54,35 @@ func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*user.Use
 	return nil, errNotFound
 }
 
+func (m *mockUserRepo) UpdateProfile(ctx context.Context, id primitive.ObjectID, bio, country string) error {
+	u, err := m.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	u.Bio = bio
+	u.Country = country
+	return nil
+}
+
+func (m *mockUserRepo) UpdateAvatar(ctx context.Context, id primitive.ObjectID, avatarURL string) error {
+	u, err := m.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	u.Avatar = avatarURL
+	return nil
+}
+
+func (m *mockUserRepo) UpdateLinkedAccounts(ctx context.Context, id primitive.ObjectID, chessComUsername, lichessUsername string) error {
+	u, err := m.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	u.ChessComUsername = chessComUsername
+	u.LichessUsername = lichessUsername
+	return nil
+}
+
 func (m *mockUserRepo) EnsureIndexes(ctx context.Context) error {
 	return nil
 }
