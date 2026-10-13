@@ -30,3 +30,27 @@ func TestPuzzleToPublic(t *testing.T) {
 		t.Errorf("expected total moves 1, got %d", pub.TotalMoves)
 	}
 }
+
+func TestCuratedLichessPuzzlesIntegrity(t *testing.T) {
+	if len(CuratedLichessPuzzles) < 100 {
+		t.Fatalf("expected at least 100 curated lichess puzzles, got %d", len(CuratedLichessPuzzles))
+	}
+
+	for i, p := range CuratedLichessPuzzles {
+		if p.LichessID == "" {
+			t.Errorf("puzzle #%d has empty LichessID", i)
+		}
+		if p.FEN == "" {
+			t.Errorf("puzzle %s has empty FEN", p.LichessID)
+		}
+		if len(p.Solution) == 0 {
+			t.Errorf("puzzle %s has no solution moves", p.LichessID)
+		}
+		if p.Rating < 400 {
+			t.Errorf("puzzle %s has unusually low rating %d", p.LichessID, p.Rating)
+		}
+		if len(p.Themes) == 0 {
+			t.Errorf("puzzle %s has no tactical themes", p.LichessID)
+		}
+	}
+}

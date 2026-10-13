@@ -156,7 +156,16 @@ export const api = {
 	puzzles: {
 		getRandom: () => request<any>('/puzzles/random'),
 		getById: (id: string) => request<any>(`/puzzles/${id}`),
-		solve: (id: string, payload: { move?: string; plyIndex?: number; success?: boolean } | boolean) => {
+		getHint: (id: string, plyIndex: number = 0) =>
+			request<{ plyIndex: number; from: string; to: string; hint: string }>(`/puzzles/${id}/hint?plyIndex=${plyIndex}`),
+		getSolution: (id: string) =>
+			request<{ id: string; solution: string[]; rating: number; themes: string[] }>(`/puzzles/${id}/solution`),
+		solve: (
+			id: string,
+			payload:
+				| { move?: string; plyIndex?: number; success?: boolean; isRetry?: boolean; hasAssistance?: boolean }
+				| boolean
+		) => {
 			const body = typeof payload === 'boolean' ? { success: payload } : payload;
 			return request<{ correct: boolean; finished: boolean; replyMove?: string; newRating: number; diff: number; solution?: string[] }>(`/puzzles/${id}/solve`, {
 				method: 'POST',

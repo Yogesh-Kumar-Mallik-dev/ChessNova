@@ -130,6 +130,8 @@ func (rt *Router) routes() {
 	// Puzzles
 	rt.mux.HandleFunc("GET /api/v1/puzzles/random", rt.handleGetRandomPuzzle)
 	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}", rt.handleGetPuzzleByID)
+	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}/hint", rt.handleGetPuzzleHint)
+	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}/solution", rt.handleGetPuzzleSolution)
 	rt.mux.HandleFunc("POST /api/v1/puzzles/{id}/solve", rt.handleSolvePuzzle)
 
 	// WebSockets
@@ -653,10 +655,70 @@ func (rt *Router) handleGetPuzzleByID(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, p.ToPublic())
 }
 
+func (rt *Router) handleGetPuzzleHint(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	oid, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid puzzle ID")
+		return
+	}
+	p, err := rt.puzzleRepo.GetByID(r.Context(), oid)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
+		return
+	}
+
+	ply := 0
+	if plyStr := r.URL.Query().Get("plyIndex"); plyStr != "" {
+		if val, err := strconv.Atoi(plyStr); err == nil && val >= 0 && val < len(p.Solution) {
+			ply = val
+		}
+	}
+
+	if ply >= len(p.Solution) {
+		writeError(w, http.StatusBadRequest, "INVALID_PLY", "puzzle is already complete")
+		return
+	}
+
+	bestMove := p.Solution[ply]
+	fromSquare := bestMove[:2]
+	toSquare := bestMove[2:4]
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"plyIndex": ply,
+		"from":     fromSquare,
+		"to":       toSquare,
+		"hint":     fmt.Sprintf("Focus on piece on %s moving toward %s", strings.ToUpper(fromSquare), strings.ToUpper(toSquare)),
+	})
+}
+
+func (rt *Router) handleGetPuzzleSolution(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	oid, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid puzzle ID")
+		return
+	}
+	p, err := rt.puzzleRepo.GetByID(r.Context(), oid)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"id":       p.ID,
+		"solution": p.Solution,
+		"rating":   p.Rating,
+		"themes":   p.Themes,
+	})
+}
+
 type solvePuzzleReq struct {
-	Move     string `json:"move,omitempty"`    // e.g. "e1e8" or "f2g3" (UCI format)
-	PlyIndex int    `json:"plyIndex"`         // 0, 2, 4... player's move turn index
-	Success  *bool  `json:"success,omitempty"` // backward-compatibility fallback
+	Move          string `json:"move,omitempty"`          // e.g. "e1e8" or "f2g3" (UCI format)
+	PlyIndex      int    `json:"plyIndex"`               // 0, 2, 4... player's move turn index
+	Success       *bool  `json:"success,omitempty"`       // backward-compatibility fallback
+	IsRetry       bool   `json:"isRetry,omitempty"`       // if player is retrying an already failed puzzle
+	HasAssistance bool   `json:"hasAssistance,omitempty"` // if player viewed hint or full solution
 }
 
 func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
@@ -727,19 +789,28 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 		playerRating = uRat.Rating
 	}
 
-	// Calculate Elo change
-	var score float64
-	if isCorrect && isFinished {
-		score = 1.0
-	} else if !isCorrect {
-		score = 0.0
-	}
-
 	newRating := playerRating
 	diff := 0
 
-	// Only apply rating adjustments on completion or on incorrect attempt
-	if (isCorrect && isFinished) || !isCorrect {
+	// Rating adjustments rules:
+	// 1. If player had assistance (viewed hint/solution), no rating gains are awarded.
+	// 2. If player is retrying a previously failed attempt, do not deduct rating multiple times.
+	shouldApplyRating := false
+	var score float64
+
+	if isCorrect && isFinished {
+		if !req.HasAssistance && !req.IsRetry {
+			score = 1.0
+			shouldApplyRating = true
+		}
+	} else if !isCorrect {
+		if !req.IsRetry && !req.HasAssistance {
+			score = 0.0
+			shouldApplyRating = true
+		}
+	}
+
+	if shouldApplyRating {
 		newRating, _, diff, _ = rating.CalculateElo(playerRating, p.Rating, score, rating.DefaultKFactor)
 		if uRat != nil {
 			uRat.Rating = newRating
