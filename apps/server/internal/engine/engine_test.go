@@ -32,3 +32,29 @@ func TestStockfishEvaluation(t *testing.T) {
 		t.Logf("Mate eval result: %+v", evalMate)
 	}
 }
+
+func TestGenerateBotMove(t *testing.T) {
+	eng := NewStockfishEngine()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	startingFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+	// Test level 1 (Novice ~400 Elo)
+	m1, err := eng.GenerateBotMove(ctx, startingFEN, 1)
+	if err != nil {
+		t.Fatalf("failed to generate move for level 1: %v", err)
+	}
+	if len(m1) < 4 {
+		t.Errorf("expected valid UCI move, got %s", m1)
+	}
+
+	// Test level 2 (Casual ~800 Elo)
+	m2, err := eng.GenerateBotMove(ctx, startingFEN, 2)
+	if err != nil {
+		t.Fatalf("failed to generate move for level 2: %v", err)
+	}
+	if len(m2) < 4 {
+		t.Errorf("expected valid UCI move, got %s", m2)
+	}
+}
