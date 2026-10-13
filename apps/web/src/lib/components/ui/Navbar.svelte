@@ -90,7 +90,7 @@
 					</Button>
 				</a>
 				<a href="/register">
-					<Button variant="glow" size="sm">
+					<Button variant="primary" size="sm">
 						Play Free
 					</Button>
 				</a>
@@ -116,11 +116,11 @@
 			<a
 				href={item.href}
 				class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition {active
-					? 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
+					? 'bg-slate-800 text-white border border-slate-700/80'
 					: 'text-slate-300 hover:bg-slate-900'}"
 				on:click={() => (mobileMenuOpen = false)}
 			>
-				<Icon name={item.icon} size={18} className={active ? 'text-sky-400' : 'text-slate-400'} />
+				<Icon name={item.icon} size={18} className={active ? 'text-emerald-400' : 'text-slate-400'} />
 				<span>{item.label}</span>
 			</a>
 		{/each}
@@ -131,7 +131,7 @@
 					<Button variant="outline" className="w-full">Log In</Button>
 				</a>
 				<a href="/register" class="w-full" on:click={() => (mobileMenuOpen = false)}>
-					<Button variant="glow" className="w-full">Play Free</Button>
+					<Button variant="primary" className="w-full">Play Free</Button>
 				</a>
 			</div>
 		{/if}

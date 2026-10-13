@@ -1,13 +1,14 @@
 import { writable } from 'svelte/store';
 import { soundEffects } from '$lib/audio/sounds';
 
-export type BoardTheme = 'cyber' | 'wood' | 'emerald' | 'ocean';
+export type BoardTheme = 'emerald' | 'wood' | 'ocean' | 'slate' | 'charcoal' | 'coral' | 'cyber';
+export type AppTheme = 'dark-slate' | 'chess-dark' | 'oled-black' | 'emerald-studio';
 
-function createThemeStore() {
+function createBoardThemeStore() {
 	const initial: BoardTheme =
 		typeof window !== 'undefined'
-			? ((localStorage.getItem('chess_board_theme') as BoardTheme) || 'cyber')
-			: 'cyber';
+			? ((localStorage.getItem('chess_board_theme') as BoardTheme) || 'emerald')
+			: 'emerald';
 
 	const { subscribe, set } = writable<BoardTheme>(initial);
 
@@ -17,6 +18,30 @@ function createThemeStore() {
 			if (typeof window !== 'undefined') {
 				localStorage.setItem('chess_board_theme', theme);
 				window.dispatchEvent(new CustomEvent('chess-theme-changed', { detail: theme }));
+			}
+			set(theme);
+		}
+	};
+}
+
+function createAppThemeStore() {
+	const initial: AppTheme =
+		typeof window !== 'undefined'
+			? ((localStorage.getItem('chess_app_theme') as AppTheme) || 'dark-slate')
+			: 'dark-slate';
+
+	const { subscribe, set } = writable<AppTheme>(initial);
+
+	if (typeof window !== 'undefined') {
+		document.documentElement.setAttribute('data-app-theme', initial);
+	}
+
+	return {
+		subscribe,
+		set: (theme: AppTheme) => {
+			if (typeof window !== 'undefined') {
+				localStorage.setItem('chess_app_theme', theme);
+				document.documentElement.setAttribute('data-app-theme', theme);
 			}
 			set(theme);
 		}
@@ -55,6 +80,7 @@ function createSoundStore() {
 	};
 }
 
-export const themeStore = createThemeStore();
+export const themeStore = createBoardThemeStore();
+export const appThemeStore = createAppThemeStore();
 export const volumeStore = createVolumeStore();
 export const soundStore = createSoundStore();

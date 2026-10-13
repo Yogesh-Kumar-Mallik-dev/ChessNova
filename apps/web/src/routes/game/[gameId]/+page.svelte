@@ -295,7 +295,7 @@
 						<span>Share Link to Play</span>
 					</div>
 					<button
-						class="px-2.5 py-1 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold rounded-lg text-xs transition shadow-sm"
+						class="px-3 py-1 bg-[#81b64c] hover:bg-[#72a441] active:bg-[#639037] text-white font-bold rounded-lg text-xs transition shadow-xs active:translate-y-px"
 						on:click={copyInviteLink}
 					>
 						{copiedInvite ? 'Copied Link!' : 'Copy Link'}
@@ -329,7 +329,11 @@
 
 			<!-- Move History Ledger -->
 			<div class="flex-1 overflow-hidden p-1">
-				<MoveList moves={$gameStore.moves} />
+				<MoveList
+					moves={$gameStore.moves}
+					whiteName={$gameStore.whitePlayer?.username || 'White'}
+					blackName={$gameStore.blackPlayer?.username || 'Black'}
+				/>
 			</div>
 
 			<!-- Action Controls -->

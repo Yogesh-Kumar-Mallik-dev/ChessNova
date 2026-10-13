@@ -287,32 +287,32 @@
 		<!-- Left: Mode Switcher -->
 		<div class="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80 w-full md:w-auto">
 			<button
-				class="flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 {puzzleMode === 'practice'
-					? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/25'
+				class="flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 active:translate-y-px {puzzleMode === 'practice'
+					? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
 					: 'text-slate-400 hover:text-slate-200'}"
 				on:click={() => loadPuzzle('practice')}
 			>
-				<Icon name="puzzle" size={13} />
+				<Icon name="puzzle" size={13} className={puzzleMode === 'practice' ? 'text-emerald-400' : ''} />
 				<span>Practice Lab</span>
 			</button>
 
 			<button
-				class="flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 {puzzleMode === 'daily'
-					? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/25'
+				class="flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 active:translate-y-px {puzzleMode === 'daily'
+					? 'bg-slate-800 text-amber-300 font-bold border border-slate-700/80 shadow-xs'
 					: 'text-slate-400 hover:text-slate-200'}"
 				on:click={() => loadPuzzle('daily')}
 			>
-				<Icon name="flame" size={13} />
+				<Icon name="flame" size={13} className="text-amber-400" />
 				<span>Daily Puzzle</span>
 			</button>
 
 			<button
-				class="flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 {puzzleMode === 'weekly'
-					? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25'
+				class="flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 active:translate-y-px {puzzleMode === 'weekly'
+					? 'bg-slate-800 text-indigo-300 font-bold border border-slate-700/80 shadow-xs'
 					: 'text-slate-400 hover:text-slate-200'}"
 				on:click={() => loadPuzzle('weekly')}
 			>
-				<Icon name="trophy" size={13} />
+				<Icon name="trophy" size={13} className="text-indigo-400" />
 				<span>Weekly ({weeklyList.length || 7})</span>
 			</button>
 		</div>
@@ -528,7 +528,7 @@
 					</Button>
 
 					<Button
-						variant="glow"
+						variant="primary"
 						size="sm"
 						className="w-full"
 						on:click={loadRandomPuzzle}

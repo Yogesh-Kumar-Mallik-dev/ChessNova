@@ -5,7 +5,6 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Spotlight from '$lib/components/magicui/Spotlight.svelte';
 	import BorderBeam from '$lib/components/magicui/BorderBeam.svelte';
-	import ShimmerButton from '$lib/components/magicui/ShimmerButton.svelte';
 	import BentoGrid from '$lib/components/magicui/BentoGrid.svelte';
 	import BentoCard from '$lib/components/magicui/BentoCard.svelte';
 	import ChessBoard from '$lib/components/chess/ChessBoard.svelte';
@@ -84,23 +83,25 @@
 				Instant matchmaking across all time controls, tiered tactical puzzles, natural bot sparring, and deep post-game analysis without the noise.
 			</p>
 
-			<!-- Action Buttons with ShimmerButton -->
-			<div class="flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto mb-10">
-				<ShimmerButton href="/play/online" shimmerColor="#38bdf8" class="w-full sm:w-auto text-sm font-bold shadow-xl shadow-sky-500/10">
-					<Icon name="zap" size={18} className="text-sky-400" />
-					<span>Play Online</span>
-				</ShimmerButton>
+			<!-- Action Buttons -->
+			<div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mb-10">
+				<a href="/play/online" class="w-full sm:w-auto">
+					<Button variant="primary" size="lg" className="w-full sm:w-auto text-base shadow-sm">
+						<Icon name="zap" size={18} />
+						<span>Play Online</span>
+					</Button>
+				</a>
 
 				<a href="/puzzles" class="w-full sm:w-auto">
-					<Button variant="outline" size="lg" className="w-full sm:w-auto border-slate-700/80 hover:bg-slate-800/80">
+					<Button variant="secondary" size="lg" className="w-full sm:w-auto">
 						<Icon name="puzzle" size={16} className="text-emerald-400" />
 						<span>Puzzles</span>
 					</Button>
 				</a>
 
 				<a href="/play" class="w-full sm:w-auto">
-					<Button variant="secondary" size="lg" className="w-full sm:w-auto">
-						<Icon name="swords" size={16} className="text-indigo-400" />
+					<Button variant="outline" size="lg" className="w-full sm:w-auto">
+						<Icon name="swords" size={16} className="text-slate-300" />
 						<span>Practice Bot</span>
 					</Button>
 				</a>

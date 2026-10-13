@@ -325,13 +325,13 @@
 		<div class="flex items-center gap-2">
 			<div class="inline-flex p-0.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
 				<button
-					class="px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer {gameMode === 'vs_computer' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'}"
+					class="px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer active:translate-y-px {gameMode === 'vs_computer' ? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs' : 'text-slate-400 hover:text-white'}"
 					on:click={() => setGameMode('vs_computer')}
 				>
 					Play Bot
 				</button>
 				<button
-					class="px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer {gameMode === 'pass_and_play' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'}"
+					class="px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer active:translate-y-px {gameMode === 'pass_and_play' ? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs' : 'text-slate-400 hover:text-white'}"
 					on:click={() => setGameMode('pass_and_play')}
 				>
 					Pass & Play
@@ -483,7 +483,11 @@
 				</div>
 			</div>
 			<div class="flex-1 overflow-hidden p-2">
-				<MoveList {moves} />
+				<MoveList
+					{moves}
+					whiteName={playerColor === 'white' ? 'You' : activeBot.name}
+					blackName={playerColor === 'black' ? 'You' : activeBot.name}
+				/>
 			</div>
 		</div>
 	</div>
