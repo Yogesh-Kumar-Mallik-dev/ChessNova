@@ -94,3 +94,40 @@ func TestDetermineTier(t *testing.T) {
 		t.Errorf("expected 2400 to be Tier 5")
 	}
 }
+
+func TestPuzzleServiceVerifyMove(t *testing.T) {
+	p := &Puzzle{
+		Solution: []string{"e1e8", "d8e8"},
+		Rating:   1200,
+	}
+	srv := NewService(nil)
+
+	// Correct move but has more plies
+	res1 := srv.VerifyMove(p, SolveAttempt{
+		Move:         "e1e8",
+		PlyIndex:     0,
+		PlayerRating: 1100,
+	})
+	if !res1.Correct {
+		t.Errorf("expected move to be correct")
+	}
+	if res1.Finished {
+		t.Errorf("expected puzzle to not be finished yet")
+	}
+	if res1.ReplyMove != "d8e8" {
+		t.Errorf("expected reply move d8e8, got %s", res1.ReplyMove)
+	}
+
+	// Incorrect move
+	res2 := srv.VerifyMove(p, SolveAttempt{
+		Move:         "a1a8",
+		PlyIndex:     0,
+		PlayerRating: 1100,
+	})
+	if res2.Correct {
+		t.Errorf("expected incorrect move")
+	}
+	if len(res2.Solution) != 2 {
+		t.Errorf("expected solution to be revealed on incorrect move")
+	}
+}

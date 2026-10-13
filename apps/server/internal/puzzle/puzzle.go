@@ -2,6 +2,7 @@ package puzzle
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -118,6 +119,131 @@ type Repository interface {
 	GetWeeklyPuzzles(ctx context.Context) ([]Puzzle, error)
 	GetByID(ctx context.Context, id primitive.ObjectID) (*Puzzle, error)
 	SeedInitialPuzzles(ctx context.Context) error
+}
+
+type SolveAttempt struct {
+	Move          string
+	PlyIndex      int
+	Success       *bool
+	IsRetry       bool
+	HasAssistance bool
+	PlayerRating  int
+}
+
+type SolveResult struct {
+	Correct   bool     `json:"correct"`
+	Finished  bool     `json:"finished"`
+	NewRating int      `json:"newRating"`
+	Diff      int      `json:"diff"`
+	ReplyMove string   `json:"replyMove,omitempty"`
+	Solution  []string `json:"solution,omitempty"`
+}
+
+type Service struct {
+	repo Repository
+}
+
+func NewService(repo Repository) *Service {
+	return &Service{repo: repo}
+}
+
+func (s *Service) GetRandom(ctx context.Context, filter QueryFilter) (*PublicPuzzle, error) {
+	p, err := s.repo.GetRandomPuzzle(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	pub := p.ToPublic()
+	return &pub, nil
+}
+
+func (s *Service) GetDaily(ctx context.Context) (*PublicPuzzle, error) {
+	p, err := s.repo.GetDailyPuzzle(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pub := p.ToPublic()
+	pub.IsDaily = true
+	return &pub, nil
+}
+
+func (s *Service) GetWeekly(ctx context.Context) ([]PublicPuzzle, error) {
+	list, err := s.repo.GetWeeklyPuzzles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PublicPuzzle, 0, len(list))
+	for _, p := range list {
+		out = append(out, p.ToPublic())
+	}
+	return out, nil
+}
+
+func (s *Service) GetByID(ctx context.Context, id primitive.ObjectID) (*PublicPuzzle, error) {
+	p, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	pub := p.ToPublic()
+	return &pub, nil
+}
+
+func (s *Service) GetHint(ctx context.Context, id primitive.ObjectID, ply int) (from, to, hint string, err error) {
+	p, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return "", "", "", err
+	}
+	if ply < 0 || ply >= len(p.Solution) {
+		ply = 0
+	}
+	bestMove := p.Solution[ply]
+	if len(bestMove) < 4 {
+		return "", "", "", nil
+	}
+	from = bestMove[:2]
+	to = bestMove[2:4]
+	hint = "Focus on piece on " + strings.ToUpper(from) + " moving toward " + strings.ToUpper(to)
+	return from, to, hint, nil
+}
+
+func (s *Service) GetSolution(ctx context.Context, id primitive.ObjectID) (*Puzzle, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
+func (s *Service) VerifyMove(p *Puzzle, req SolveAttempt) SolveResult {
+	isCorrect := false
+	isFinished := false
+	replyMove := ""
+
+	if req.Move != "" {
+		normalizedMove := strings.ToLower(strings.TrimSpace(req.Move))
+		if req.PlyIndex >= 0 && req.PlyIndex < len(p.Solution) {
+			expectedMove := strings.ToLower(strings.TrimSpace(p.Solution[req.PlyIndex]))
+			if normalizedMove == expectedMove {
+				isCorrect = true
+				nextIndex := req.PlyIndex + 1
+				if nextIndex < len(p.Solution) {
+					replyMove = p.Solution[nextIndex]
+				} else {
+					isFinished = true
+				}
+			}
+		}
+	} else if req.Success != nil {
+		isCorrect = *req.Success
+		isFinished = *req.Success
+	}
+
+	result := SolveResult{
+		Correct:   isCorrect,
+		Finished:  isFinished,
+		ReplyMove: replyMove,
+		NewRating: req.PlayerRating,
+	}
+
+	if !isCorrect {
+		result.Solution = p.Solution
+	}
+	return result
 }
 
 type MongoRepository struct {

@@ -90,6 +90,7 @@ func main() {
 
 	puzzleRepo := puzzle.NewMongoRepository(db)
 	_ = puzzleRepo.SeedInitialPuzzles(context.Background())
+	puzzleService := puzzle.NewService(puzzleRepo)
 
 	// 4. Initialize Domain Services
 	authService := auth.NewService(userRepo, jwtAccessSecret, jwtRefreshSecret)
@@ -114,7 +115,7 @@ func main() {
 		gameRepo,
 		ratingRepo,
 		mmService,
-		puzzleRepo,
+		puzzleService,
 		engineService,
 		reviewService,
 		wsHub,
