@@ -83,23 +83,25 @@ func NewHub(gameService *game.Service, authService *auth.Service) *Hub {
 		authService: authService,
 	}
 
-	gameService.SetOnGameFinish(func(doc *game.GameDocument) {
-		winner := ""
-		if doc.Result == "1-0" {
-			winner = "white"
-		} else if doc.Result == "0-1" {
-			winner = "black"
-		}
-		h.Broadcast(doc.ID, ServerMessage{
-			Type:      "game_finished",
-			GameID:    doc.ID,
-			Status:    doc.Status,
-			Outcome:   doc.Outcome,
-			Result:    doc.Result,
-			Winner:    winner,
-			FEN:       doc.FinalFEN,
+	if gameService != nil {
+		gameService.SetOnGameFinish(func(doc *game.GameDocument) {
+			winner := ""
+			if doc.Result == "1-0" {
+				winner = "white"
+			} else if doc.Result == "0-1" {
+				winner = "black"
+			}
+			h.Broadcast(doc.ID, ServerMessage{
+				Type:      "game_finished",
+				GameID:    doc.ID,
+				Status:    doc.Status,
+				Outcome:   doc.Outcome,
+				Result:    doc.Result,
+				Winner:    winner,
+				FEN:       doc.FinalFEN,
+			})
 		})
-	})
+	}
 
 	return h
 }
@@ -213,6 +215,57 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 	go client.readPump()
 }
 
+func (h *Hub) handlePlayerDisconnect(gameID, userID, username string) {
+	// Give player 60 seconds grace period to reconnect
+	time.Sleep(60 * time.Second)
+
+	if h.gameService == nil {
+		return
+	}
+
+	ag, err := h.gameService.GetActiveGame(gameID)
+	if err != nil || ag.Status != game.StatusPlaying {
+		return
+	}
+
+	h.mu.RLock()
+	room, ok := h.rooms[gameID]
+	h.mu.RUnlock()
+	if !ok {
+		return
+	}
+
+	room.mu.RLock()
+	reconnected := false
+	for client := range room.clients {
+		if client.userID == userID {
+			reconnected = true
+			break
+		}
+	}
+	room.mu.RUnlock()
+
+	if !reconnected {
+		doc, err := h.gameService.Resign(context.Background(), gameID, userID)
+		if err == nil {
+			winner := "white"
+			if doc.Result == "0-1" {
+				winner = "black"
+			}
+			h.Broadcast(gameID, ServerMessage{
+				Type:     "resignation",
+				GameID:   gameID,
+				Status:   doc.Status,
+				Outcome:  "abandonment",
+				Result:   doc.Result,
+				Winner:   winner,
+				UserID:   userID,
+				Username: username,
+			})
+		}
+	}
+}
+
 func (c *Client) readPump() {
 	defer func() {
 		room := c.hub.getOrCreateRoom(c.gameID)
@@ -228,6 +281,10 @@ func (c *Client) readPump() {
 			UserID:   c.userID,
 			Username: c.username,
 		})
+
+		if c.isPlayer && c.hub.gameService != nil {
+			go c.hub.handlePlayerDisconnect(c.gameID, c.userID, c.username)
+		}
 	}()
 
 	c.conn.SetReadLimit(4096)

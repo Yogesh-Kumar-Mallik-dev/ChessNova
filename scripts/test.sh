@@ -13,4 +13,8 @@ go test -v ./internal/chess/...
 echo "==> [test] Running end-to-end integration tests..."
 go test -v ./internal/...
 
+echo "==> [test] Running frontend unit tests with Vitest..."
+cd "$ROOT_DIR/apps/web"
+npm test
+
 echo "✅ [test] All test suites passed."

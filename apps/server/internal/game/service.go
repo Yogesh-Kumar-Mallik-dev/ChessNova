@@ -338,8 +338,24 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 	blackOID, bErr := primitive.ObjectIDFromHex(ag.Black.UserID)
 
 	if wErr == nil && bErr == nil && s.ratingRepo != nil {
-		wRating, _ := s.ratingRepo.GetRating(ctx, whiteOID, category)
-		bRating, _ := s.ratingRepo.GetRating(ctx, blackOID, category)
+		wRating, errW := s.ratingRepo.GetRating(ctx, whiteOID, category)
+		if errW != nil || wRating == nil {
+			wRating = &rating.UserRating{
+				UserID:   whiteOID,
+				Username: ag.White.Username,
+				Category: category,
+				Rating:   rating.DefaultRating,
+			}
+		}
+		bRating, errB := s.ratingRepo.GetRating(ctx, blackOID, category)
+		if errB != nil || bRating == nil {
+			bRating = &rating.UserRating{
+				UserID:   blackOID,
+				Username: ag.Black.Username,
+				Category: category,
+				Rating:   rating.DefaultRating,
+			}
+		}
 
 		var scoreA float64
 		switch ag.Engine.Result() {
@@ -399,6 +415,15 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 		s.onGameFinish(doc)
 	}
 
+	// Schedule memory eviction of finished game after a 5-minute grace period
+	// so finished rooms have time to wrap up without unbounded memory growth
+	go func(gameID string) {
+		time.Sleep(5 * time.Minute)
+		s.mu.Lock()
+		delete(s.activeGames, gameID)
+		s.mu.Unlock()
+	}(ag.ID)
+
 	return doc
 }
 
@@ -412,10 +437,16 @@ func (s *Service) startTimeoutWatcher() {
 func (s *Service) checkAllTimeouts() {
 	s.mu.RLock()
 	ids := make([]string, 0, len(s.activeGames))
-	for id := range s.activeGames {
-		ids = append(ids, id)
+	for id, ag := range s.activeGames {
+		if ag.Status == StatusPlaying {
+			ids = append(ids, id)
+		}
 	}
 	s.mu.RUnlock()
+
+	if len(ids) == 0 {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

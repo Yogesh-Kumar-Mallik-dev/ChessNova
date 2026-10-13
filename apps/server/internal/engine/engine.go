@@ -193,6 +193,148 @@ func (e *StockfishEngine) EvaluateFen(ctx context.Context, fen string, depth int
 	return eval, nil
 }
 
+// BotDifficulty maps levels 1..5 to Stockfish parameters
+type BotDifficulty struct {
+	Level      int
+	SkillLevel int // Stockfish UCI Skill Level 0..20
+	Depth      int // Search depth limit
+	MoveTimeMs int // Movetime limit
+}
+
+var BotLevels = map[int]BotDifficulty{
+	1: {Level: 1, SkillLevel: 0, Depth: 1, MoveTimeMs: 120},   // ~400 Elo (Novice)
+	2: {Level: 2, SkillLevel: 3, Depth: 3, MoveTimeMs: 250},   // ~800 Elo (Casual)
+	3: {Level: 3, SkillLevel: 8, Depth: 6, MoveTimeMs: 500},   // ~1200 Elo (Intermediate)
+	4: {Level: 4, SkillLevel: 14, Depth: 10, MoveTimeMs: 800}, // ~1600 Elo (Advanced)
+	5: {Level: 5, SkillLevel: 20, Depth: 14, MoveTimeMs: 1200},// ~2000+ Elo (Master)
+}
+
+func (e *StockfishEngine) GenerateBotMove(ctx context.Context, fen string, level int) (string, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	diff, ok := BotLevels[level]
+	if !ok {
+		diff = BotLevels[2]
+	}
+
+	if e.binaryPath == "" {
+		return fallbackBotMove(fen, level), nil
+	}
+
+	cmdCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(cmdCtx, e.binaryPath)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return fallbackBotMove(fen, level), nil
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fallbackBotMove(fen, level), nil
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fallbackBotMove(fen, level), nil
+	}
+	defer func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	}()
+
+	writer := bufio.NewWriter(stdin)
+	scanner := bufio.NewScanner(stdout)
+
+	// Configure Skill Level
+	_, _ = writer.WriteString(fmt.Sprintf("uci\nsetoption name Skill Level value %d\nisready\n", diff.SkillLevel))
+	_ = writer.Flush()
+
+	ready := make(chan bool, 1)
+	go func() {
+		for scanner.Scan() {
+			if scanner.Text() == "readyok" {
+				ready <- true
+				return
+			}
+		}
+		ready <- false
+	}()
+
+	select {
+	case ok := <-ready:
+		if !ok {
+			return fallbackBotMove(fen, level), nil
+		}
+	case <-cmdCtx.Done():
+		return fallbackBotMove(fen, level), nil
+	}
+
+	// Go with depth & movetime
+	_, _ = writer.WriteString(fmt.Sprintf("position fen %s\ngo depth %d movetime %d\n", fen, diff.Depth, diff.MoveTimeMs))
+	_ = writer.Flush()
+
+	bestMove := ""
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "bestmove") {
+			parts := strings.Fields(line)
+			if len(parts) > 1 {
+				bestMove = parts[1]
+			}
+			break
+		}
+	}
+
+	if bestMove == "" || bestMove == "(none)" {
+		return fallbackBotMove(fen, level), nil
+	}
+
+	return bestMove, nil
+}
+
+func fallbackBotMove(fen string, level int) string {
+	pos, err := chess.FromFEN(fen)
+	if err != nil {
+		return ""
+	}
+	moves := chess.LegalMoves(pos)
+	if len(moves) == 0 {
+		return ""
+	}
+
+	if level <= 1 {
+		return moves[0].UCI()
+	}
+
+	bestUCI := moves[0].UCI()
+	bestScore := -999999
+	if pos.SideToMove == chess.Black {
+		bestScore = 999999
+	}
+
+	for _, m := range moves {
+		nextPos, err := chess.ApplyMove(pos, m)
+		if err != nil {
+			continue
+		}
+		score := evaluateStaticPosition(nextPos)
+		if pos.SideToMove == chess.White {
+			if score > bestScore {
+				bestScore = score
+				bestUCI = m.UCI()
+			}
+		} else {
+			if score < bestScore {
+				bestScore = score
+				bestUCI = m.UCI()
+			}
+		}
+	}
+
+	return bestUCI
+}
+
 // Piece-square tables for positional evaluation in fallback engine
 var (
 	pawnPST = [64]int{
