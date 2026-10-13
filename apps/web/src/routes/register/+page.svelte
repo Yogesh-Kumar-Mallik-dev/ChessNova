@@ -6,6 +6,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import BorderBeam from '$lib/components/magicui/BorderBeam.svelte';
 
 	let username = '';
 	let email = '';
@@ -29,7 +30,8 @@
 </script>
 
 <div class="flex-1 flex items-center justify-center p-4">
-	<Card className="max-w-sm w-full p-6 sm:p-8 shadow-2xl border-slate-800">
+	<Card className="relative max-w-sm w-full p-6 sm:p-8 shadow-2xl border-slate-800 overflow-hidden">
+		<BorderBeam size={160} duration={10} colorFrom="#38bdf8" colorTo="#a855f7" />
 		<div class="flex flex-col items-center text-center mb-6">
 			<div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/25 mb-3">
 				<Icon name="crown" size={22} />

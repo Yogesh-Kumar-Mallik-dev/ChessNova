@@ -358,57 +358,57 @@
 	<!-- Header -->
 	<div class="mb-2 sm:mb-3 flex items-center justify-between gap-3">
 		<div class="flex items-center gap-3">
-			<div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-[#81b64c]">
+			<div class="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
 				<Icon name="search" size={16} />
 			</div>
 			<div>
 				<div class="flex items-center gap-2">
-					<h1 class="text-base sm:text-lg font-extrabold text-white tracking-tight">Stockfish Review Laboratory</h1>
-					<span class="hidden md:inline-block text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-[#81b64c] border border-emerald-500/20 font-bold">Chess.com Review & CAPS</span>
+					<h1 class="text-base sm:text-lg font-extrabold text-white tracking-tight">Post-Game Analysis</h1>
+					<span class="hidden md:inline-block text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-bold">Accuracy & Classification</span>
 				</div>
-				<p class="text-[11px] text-stone-400 hidden sm:block">Coach evaluation, move classifications, eval bar, and local archives</p>
+				<p class="text-[11px] text-slate-400 hidden sm:block">Move-by-move evaluations, advantage graph, and saved match reviews</p>
 			</div>
 		</div>
 
 		<div class="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
 			{#if currentPgn || moves.length > 0}
 				<button
-					class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+					class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-bold text-slate-200 transition shadow-sm"
 					on:click={copyPgnText}
 					title="Copy Game PGN"
 				>
-					<Icon name={copiedPgn ? 'check' : 'download'} size={13} className={copiedPgn ? 'text-emerald-400' : 'text-stone-400'} />
+					<Icon name={copiedPgn ? 'check' : 'download'} size={13} className={copiedPgn ? 'text-emerald-400' : 'text-slate-400'} />
 					<span>{copiedPgn ? 'Copied' : 'Copy'}</span>
 				</button>
 				<button
-					class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+					class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-bold text-slate-200 transition shadow-sm"
 					on:click={downloadPgnFile}
 					title="Download .pgn file"
 				>
-					<Icon name="download" size={13} className="text-stone-400" />
+					<Icon name="download" size={13} className="text-slate-400" />
 					<span>PGN</span>
 				</button>
 			{/if}
 
 			<button
-				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-bold text-slate-200 transition shadow-sm"
 				on:click={() => (showPgnModal = true)}
 			>
-				<Icon name="download" size={13} className="text-[#81b64c]" />
+				<Icon name="download" size={13} className="text-sky-400" />
 				<span>Import</span>
 			</button>
 			<button
-				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-bold text-slate-200 transition shadow-sm"
 				on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 			>
-				<Icon name="rotate-cw" size={13} className="text-stone-400" />
+				<Icon name="rotate-cw" size={13} className="text-slate-400" />
 				<span>Flip</span>
 			</button>
 			<button
-				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-stone-900/90 hover:bg-stone-800 border border-stone-700/60 rounded-xl text-xs font-bold text-stone-200 transition shadow-sm"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-bold text-slate-200 transition shadow-sm"
 				on:click={resetToStart}
 			>
-				<Icon name="rotate-ccw" size={13} className="text-stone-400" />
+				<Icon name="rotate-ccw" size={13} className="text-slate-400" />
 				<span>Reset</span>
 			</button>
 		</div>
@@ -436,11 +436,11 @@
 		<!-- Right: Game Review / Tools Panel -->
 		<div class="lg:col-span-5 xl:col-span-4 h-[420px] lg:h-[min(calc(100dvh-150px),620px)] flex flex-col">
 			<!-- Panel Tab Selector -->
-			<div class="flex items-center p-1 bg-[#1e1d1b] border border-[#3d3b37] rounded-xl mb-2.5 shrink-0">
+			<div class="flex items-center p-1 bg-slate-950/80 border border-slate-800 rounded-xl mb-2.5 shrink-0">
 				<button
 					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 {rightPanelTab === 'review'
-						? 'bg-[#81b64c] text-white shadow'
-						: 'text-stone-400 hover:text-white'}"
+						? 'bg-sky-500 text-white shadow-md shadow-sky-500/25'
+						: 'text-slate-400 hover:text-white'}"
 					on:click={() => (rightPanelTab = 'review')}
 				>
 					<Icon name="search" size={14} />
@@ -449,8 +449,8 @@
 
 				<button
 					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 {rightPanelTab === 'history'
-						? 'bg-[#383633] text-white shadow border border-[#484643]'
-						: 'text-stone-400 hover:text-white'}"
+						? 'bg-slate-800 text-white shadow border border-slate-700/60'
+						: 'text-slate-400 hover:text-white'}"
 					on:click={() => {
 						refreshLocalGames();
 						rightPanelTab = 'history';
@@ -462,8 +462,8 @@
 
 				<button
 					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 {rightPanelTab === 'tools'
-						? 'bg-[#383633] text-white shadow border border-[#484643]'
-						: 'text-stone-400 hover:text-white'}"
+						? 'bg-slate-800 text-white shadow border border-slate-700/60'
+						: 'text-slate-400 hover:text-white'}"
 					on:click={() => (rightPanelTab = 'tools')}
 				>
 					<Icon name="settings" size={14} />
@@ -474,7 +474,7 @@
 			<!-- Main Panel Content -->
 			<div class="flex-1 overflow-hidden">
 				{#if rightPanelTab === 'review'}
-					<!-- Chess.com Game Review Panel -->
+					<!-- Game Review Panel -->
 					<GameReview
 						bind:reviewResult
 						pgn={currentPgn}
@@ -486,15 +486,15 @@
 					/>
 				{:else if rightPanelTab === 'history'}
 					<!-- Local Past Matches Archive for Guests and Users -->
-					<div class="bg-[#262522] border border-[#3d3b37] rounded-2xl p-4 shadow-2xl flex flex-col h-full overflow-hidden">
-						<div class="flex items-center justify-between pb-3 border-b border-[#3d3b37] shrink-0">
+					<div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-col h-full overflow-hidden backdrop-blur-xl">
+						<div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
 							<div>
 								<h3 class="text-xs font-bold text-white uppercase tracking-wider">Local Match Archive</h3>
-								<p class="text-[11px] text-stone-400">Offline & guest match history saved in browser</p>
+								<p class="text-[11px] text-slate-400">Offline & guest match history saved in browser</p>
 							</div>
 							{#if localGamesList.length > 0}
 								<button
-									class="px-2 py-1 bg-stone-800 hover:bg-rose-900/60 hover:text-rose-200 text-stone-400 text-[11px] font-bold rounded-lg transition border border-stone-700"
+									class="px-2 py-1 bg-slate-800 hover:bg-rose-900/60 hover:text-rose-200 text-slate-400 text-[11px] font-bold rounded-lg transition border border-slate-700"
 									on:click={handleClearAllSavedGames}
 								>
 									Clear All
@@ -505,11 +505,11 @@
 						<div class="flex-1 overflow-y-auto py-2 flex flex-col gap-2">
 							{#if localGamesList.length === 0}
 								<div class="flex flex-col items-center justify-center h-full text-center py-12 px-4 gap-2">
-									<div class="w-10 h-10 rounded-xl bg-stone-800 flex items-center justify-center text-stone-500">
+									<div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-500">
 										<Icon name="clock" size={20} />
 									</div>
-									<span class="text-xs font-bold text-stone-300">No Saved Games Yet</span>
-									<p class="text-[11px] text-stone-500 max-w-[200px]">
+									<span class="text-xs font-bold text-slate-300">No Saved Games Yet</span>
+									<p class="text-[11px] text-slate-500 max-w-[200px]">
 										Play online or Pass & Play matches to build your local review history.
 									</p>
 								</div>
@@ -524,9 +524,9 @@
 											? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
 											: lost
 												? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
-												: 'text-stone-300 bg-stone-800 border-stone-700'}
+												: 'text-slate-300 bg-slate-800 border-slate-700'}
 
-									<div class="p-3 bg-[#1e1d1b] border border-[#3d3b37] hover:border-stone-500 rounded-xl transition flex items-center justify-between gap-3 group">
+									<div class="p-3 bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-xl transition flex items-center justify-between gap-3 group">
 										<div class="min-w-0 flex-1">
 											<div class="flex items-center gap-2 mb-1">
 												<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border {resClass}">
@@ -536,7 +536,7 @@
 													{rec.white} vs {rec.black}
 												</span>
 											</div>
-											<div class="flex items-center gap-2 text-[10px] text-stone-400">
+											<div class="flex items-center gap-2 text-[10px] text-slate-400">
 												<span>{rec.event}</span>
 												<span>•</span>
 												<span>{rec.movesCount} plies</span>
@@ -547,7 +547,7 @@
 
 										<div class="flex items-center gap-1.5 shrink-0">
 											<button
-												class="px-2.5 py-1.5 bg-[#81b64c] hover:bg-[#91c65d] active:bg-[#73a443] text-white font-extrabold text-[11px] uppercase tracking-wider rounded-lg shadow transition flex items-center gap-1"
+												class="px-2.5 py-1.5 bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white font-extrabold text-[11px] uppercase tracking-wider rounded-lg shadow transition flex items-center gap-1"
 												on:click={() => handleLoadSavedGame(rec)}
 												title="Review this game"
 											>
@@ -556,7 +556,7 @@
 											</button>
 
 											<button
-												class="p-1.5 text-stone-500 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition"
+												class="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition"
 												on:click={() => handleDeleteSavedGame(rec.id)}
 												title="Delete game"
 											>
@@ -571,10 +571,10 @@
 					</div>
 				{:else}
 					<!-- Tools, FEN & Scorecard Panel -->
-					<div class="bg-[#262522] border border-[#3d3b37] rounded-2xl p-4 shadow-2xl flex flex-col gap-3.5 h-full">
+					<div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-col gap-3.5 h-full backdrop-blur-xl">
 						<!-- FEN Input -->
 						<div>
-							<label for="fen-input" class="block text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">
+							<label for="fen-input" class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
 								FEN Position
 							</label>
 							<div class="flex gap-2">
@@ -582,11 +582,11 @@
 									id="fen-input"
 									type="text"
 									bind:value={customFenInput}
-									class="flex-1 px-3 py-1.5 bg-[#1b1a18] border border-[#3d3b37] rounded-xl text-xs text-white font-mono focus:outline-none focus:border-[#81b64c] transition placeholder:text-stone-600"
+									class="flex-1 px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-sky-500 transition placeholder:text-slate-600"
 									placeholder="Paste FEN..."
 								/>
 								<button
-									class="px-3 py-1.5 bg-[#383633] hover:bg-[#484643] text-stone-200 font-bold text-xs rounded-xl border border-[#484643] transition"
+									class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700/60 transition"
 									on:click={loadCustomFen}
 								>
 									Load
@@ -595,10 +595,10 @@
 						</div>
 
 						<!-- Move History List -->
-						<div class="flex-1 bg-[#1b1a18] border border-[#3d3b37] rounded-xl overflow-hidden flex flex-col">
-							<div class="p-2.5 border-b border-[#3d3b37] text-xs font-bold text-stone-400 flex justify-between items-center bg-[#21201d]">
-								<span class="tracking-wide uppercase text-[10px]">Scorecard (FIDE SAN)</span>
-								<button class="text-xs text-stone-500 hover:text-stone-300 transition" on:click={resetToStart}>
+						<div class="flex-1 bg-slate-950/80 border border-slate-800 rounded-xl overflow-hidden flex flex-col">
+							<div class="p-2.5 border-b border-slate-800 text-xs font-bold text-slate-400 flex justify-between items-center bg-slate-900/60">
+								<span class="tracking-wide uppercase text-[10px]">Scorecard (SAN)</span>
+								<button class="text-xs text-slate-500 hover:text-slate-300 transition" on:click={resetToStart}>
 									Clear
 								</button>
 							</div>
@@ -608,30 +608,30 @@
 						</div>
 
 						<!-- Navigation Buttons -->
-						<div class="grid grid-cols-4 gap-2 pt-2 border-t border-[#3d3b37]">
+						<div class="grid grid-cols-4 gap-2 pt-2 border-t border-slate-800">
 							<button
-								class="py-2 flex items-center justify-center bg-[#383633] hover:bg-[#484643] text-stone-300 rounded-xl transition"
+								class="py-2 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
 								on:click={() => goToPly(0)}
 								title="Initial Position"
 							>
 								<Icon name="chevrons-left" size={16} />
 							</button>
 							<button
-								class="py-2 flex items-center justify-center bg-[#383633] hover:bg-[#484643] text-stone-300 rounded-xl transition"
+								class="py-2 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
 								on:click={() => goToPly(currentPly - 1)}
 								title="Previous Move"
 							>
 								<Icon name="chevron-left" size={16} />
 							</button>
 							<button
-								class="py-2 flex items-center justify-center bg-[#383633] hover:bg-[#484643] text-stone-300 rounded-xl transition"
+								class="py-2 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
 								on:click={() => goToPly(currentPly + 1)}
 								title="Next Move"
 							>
 								<Icon name="chevron-right" size={16} />
 							</button>
 							<button
-								class="py-2 flex items-center justify-center bg-[#383633] hover:bg-[#484643] text-stone-300 rounded-xl transition"
+								class="py-2 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
 								on:click={() => goToPly(moves.length)}
 								title="Latest Move"
 							>
@@ -649,36 +649,36 @@
 <!-- Import PGN Modal -->
 {#if showPgnModal}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
-		<div class="bg-[#262522] border border-[#3d3b37] rounded-2xl p-5 max-w-md w-full shadow-2xl flex flex-col gap-3">
-			<div class="flex items-center justify-between border-b border-[#3d3b37] pb-2">
+		<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-2xl flex flex-col gap-3 backdrop-blur-xl">
+			<div class="flex items-center justify-between border-b border-slate-800 pb-2">
 				<div class="flex items-center gap-2">
-					<Icon name="download" size={16} className="text-[#81b64c]" />
+					<Icon name="download" size={16} className="text-sky-400" />
 					<h3 class="text-sm font-bold text-white">Import Game PGN</h3>
 				</div>
-				<button class="text-stone-400 hover:text-white" on:click={() => (showPgnModal = false)}>
+				<button class="text-slate-400 hover:text-white" on:click={() => (showPgnModal = false)}>
 					<Icon name="x" size={16} />
 				</button>
 			</div>
 
-			<p class="text-xs text-stone-400">
-				Paste any chess game PGN below to run full Stockfish Game Review with accuracy scores and coaching.
+			<p class="text-xs text-slate-400">
+				Paste any chess game PGN below to generate a complete Game Review with move classifications and accuracy analysis.
 			</p>
 
 			<textarea
 				bind:value={customPgnInput}
-				class="w-full h-36 bg-[#1b1a18] border border-[#3d3b37] rounded-xl p-3 text-xs text-white font-mono focus:outline-none focus:border-[#81b64c] transition"
+				class="w-full h-36 bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-xs text-white font-mono focus:outline-none focus:border-sky-500 transition"
 				placeholder="1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6..."
 			></textarea>
 
 			<div class="flex items-center justify-end gap-2 pt-2">
 				<button
-					class="px-4 py-2 bg-[#383633] hover:bg-[#484643] text-stone-300 font-bold text-xs rounded-xl transition"
+					class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition"
 					on:click={() => (showPgnModal = false)}
 				>
 					Cancel
 				</button>
 				<button
-					class="px-4 py-2 bg-[#81b64c] hover:bg-[#91c65d] active:bg-[#73a443] text-white font-extrabold text-xs uppercase tracking-wide rounded-xl border-b-4 border-[#5d8336] active:border-b-0 active:translate-y-1 transition shadow-md"
+					class="px-4 py-2 bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white font-extrabold text-xs uppercase tracking-wide rounded-xl shadow-md transition"
 					on:click={loadPgn}
 				>
 					Analyze Game

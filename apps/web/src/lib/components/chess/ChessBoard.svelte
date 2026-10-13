@@ -495,7 +495,7 @@
 		</svg>
 	{/if}
 
-	<!-- Review Best Move Arrow Overlay (Chess.com green arrow) -->
+	<!-- Best Move Arrow Overlay -->
 	{#if reviewMove && reviewMove.bestMoveUci && reviewMove.bestMoveUci.length >= 4 && reviewMove.bestMoveUci !== `${reviewMove.from}${reviewMove.to}`}
 		{@const bFrom = reviewMove.bestMoveUci.slice(0, 2)}
 		{@const bTo = reviewMove.bestMoveUci.slice(2, 4)}
@@ -504,7 +504,7 @@
 		<svg class="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
 			<defs>
 				<marker id="review-best-arrow" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
-					<polygon points="0 0, 6 3, 0 6" fill="#81b64c" />
+					<polygon points="0 0, 6 3, 0 6" fill="#38bdf8" />
 				</marker>
 			</defs>
 			<line
@@ -512,7 +512,7 @@
 				y1="{p1.y}%"
 				x2="{p2.x}%"
 				y2="{p2.y}%"
-				stroke="#81b64c"
+				stroke="#38bdf8"
 				stroke-width="6"
 				stroke-linecap="round"
 				marker-end="url(#review-best-arrow)"
@@ -521,13 +521,13 @@
 		</svg>
 	{/if}
 
-	<!-- CHESS.COM EXACT GAME OVER MODAL -->
+	<!-- Game Over Modal -->
 	{#if isGameOver && !disableGameOverModal && showGameOverModal}
-		<div class="absolute inset-0 z-50 bg-black/65 backdrop-blur-[2px] flex items-center justify-center p-3 animate-in fade-in duration-200">
-			<div class="relative bg-[#262522] border border-[#3d3b37] rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] max-w-[320px] sm:max-w-[340px] w-full flex flex-col items-center text-center">
+		<div class="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in duration-200">
+			<div class="relative bg-slate-900/95 border border-slate-800 rounded-2xl p-6 shadow-2xl max-w-[320px] sm:max-w-[340px] w-full flex flex-col items-center text-center">
 				<!-- Close 'X' button to dismiss modal and view the board freely -->
 				<button
-					class="absolute top-2.5 right-2.5 w-7 h-7 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 flex items-center justify-center transition"
+					class="absolute top-3 right-3 w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center transition"
 					on:click={() => (showGameOverModal = false)}
 					title="Close and view board"
 				>
@@ -535,49 +535,45 @@
 				</button>
 
 				<!-- Winner Crown or Draw Emblem -->
-				<div class="w-12 h-12 rounded-xl flex items-center justify-center mb-2.5 {isDraw ? 'bg-stone-800 text-stone-300' : 'bg-amber-400/15 text-amber-400 ring-1 ring-amber-400/30'}">
+				<div class="w-12 h-12 rounded-xl flex items-center justify-center mb-3 {isDraw ? 'bg-slate-800 text-slate-300' : 'bg-amber-400/15 text-amber-400 ring-1 ring-amber-400/30'}">
 					{#if isDraw}
 						<Icon name="handshake" size={24} />
 					{:else}
-						<svg class="w-7 h-7 text-[#ffc83d] fill-current" viewBox="0 0 24 24">
-							<path d="M5 19h14v2H5v-2zm14.5-12c-.83 0-1.5.67-1.5 1.5 0 .24.06.47.16.67L15 11l-2.6-4.34c.37-.3.6-.76.6-1.28 0-.89-.72-1.62-1.62-1.62-.89 0-1.62.73-1.62 1.62 0 .52.23.98.6 1.28L7.38 11l-3.16-1.83c.1-.2.16-.43.16-.67 0-.83-.67-1.5-1.5-1.5S1.38 7.67 1.38 8.5c0 .76.57 1.39 1.3 1.48L4.3 17h15.4l1.62-7.02c.73-.09 1.3-.72 1.3-1.48 0-.83-.67-1.5-1.5-1.5z"/>
-						</svg>
+						<Icon name="crown" size={26} className="text-amber-400" />
 					{/if}
 				</div>
 
-				<!-- Result Title: "White Won" / "Black Won" / "Draw" -->
-				<h3 class="text-xl font-extrabold text-white tracking-tight">
+				<!-- Result Title -->
+				<h3 class="text-xl font-black text-white tracking-tight">
 					{modalTitle}
 				</h3>
 
-				<!-- Subtitle: "by checkmate" / "by resignation", etc. -->
-				<p class="text-xs text-stone-400 font-medium mt-0.5 mb-4">
+				<!-- Subtitle -->
+				<p class="text-xs text-slate-400 font-medium mt-1 mb-5">
 					{modalSubtitle}
 				</p>
 
-				<!-- Buttons: Chess.com style 3D buttons -->
+				<!-- Actions -->
 				<div class="flex flex-col gap-2.5 w-full">
-					<!-- Primary Green 3D Button: Game Review -->
 					<a
 						href="/analysis?fen={encodeURIComponent(fen)}"
-						class="w-full py-2.5 px-4 bg-[#81b64c] hover:bg-[#91c65d] active:bg-[#73a443] text-white font-extrabold text-xs uppercase tracking-wide rounded-xl border-b-4 border-[#5d8336] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 shadow-md"
+						class="w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white font-extrabold text-xs uppercase tracking-wide rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-sky-500/20"
 						on:click={() => dispatch('analyze')}
 					>
 						<Icon name="search" size={15} />
 						<span>Game Review</span>
 					</a>
 
-					<!-- Secondary Row: Rematch & New Game -->
 					<div class="grid grid-cols-2 gap-2 w-full">
 						<button
-							class="py-2 px-3 bg-[#383633] hover:bg-[#484643] active:bg-[#2e2d2a] text-stone-200 font-bold text-xs rounded-xl border-b-4 border-[#292825] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-1.5"
+							class="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700/60 transition-all flex items-center justify-center gap-1.5"
 							on:click={() => dispatch('rematch')}
 						>
 							<Icon name="rotate-ccw" size={13} />
 							<span>Rematch</span>
 						</button>
 						<button
-							class="py-2 px-3 bg-[#383633] hover:bg-[#484643] active:bg-[#2e2d2a] text-stone-200 font-bold text-xs rounded-xl border-b-4 border-[#292825] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-1.5"
+							class="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700/60 transition-all flex items-center justify-center gap-1.5"
 							on:click={() => dispatch('newGame')}
 						>
 							<Icon name="zap" size={13} />
@@ -589,29 +585,27 @@
 		</div>
 	{/if}
 
-	<!-- CHESS.COM MINIMIZED BOTTOM STATUS BAR (when modal is dismissed) -->
+	<!-- Minimized Bottom Status Bar -->
 	{#if isGameOver && !disableGameOverModal && !showGameOverModal}
-		<div class="absolute bottom-3 inset-x-3 z-40 bg-[#262522]/95 border border-[#3d3b37] shadow-2xl rounded-xl py-2 px-3 flex items-center justify-between text-xs backdrop-blur-sm animate-in fade-in">
+		<div class="absolute bottom-3 inset-x-3 z-40 bg-slate-900/95 border border-slate-800 shadow-2xl rounded-xl py-2 px-3 flex items-center justify-between text-xs backdrop-blur-md animate-in fade-in">
 			<div class="flex items-center gap-2 truncate pr-2">
 				{#if !isDraw}
-					<div class="w-5 h-5 rounded-full bg-[#f59e0b] flex items-center justify-center shrink-0">
-						<svg class="w-3 h-3 text-[#3d2700] fill-current" viewBox="0 0 24 24">
-							<path d="M5 19h14v2H5v-2zm14.5-12c-.83 0-1.5.67-1.5 1.5 0 .24.06.47.16.67L15 11l-2.6-4.34c.37-.3.6-.76.6-1.28 0-.89-.72-1.62-1.62-1.62-.89 0-1.62.73-1.62 1.62 0 .52.23.98.6 1.28L7.38 11l-3.16-1.83c.1-.2.16-.43.16-.67 0-.83-.67-1.5-1.5-1.5S1.38 7.67 1.38 8.5c0 .76.57 1.39 1.3 1.48L4.3 17h15.4l1.62-7.02c.73-.09 1.3-.72 1.3-1.48 0-.83-.67-1.5-1.5-1.5z"/>
-						</svg>
+					<div class="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 text-amber-400">
+						<Icon name="crown" size={12} />
 					</div>
 				{/if}
 				<span class="font-bold text-white capitalize truncate">{modalTitle}</span>
-				<span class="text-stone-400 font-normal shrink-0">{modalSubtitle}</span>
+				<span class="text-slate-400 font-normal shrink-0">{modalSubtitle}</span>
 			</div>
 			<div class="flex items-center gap-2 shrink-0">
 				<a
 					href="/analysis?fen={encodeURIComponent(fen)}"
-					class="px-2.5 py-1 bg-[#81b64c] hover:bg-[#91c65d] text-white font-bold text-[11px] rounded-lg shadow transition"
+					class="px-2.5 py-1 bg-sky-500 hover:bg-sky-400 text-white font-bold text-[11px] rounded-lg shadow transition"
 				>
 					Review
 				</a>
 				<button
-					class="px-2.5 py-1 bg-[#383633] hover:bg-[#484643] text-stone-200 font-bold text-[11px] rounded-lg transition"
+					class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] rounded-lg transition"
 					on:click={() => (showGameOverModal = true)}
 				>
 					Dialog

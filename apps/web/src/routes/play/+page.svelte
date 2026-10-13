@@ -265,7 +265,7 @@
 					</Badge>
 				</div>
 				<p class="text-[11px] sm:text-xs text-slate-400">
-					{gameMode === 'vs_computer' ? botLevels[botLevel - 1].desc : 'Standard FIDE rules with move indicator reticles'}
+					{gameMode === 'vs_computer' ? botLevels[botLevel - 1].desc : 'Two-player local match on one device'}
 				</p>
 			</div>
 		</div>

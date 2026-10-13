@@ -267,7 +267,7 @@
 			<div>
 				<div class="flex items-center gap-2">
 					<h1 class="text-lg sm:text-xl font-extrabold text-white tracking-tight">Tactical Puzzles</h1>
-					<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">Lichess Database</span>
+					<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">Curated Lab</span>
 				</div>
 				<p class="text-[11px] sm:text-xs text-slate-400">Train calculation and sharp pattern recognition</p>
 			</div>
@@ -445,17 +445,9 @@
 				<div>
 					<div class="flex items-center justify-between mb-2">
 						<span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Tactical Themes</span>
-						{#if currentPuzzle.lichessId}
-							<a
-								href="https://lichess.org/training/{currentPuzzle.lichessId}"
-								target="_blank"
-								rel="noreferrer"
-								class="text-[10px] text-cyan-400 hover:text-cyan-300 font-mono flex items-center gap-1"
-							>
-								<span>#{currentPuzzle.lichessId}</span>
-								<Icon name="external-link" size={10} />
-							</a>
-						{/if}
+						<span class="text-[10px] text-slate-400 font-mono">
+							#{currentPuzzle.id ? currentPuzzle.id.slice(0, 8) : 'tactics'}
+						</span>
 					</div>
 					<div class="flex flex-wrap gap-1.5">
 						{#each currentPuzzle.themes as theme}
