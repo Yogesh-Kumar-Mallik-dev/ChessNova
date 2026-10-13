@@ -76,26 +76,83 @@ Exchange a valid refresh token for a newly signed access token.
 
 ### 1.3 Users & Profiles
 #### `GET /api/v1/users/me` *(Auth Required)*
-Fetch the authenticated user's profile and current Elo ratings across all time categories.
+Fetch the authenticated user's profile, bio, country, linked accounts, and current Elo ratings across all categories.
 - **Response**: `200 OK`
   ```json
   {
     "user": {
       "id": "651234567890abcdef123456",
-      "username": "grandmaster_alex"
+      "username": "grandmaster_alex",
+      "email": "alex@chessnova.com",
+      "avatar": "/uploads/avatars/avatar_6512_abc123.png",
+      "bio": "Tactical attacking player.",
+      "country": "United States",
+      "chessComUsername": "alex_chess",
+      "lichessUsername": "alex_li"
     },
     "ratings": {
       "bullet": 400,
       "blitz": 520,
       "rapid": 400,
-      "classical": 400,
-      "puzzles": 1250
+      "classical": 400
     }
   }
   ```
 
 #### `GET /api/v1/users/{username}`
-Public profile endpoint retrieving public stats and ratings.
+Public profile endpoint retrieving public stats, bio, country, ratings, and recent games.
+
+#### `PUT /api/v1/users/profile` *(Auth Required)*
+Update the authenticated user's profile details.
+- **Request Body**:
+  ```json
+  {
+    "bio": "Grandmaster calculation with aggressive tactical openings.",
+    "country": "Norway"
+  }
+  ```
+- **Constraints**: `bio` max 500 characters; `country` max 50 characters.
+
+#### `POST /api/v1/users/avatar` *(Auth Required)*
+Upload a new avatar picture to S3-compatible object storage (or local fallback storage).
+- **Request Format**: `multipart/form-data` with `avatar` file field.
+- **Constraints**: Maximum size 5MB; enforced MIME signatures: `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
+- **Response**: `200 OK`
+  ```json
+  {
+    "avatar": "https://cdn.chessnova.com/avatars/avatar_6512_abc123.jpg"
+  }
+  ```
+
+#### `POST /api/v1/users/link-accounts` *(Auth Required)*
+Link Chess.com and Lichess accounts to the user profile with automatic API existence verification.
+- **Request Body**:
+  ```json
+  {
+    "chessComUsername": "hikaru",
+    "lichessUsername": "DrNykterstein"
+  }
+  ```
+- **Response**: `200 OK` (or `400 Bad Request` if external accounts cannot be verified).
+
+#### `GET /api/v1/users/{username}/external-stats`
+Retrieves live synchronized rating comparisons across ChessNova, Chess.com, and Lichess.
+- **Response**: `200 OK`
+  ```json
+  {
+    "username": "grandmaster_alex",
+    "chessnova": { "bullet": 400, "blitz": 520, "rapid": 400 },
+    "chesscom": { "bullet": 1420, "blitz": 1580, "rapid": 1620, "puzzle": 1850 },
+    "lichess": { "bullet": 1500, "blitz": 1610, "rapid": 1690, "puzzle": 1920 },
+    "chessComUser": "alex_chess",
+    "lichessUser": "alex_li"
+  }
+  ```
+
+#### `GET /api/v1/users/{username}/external-games?platform=all&limit=10`
+Fetches recent games played by the user on linked Chess.com and Lichess accounts with full PGN for 1-click Game Review.
+- **Query Params**: `platform` (`all`, `chesscom`, `lichess`), `limit` ($1\text{--}20$, default 10).
+- **Response**: `200 OK` (array of `ExternalGame` records).
 
 ---
 
@@ -223,6 +280,9 @@ Full Game Review laboratory endpoint supporting either move lists or raw PGN str
         "explanation": "Book move. Standard opening theory."
       }
     ],
+    "whitePhases": { "opening": 98.0, "middlegame": 94.5, "endgame": 96.0 },
+    "blackPhases": { "opening": 85.0, "middlegame": 68.0, "endgame": 70.5 },
+    "estimatedElo": { "white": 2150, "black": 1420 },
     "stats": {
       "white": { "brilliant": 0, "great": 0, "best": 2, "book": 2, "blunder": 0 },
       "black": { "brilliant": 0, "great": 0, "best": 1, "book": 1, "blunder": 1 }
@@ -241,8 +301,13 @@ Automated server-side review of any finished game by ID.
 
 ### 1.8 Leaderboards & Puzzles
 - `GET /api/v1/leaderboard?category=blitz&limit=50`: Paginated top rankings per category.
-- `GET /api/v1/puzzles/random`: Retrieves a random tactical puzzle.
-- `POST /api/v1/puzzles/{id}/solve`: Validates user solution sequence and updates puzzle rating.
+- `GET /api/v1/puzzles/random?category=all&tier=1`: Retrieves a random tactical puzzle filtered by category (`mate`, `fork`, `pin`, `skewer`, `hanging_piece`, `advantage`) and progressive tier ($1\text{--}5$).
+- `GET /api/v1/puzzles/daily`: Retrieves today's curated daily puzzle, deterministically cached per calendar day.
+- `GET /api/v1/puzzles/weekly`: Retrieves the 7 curated weekly puzzles for the current calendar week.
+- `GET /api/v1/puzzles/{id}`: Retrieves puzzle position and metadata by ID.
+- `GET /api/v1/puzzles/{id}/hint`: Provides a contextual hint (e.g. piece type or tactical theme) without spoiling the solution.
+- `GET /api/v1/puzzles/{id}/solution`: Retrieves the full step-by-step solution sequence.
+- `POST /api/v1/puzzles/{id}/solve`: Validates user move sequence against engine solution and updates user puzzle rating.
 
 ---
 

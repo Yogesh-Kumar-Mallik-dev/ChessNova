@@ -4,18 +4,17 @@ The ChessNova frontend (`apps/web`) is built with **SvelteKit 2**, **TypeScript 
 
 ---
 
-## 1. The "Midnight Slate" Design System
+## 1. Dynamic Multi-Theme Engine
 
-Rather than generic green/beige boards, ChessNova introduces a custom dark-mode aesthetic:
+Rather than forcing a single static theme, ChessNova provides four distinct, high-contrast visual themes mapped dynamically through CSS variables in `apps/web/src/app.css` and Tailwind palette extensions in `apps/web/tailwind.config.js`:
 
-### 1.1 Color Palette
-- **App Canvas**: Deep Obsidian (`slate-950` / `#020617`) with subtle ambient gradient lighting.
-- **Card & Panel Surfaces**: Midnight Slate (`slate-900` / `#0f172a` and `slate-800/80` glassmorphism).
-- **Light Squares**: Frosted Zinc (`#e2e8f0` / `#cbd5e1`).
-- **Dark Squares**: Slate Harbor (`#475569` / `#334155`).
-- **Last Move Highlight**: Indigo Glow (`rgba(99, 102, 241, 0.4)`).
-- **Check State Warning**: Crimson Alert (`rgba(239, 68, 68, 0.5)` with pulsating red ring).
-- **Target Indicators**: Translucent dots for empty legal squares, luminous outer rings for captures.
+### 1.1 Available Platform Themes
+- **Dark Slate (Default)**: Deep Obsidian (`#020617` / `#0f172a`) with luminous sky and indigo highlights.
+- **Chess Classic**: Warm wooden club tones (`#161512` canvas, `#21201d` card surfaces, and `#81b64c` green accents), inspired by traditional European tournament halls.
+- **OLED Black**: Pure void black (`#000000`) designed for OLED and mobile battery conservation with high-contrast slate borders.
+- **Emerald Studio**: Atmospheric deep emerald green (`#05140e` / `#0a2419`) with polished mint accents.
+
+Switching themes updates the root `data-app-theme` attribute, transforming backgrounds, borders, cards, and modal surfaces instantly without page reload.
 
 ### 1.2 Zero-Emoji Design Standard
 All emojis have been eliminated from the platform UI. All icons are rendered via lightweight, sharp vector SVGs (`apps/web/src/lib/components/icons/Icon.svelte`) ensuring crisp presentation on Retina and 4K displays.
@@ -115,3 +114,13 @@ Unauthenticated and guest players enjoy full match history and post-game review:
 ChessNova includes an audio synthesizer and sound effect player:
 - **Events**: Move, Capture, Check, Castle, Game Start, Victory, Defeat.
 - **Resilient Fallback**: Uses pre-rendered high-fidelity audio samples with an automated fallback to the browser's Web Audio API (`AudioContext` oscillator synthesis) if audio files are blocked or offline.
+
+---
+
+## 8. Modernized Profile Dossier & Cross-Platform Matrix
+
+The player profile interface (`apps/web/src/routes/profile/[username]/+page.svelte`) features a modern, shadcn-inspired glassmorphism layout:
+- **Hero Dossier**: Displays verified player badge, country tag, bio, joined date, and avatar with 1-click photo upload.
+- **Tri-Platform Elo Matrix**: Side-by-side comparative rating cards (ChessNova vs. Chess.com vs. Lichess) comparing Blitz, Rapid, Bullet, and Puzzles with real-time API sync.
+- **Imported External Games Tab**: Displays recent matches fetched from linked Chess.com and Lichess accounts with a 1-click **"Review in ChessNova"** button that imports the PGN directly into the Stockfish Game Review laboratory.
+- **Interactive Modals**: Seamless dialogs for editing bio/country and connecting external accounts with live verification feedback.

@@ -68,7 +68,18 @@ JWT_ACCESS_SECRET=chessnova-access-secret-production-random-key-12345
 JWT_REFRESH_SECRET=chessnova-refresh-secret-production-random-key-67890
 
 # Engine Binary Configuration
-STOCKFISH_PATH=/home/yogesh/ChessNova/apps/server/bin/stockfish
+STOCKFISH_PATH=./apps/server/bin/stockfish
+
+# S3-Compatible Object Storage (AWS S3, MinIO, Cloudflare R2, Wasabi)
+# Leave empty for automatic local storage fallback to ./uploads/avatars
+S3_ENDPOINT=
+S3_BUCKET=chessnova-avatars
+S3_ACCESS_KEY=
+S3_SECRET_KEY=
+S3_REGION=us-east-1
+S3_USE_SSL=true
+S3_PUBLIC_URL=
+LOCAL_UPLOAD_DIR=uploads/avatars
 ```
 
 ---

@@ -12,14 +12,15 @@ Explore the detailed architecture, specifications, and operational manuals:
 
 | Document | Description |
 | :--- | :--- |
-| **[System Architecture](file:///home/yogesh/ChessNova/docs/ARCHITECTURE.md)** | High-level topology, modular Go monolith, SvelteKit client, concurrency model, MongoDB & Redis persistence schemas. |
-| **[Chess Engine & Rules](file:///home/yogesh/ChessNova/docs/ENGINE_AND_RULES.md)** | Pure Go FIDE rules engine specification: move generation, castling lifecycle, en passant, promotions, check/stalemate, terminal detection, SAN & PGN. |
-| **[Game Review & Stockfish Laboratory](file:///home/yogesh/ChessNova/docs/GAME_REVIEW_AND_EVALUATION.md)** | Stockfish 19 UCI integration, minimax/PST fallback, move classification (Brilliant, Great, Best, etc.), CAPS win-chance curves, and ECO opening book. |
-| **[Rating & Matchmaking](file:///home/yogesh/ChessNova/docs/RATING_AND_MATCHMAKING.md)** | Chess.com-adapted Elo formulas (400 baseline, 100 floor, K-32), time-control categories, Redis matchmaking queues, expanding tolerance windows. |
-| **[REST API & WebSocket Protocol](file:///home/yogesh/ChessNova/docs/API_AND_WEBSOCKET_PROTOCOL.md)** | Full specification for HTTP endpoints (Auth, Games, Review, Puzzles, Leaderboards) and bidirectional WebSocket events. |
-| **[Frontend & UI/UX Design System](file:///home/yogesh/ChessNova/docs/FRONTEND_AND_UI_DESIGN.md)** | SvelteKit client architecture, Midnight Slate theme, custom vector Staunton SVG pieces, viewport clamping, review laboratory, and local guest archives. |
-| **[Bot Persona & Personality Blueprint](file:///home/yogesh/ChessNova/docs/BOT_PERSONA_BLUEPRINT.md)** | Architecture for human-like bots, phase blunder curves, sacrifice biases, tactical vs positional heuristics, and trash-talk engine. |
-| **[Operations & Orchestration](file:///home/yogesh/ChessNova/docs/OPERATIONS_AND_SCRIPTS.md)** | Developer lifecycle runbook via `./script.sh` (`dev`, `build`, `check`, `test`, `deps`, `envi`, `uenvi`, `flush`), Docker compose, and environment setup. |
+| **[System Architecture](./ARCHITECTURE.md)** | High-level topology, modular Go monolith, SvelteKit client, concurrency model, MongoDB & Redis persistence schemas. |
+| **[Chess Engine & Rules](./ENGINE_AND_RULES.md)** | Pure Go FIDE rules engine specification: move generation, castling lifecycle, en passant, promotions, check/stalemate, terminal detection, SAN & PGN. |
+| **[Game Review & Stockfish Laboratory](./GAME_REVIEW_AND_EVALUATION.md)** | Stockfish 19 UCI integration, minimax/PST fallback, move classification (Brilliant, Great, Best, etc.), CAPS win-chance curves, and ECO opening book. |
+| **[Rating & Matchmaking](./RATING_AND_MATCHMAKING.md)** | Chess.com-adapted Elo formulas (400 baseline, 100 floor, K-32), time-control categories, Redis matchmaking queues, expanding tolerance windows. |
+| **[REST API & WebSocket Protocol](./API_AND_WEBSOCKET_PROTOCOL.md)** | Full specification for HTTP endpoints (Auth, Games, Review, Puzzles, Leaderboards, Profiles, External Sync) and bidirectional WebSocket events. |
+| **[Security & Data Practices](./SECURITY_AND_DATA_PRACTICES.md)** | JWT authentication, bcrypt passwords, ownership authorization, S3-compatible avatar storage, magic-byte sniffing, and security headers. |
+| **[Frontend & UI/UX Design System](./FRONTEND_AND_UI_DESIGN.md)** | SvelteKit client architecture, dynamic multi-theme engine, custom vector Staunton SVG pieces, viewport clamping, review laboratory, and local guest archives. |
+| **[Bot Persona & Personality Blueprint](./BOT_PERSONA_BLUEPRINT.md)** | Architecture for human-like bots, phase blunder curves, sacrifice biases, tactical vs positional heuristics, and trash-talk engine. |
+| **[Operations & Orchestration](./OPERATIONS_AND_SCRIPTS.md)** | Developer lifecycle runbook via `./script.sh` (`dev`, `build`, `check`, `test`, `deps`, `envi`, `uenvi`, `flush`), Docker compose, and environment setup. |
 
 ---
 
