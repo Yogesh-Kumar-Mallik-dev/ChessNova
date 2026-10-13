@@ -33,7 +33,7 @@ type Router struct {
 	gameRepo      game.Repository
 	ratingRepo    rating.Repository
 	mmService     *matchmaking.Service
-	puzzleRepo    puzzle.Repository
+	puzzleService *puzzle.Service
 	engineService *engine.StockfishEngine
 	reviewService *review.ReviewService
 	wsHub         *websocket.Hub
@@ -47,7 +47,7 @@ func NewRouter(
 	gameRepo game.Repository,
 	ratingRepo rating.Repository,
 	mmService *matchmaking.Service,
-	puzzleRepo puzzle.Repository,
+	puzzleService *puzzle.Service,
 	engineService *engine.StockfishEngine,
 	reviewService *review.ReviewService,
 	wsHub *websocket.Hub,
@@ -61,7 +61,7 @@ func NewRouter(
 		gameRepo:      gameRepo,
 		ratingRepo:    ratingRepo,
 		mmService:     mmService,
-		puzzleRepo:    puzzleRepo,
+		puzzleService: puzzleService,
 		engineService: engineService,
 		reviewService: reviewService,
 		wsHub:         wsHub,
@@ -654,36 +654,30 @@ func (rt *Router) handleGetRandomPuzzle(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	p, err := rt.puzzleRepo.GetRandomPuzzle(r.Context(), filter)
+	pub, err := rt.puzzleService.GetRandom(r.Context(), filter)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "no puzzle found matching criteria")
 		return
 	}
-	writeJSON(w, http.StatusOK, p.ToPublic())
+	writeJSON(w, http.StatusOK, pub)
 }
 
 func (rt *Router) handleGetDailyPuzzle(w http.ResponseWriter, r *http.Request) {
-	p, err := rt.puzzleRepo.GetDailyPuzzle(r.Context())
+	pub, err := rt.puzzleService.GetDaily(r.Context())
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "no daily puzzle found")
 		return
 	}
-	pub := p.ToPublic()
-	pub.IsDaily = true
 	writeJSON(w, http.StatusOK, pub)
 }
 
 func (rt *Router) handleGetWeeklyPuzzles(w http.ResponseWriter, r *http.Request) {
-	puzzles, err := rt.puzzleRepo.GetWeeklyPuzzles(r.Context())
+	list, err := rt.puzzleService.GetWeekly(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	publicList := make([]puzzle.PublicPuzzle, 0, len(puzzles))
-	for _, p := range puzzles {
-		publicList = append(publicList, p.ToPublic())
-	}
-	writeJSON(w, http.StatusOK, publicList)
+	writeJSON(w, http.StatusOK, list)
 }
 
 func (rt *Router) handleGetPuzzleByID(w http.ResponseWriter, r *http.Request) {
@@ -693,12 +687,12 @@ func (rt *Router) handleGetPuzzleByID(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid puzzle ID")
 		return
 	}
-	p, err := rt.puzzleRepo.GetByID(r.Context(), oid)
+	pub, err := rt.puzzleService.GetByID(r.Context(), oid)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
 		return
 	}
-	writeJSON(w, http.StatusOK, p.ToPublic())
+	writeJSON(w, http.StatusOK, pub)
 }
 
 func (rt *Router) handleGetPuzzleHint(w http.ResponseWriter, r *http.Request) {
@@ -708,33 +702,25 @@ func (rt *Router) handleGetPuzzleHint(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid puzzle ID")
 		return
 	}
-	p, err := rt.puzzleRepo.GetByID(r.Context(), oid)
+
+	ply := 0
+	if plyStr := r.URL.Query().Get("plyIndex"); plyStr != "" {
+		if val, err := strconv.Atoi(plyStr); err == nil {
+			ply = val
+		}
+	}
+
+	from, to, hint, err := rt.puzzleService.GetHint(r.Context(), oid, ply)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
 		return
 	}
 
-	ply := 0
-	if plyStr := r.URL.Query().Get("plyIndex"); plyStr != "" {
-		if val, err := strconv.Atoi(plyStr); err == nil && val >= 0 && val < len(p.Solution) {
-			ply = val
-		}
-	}
-
-	if ply >= len(p.Solution) {
-		writeError(w, http.StatusBadRequest, "INVALID_PLY", "puzzle is already complete")
-		return
-	}
-
-	bestMove := p.Solution[ply]
-	fromSquare := bestMove[:2]
-	toSquare := bestMove[2:4]
-
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"plyIndex": ply,
-		"from":     fromSquare,
-		"to":       toSquare,
-		"hint":     fmt.Sprintf("Focus on piece on %s moving toward %s", strings.ToUpper(fromSquare), strings.ToUpper(toSquare)),
+		"from":     from,
+		"to":       to,
+		"hint":     hint,
 	})
 }
 
@@ -745,7 +731,7 @@ func (rt *Router) handleGetPuzzleSolution(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid puzzle ID")
 		return
 	}
-	p, err := rt.puzzleRepo.GetByID(r.Context(), oid)
+	p, err := rt.puzzleService.GetSolution(r.Context(), oid)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
 		return
@@ -775,7 +761,7 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := rt.puzzleRepo.GetByID(r.Context(), oid)
+	p, err := rt.puzzleService.GetSolution(r.Context(), oid)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
 		return
@@ -784,33 +770,7 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 	var req solvePuzzleReq
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
-	// Determine if solved correctly
-	isCorrect := false
-	isFinished := false
-	replyMove := ""
-
-	if req.Move != "" {
-		normalizedMove := strings.ToLower(strings.TrimSpace(req.Move))
-		if req.PlyIndex < 0 || req.PlyIndex >= len(p.Solution) {
-			writeError(w, http.StatusBadRequest, "INVALID_PLY", "invalid ply index for puzzle")
-			return
-		}
-		expectedMove := strings.ToLower(strings.TrimSpace(p.Solution[req.PlyIndex]))
-		if normalizedMove == expectedMove {
-			isCorrect = true
-			nextIndex := req.PlyIndex + 1
-			if nextIndex < len(p.Solution) {
-				replyMove = p.Solution[nextIndex]
-			} else {
-				isFinished = true
-			}
-		}
-	} else if req.Success != nil {
-		isCorrect = *req.Success
-		isFinished = *req.Success
-	}
-
-	// Elo calculation based on player's rating vs puzzle's rating
+	// Fetch current user rating for puzzle elo calculation
 	var claims *auth.Claims
 	authHeader := r.Header.Get("Authorization")
 	if strings.HasPrefix(authHeader, "Bearer ") {
@@ -835,6 +795,16 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 		playerRating = uRat.Rating
 	}
 
+	// Verify move using domain service
+	verResult := rt.puzzleService.VerifyMove(p, puzzle.SolveAttempt{
+		Move:          req.Move,
+		PlyIndex:      req.PlyIndex,
+		Success:       req.Success,
+		IsRetry:       req.IsRetry,
+		HasAssistance: req.HasAssistance,
+		PlayerRating:  playerRating,
+	})
+
 	newRating := playerRating
 	diff := 0
 
@@ -844,12 +814,12 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 	shouldApplyRating := false
 	var score float64
 
-	if isCorrect && isFinished {
+	if verResult.Correct && verResult.Finished {
 		if !req.HasAssistance && !req.IsRetry {
 			score = 1.0
 			shouldApplyRating = true
 		}
-	} else if !isCorrect {
+	} else if !verResult.Correct {
 		if !req.IsRetry && !req.HasAssistance {
 			score = 0.0
 			shouldApplyRating = true
@@ -871,20 +841,10 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response := map[string]interface{}{
-		"correct":   isCorrect,
-		"finished":  isFinished,
-		"newRating": newRating,
-		"diff":      diff,
-	}
-	if replyMove != "" {
-		response["replyMove"] = replyMove
-	}
-	if !isCorrect {
-		response["solution"] = p.Solution
-	}
+	verResult.NewRating = newRating
+	verResult.Diff = diff
 
-	writeJSON(w, http.StatusOK, response)
+	writeJSON(w, http.StatusOK, verResult)
 }
 
 // WebSocket Handler
