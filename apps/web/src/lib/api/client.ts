@@ -57,7 +57,42 @@ export const api = {
 	},
 	users: {
 		getMe: () => request<{ user: any; ratings: Record<string, number> }>('/users/me'),
-		getUser: (username: string) => request<any>(`/users/${username}`)
+		getUser: (username: string) => request<any>(`/users/${username}`),
+		updateProfile: (data: { bio: string; country: string }) =>
+			request<{ message: string }>('/users/profile', {
+				method: 'PUT',
+				body: JSON.stringify(data)
+			}),
+		uploadAvatar: async (file: File) => {
+			const token = getToken();
+			const formData = new FormData();
+			formData.append('avatar', file);
+			const headers: Record<string, string> = {};
+			if (token) headers['Authorization'] = `Bearer ${token}`;
+
+			const res = await fetch(`${API_BASE}/users/avatar`, {
+				method: 'POST',
+				headers,
+				body: formData
+			});
+			if (!res.ok) {
+				let errMsg = 'Failed to upload avatar';
+				try {
+					const data = await res.json();
+					if (data.error?.message) errMsg = data.error.message;
+				} catch {}
+				throw new Error(errMsg);
+			}
+			return (await res.json()) as { avatar: string };
+		},
+		linkAccounts: (data: { chessComUsername: string; lichessUsername: string }) =>
+			request<{ message: string; chessComUsername: string; lichessUsername: string }>('/users/link-accounts', {
+				method: 'POST',
+				body: JSON.stringify(data)
+			}),
+		getExternalStats: (username: string) => request<any>(`/users/${username}/external-stats`),
+		getExternalGames: (username: string, platform = 'all', limit = 10) =>
+			request<any[]>(`/users/${username}/external-games?platform=${platform}&limit=${limit}`)
 	},
 	games: {
 		list: (params?: { userId?: string; limit?: number }) => {

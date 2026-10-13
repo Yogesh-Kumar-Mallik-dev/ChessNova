@@ -11,13 +11,17 @@ import (
 )
 
 type User struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Username     string             `bson:"username" json:"username"`
-	Email        string             `bson:"email" json:"email"`
-	PasswordHash string             `bson:"passwordHash" json:"-"`
-	Avatar       string             `bson:"avatar" json:"avatar"`
-	CreatedAt    time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt    time.Time          `bson:"updatedAt" json:"updatedAt"`
+	ID               primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Username         string             `bson:"username" json:"username"`
+	Email            string             `bson:"email" json:"email"`
+	PasswordHash     string             `bson:"passwordHash" json:"-"`
+	Avatar           string             `bson:"avatar" json:"avatar"`
+	Bio              string             `bson:"bio" json:"bio"`
+	Country          string             `bson:"country" json:"country"`
+	ChessComUsername string             `bson:"chessComUsername" json:"chessComUsername"`
+	LichessUsername  string             `bson:"lichessUsername" json:"lichessUsername"`
+	CreatedAt        time.Time          `bson:"createdAt" json:"createdAt"`
+	UpdatedAt        time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
 type Repository interface {
@@ -25,6 +29,9 @@ type Repository interface {
 	FindByID(ctx context.Context, id primitive.ObjectID) (*User, error)
 	FindByUsername(ctx context.Context, username string) (*User, error)
 	FindByEmail(ctx context.Context, email string) (*User, error)
+	UpdateProfile(ctx context.Context, id primitive.ObjectID, bio, country string) error
+	UpdateAvatar(ctx context.Context, id primitive.ObjectID, avatarURL string) error
+	UpdateLinkedAccounts(ctx context.Context, id primitive.ObjectID, chessComUsername, lichessUsername string) error
 	EnsureIndexes(ctx context.Context) error
 }
 
@@ -89,4 +96,48 @@ func (r *MongoRepository) FindByEmail(ctx context.Context, email string) (*User,
 		return nil, err
 	}
 	return &u, nil
+}
+
+func (r *MongoRepository) UpdateProfile(ctx context.Context, id primitive.ObjectID, bio, country string) error {
+	_, err := r.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{
+			"$set": bson.M{
+				"bio":       bio,
+				"country":   country,
+				"updatedAt": time.Now().UTC(),
+			},
+		},
+	)
+	return err
+}
+
+func (r *MongoRepository) UpdateAvatar(ctx context.Context, id primitive.ObjectID, avatarURL string) error {
+	_, err := r.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{
+			"$set": bson.M{
+				"avatar":    avatarURL,
+				"updatedAt": time.Now().UTC(),
+			},
+		},
+	)
+	return err
+}
+
+func (r *MongoRepository) UpdateLinkedAccounts(ctx context.Context, id primitive.ObjectID, chessComUsername, lichessUsername string) error {
+	_, err := r.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{
+			"$set": bson.M{
+				"chessComUsername": chessComUsername,
+				"lichessUsername":  lichessUsername,
+				"updatedAt":        time.Now().UTC(),
+			},
+		},
+	)
+	return err
 }
