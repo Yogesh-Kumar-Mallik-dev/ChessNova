@@ -33,7 +33,7 @@
 		<BorderBeam size={160} duration={10} colorFrom="#38bdf8" colorTo="#818cf8" />
 		<div class="flex flex-col items-center text-center mb-6">
 			<div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/25 mb-3">
-				<Icon name="crown" size={22} />
+				<Icon name="bishop" size={22} />
 			</div>
 			<h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">Welcome Back</h1>
 			<p class="text-xs text-slate-400 mt-1">Sign in to continue your games</p>

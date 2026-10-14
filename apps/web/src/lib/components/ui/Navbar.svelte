@@ -30,7 +30,7 @@
 		<!-- Brand Logo -->
 		<a href="/" class="flex items-center gap-2.5 text-white font-bold text-lg sm:text-xl tracking-tight group">
 			<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md shadow-sky-500/25 group-hover:scale-105 transition-transform">
-				<Icon name="crown" size={18} className="text-white drop-shadow" />
+				<Icon name="bishop" size={18} className="text-white drop-shadow" />
 			</div>
 			<span class="font-extrabold text-white">
 				Chess<span class="text-sky-400">Nova</span>
@@ -102,7 +102,7 @@
 			on:click={() => (mobileMenuOpen = !mobileMenuOpen)}
 			aria-label="Toggle navigation menu"
 		>
-			<Icon name={mobileMenuOpen ? 'x' : 'swords'} size={18} />
+			<Icon name={mobileMenuOpen ? 'x' : 'menu'} size={18} />
 		</button>
 	</div>
 </header>
