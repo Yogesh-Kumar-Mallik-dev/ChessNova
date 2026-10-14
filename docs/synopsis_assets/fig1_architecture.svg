@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 560" width="950" height="560">
+  <rect width="950" height="560" fill="#ffffff" />
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#1e293b" />
+    </marker>
+  </defs>
+
+  <!-- Title / Boundary Box: Client Tier -->
+  <rect x="30" y="30" width="890" height="95" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+  <text x="50" y="55" font-family="Times New Roman, serif" font-size="15" font-weight="bold" fill="#0f172a">CLIENT PRESENTATION TIER</text>
+  
+  <rect x="50" y="65" width="250" height="45" rx="6" fill="#ffffff" stroke="#0284c7" stroke-width="1.5" />
+  <text x="175" y="92" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#0369a1">SvelteKit SPA Client (Web)</text>
+
+  <rect x="340" y="65" width="270" height="45" rx="6" fill="#ffffff" stroke="#4f46e5" stroke-width="1.5" />
+  <text x="475" y="92" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#3730a3">Tauri v2 Desktop Shell (Linux/Win/Mac)</text>
+
+  <rect x="650" y="65" width="250" height="45" rx="6" fill="#ffffff" stroke="#059669" stroke-width="1.5" />
+  <text x="775" y="92" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#047857">Stockfish.js (In-Browser Sparring)</text>
+
+  <!-- Connectors from Client to Gateway -->
+  <line x1="175" y1="110" x2="175" y2="155" stroke="#1e293b" stroke-width="1.5" marker-end="url(#arrow)" />
+  <line x1="475" y1="110" x2="475" y2="155" stroke="#1e293b" stroke-width="1.5" marker-end="url(#arrow)" />
+  <text x="260" y="140" font-family="Times New Roman, serif" font-size="12" fill="#475569">REST HTTPS &amp; WSS (RFC 6455)</text>
+
+  <!-- Application / Service Tier -->
+  <rect x="30" y="160" width="890" height="235" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+  <text x="50" y="185" font-family="Times New Roman, serif" font-size="15" font-weight="bold" fill="#0f172a">BACKEND APPLICATION &amp; ENGINE SERVICES (Go Monolith)</text>
+
+  <!-- Sub-modules in Go Server -->
+  <rect x="50" y="200" width="190" height="70" rx="6" fill="#ffffff" stroke="#64748b" stroke-width="1.5" />
+  <text x="145" y="228" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#0f172a">REST Router &amp; Auth</text>
+  <text x="145" y="250" font-family="Times New Roman, serif" font-size="11" text-anchor="middle" fill="#64748b">JWT, Bcrypt, CORS, S3</text>
+
+  <rect x="265" y="200" width="190" height="70" rx="6" fill="#ffffff" stroke="#64748b" stroke-width="1.5" />
+  <text x="360" y="228" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#0f172a">Real-Time Hub</text>
+  <text x="360" y="250" font-family="Times New Roman, serif" font-size="11" text-anchor="middle" fill="#64748b">Concurrent WebSocket Rooms</text>
+
+  <rect x="480" y="200" width="205" height="70" rx="6" fill="#ffffff" stroke="#64748b" stroke-width="1.5" />
+  <text x="582" y="228" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#0f172a">Matchmaking Queue</text>
+  <text x="582" y="250" font-family="Times New Roman, serif" font-size="11" text-anchor="middle" fill="#64748b">Expanding Rating Tolerance</text>
+
+  <rect x="710" y="200" width="190" height="70" rx="6" fill="#ffffff" stroke="#64748b" stroke-width="1.5" />
+  <text x="805" y="228" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#0f172a">Elo Engine</text>
+  <text x="805" y="250" font-family="Times New Roman, serif" font-size="11" text-anchor="middle" fill="#64748b">400 Baseline / 100 Floor</text>
+
+  <!-- Core Chess Engine Block -->
+  <rect x="50" y="290" width="405" height="85" rx="6" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" />
+  <text x="252" y="318" font-family="Times New Roman, serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#1d4ed8">Pure Go Chess Rules Engine</text>
+  <text x="252" y="338" font-family="Times New Roman, serif" font-size="11" text-anchor="middle" fill="#1e40af">Bitboard Move Generation, Check/Mate/Stalemate, 3-fold Repetition</text>
+  <text x="252" y="356" font-family="Times New Roman, serif" font-size="11" text-anchor="middle" fill="#1e40af">Fifty-Move Rule, Castling, En Passant, SAN Parser &amp; PGN Exporter</text>
+
+  <!-- Stockfish & Review Lab -->
+  <rect x="480" y="290" width="420" height="85" rx="6" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5" />
+  <text x="690" y="318" font-family="Times New Roman, serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#047857">Stockfish 19 UCI &amp; CAPS Review Lab</text>
+  <text x="690" y="338" font-family="Times New Roman, serif" font-size="11" text-anchor="middle" fill="#065f46">Centipawn Evaluation, Win Probability Logistic Mapping</text>
+  <text x="690" y="356" font-family="Times New Roman, serif" font-size="11" text-anchor="middle" fill="#065f46">Phased Accuracy (Opening/Middlegame/Endgame) &amp; ECO Book Detection</text>
+
+  <!-- Connectors to Persistence Tier -->
+  <line x1="250" y1="395" x2="250" y2="435" stroke="#1e293b" stroke-width="1.5" marker-end="url(#arrow)" />
+  <line x1="580" y1="395" x2="580" y2="435" stroke="#1e293b" stroke-width="1.5" marker-end="url(#arrow)" />
+  <line x1="800" y1="395" x2="800" y2="435" stroke="#1e293b" stroke-width="1.5" marker-end="url(#arrow)" />
+
+  <!-- Persistence Tier -->
+  <rect x="30" y="440" width="890" height="95" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+  <text x="50" y="465" font-family="Times New Roman, serif" font-size="15" font-weight="bold" fill="#0f172a">DATA PERSISTENCE &amp; CACHE TIER</text>
+
+  <rect x="70" y="475" width="250" height="45" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.5" />
+  <text x="195" y="497" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#15803d">MongoDB Database</text>
+  <text x="195" y="512" font-family="Times New Roman, serif" font-size="10" text-anchor="middle" fill="#64748b">Users, Rated Games, 3000+ Puzzles</text>
+
+  <rect x="350" y="475" width="250" height="45" rx="6" fill="#ffffff" stroke="#dc2626" stroke-width="1.5" />
+  <text x="475" y="497" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#b91c1c">Redis In-Memory Cache</text>
+  <text x="475" y="512" font-family="Times New Roman, serif" font-size="10" text-anchor="middle" fill="#64748b">Matchmaking Queues, Live Room State</text>
+
+  <rect x="630" y="475" width="250" height="45" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.5" />
+  <text x="755" y="497" font-family="Times New Roman, serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#b45309">S3 / Local Object Storage</text>
+  <text x="755" y="512" font-family="Times New Roman, serif" font-size="10" text-anchor="middle" fill="#64748b">Profile Avatars &amp; Game Assets</text>
+</svg>
