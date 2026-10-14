@@ -47,7 +47,7 @@ func DefaultHubConfig(customOrigins ...string) HubConfig {
 }
 
 // ValidateOrigin performs strict origin verification against trusted origins
-func ValidateOrigin(origin string, cfg HubConfig) bool {
+func ValidateOrigin(origin string, cfg HubConfig, reqHost ...string) bool {
 	if origin == "" {
 		return cfg.AllowMissingOrigin
 	}
@@ -77,20 +77,51 @@ func ValidateOrigin(origin string, cfg HubConfig) bool {
 		return false
 	}
 
+	originHost := strings.ToLower(u.Hostname())
 	normOrigin := scheme + "://" + strings.ToLower(u.Host)
+
+	// If the request was made to the same host (e.g. r.Host), it is same-origin and trusted
+	if len(reqHost) > 0 && reqHost[0] != "" {
+		hostOnly := strings.ToLower(strings.Split(reqHost[0], ":")[0])
+		if originHost == hostOnly {
+			return true
+		}
+	}
 
 	// Check explicit allowlist
 	for _, allowed := range cfg.AllowedOrigins {
 		allowedTrimmed := strings.TrimRight(strings.ToLower(strings.TrimSpace(allowed)), "/")
-		if normOrigin == allowedTrimmed {
+		if allowedTrimmed == "*" || normOrigin == allowedTrimmed {
 			return true
+		}
+		// Match by URL scheme and wildcard subdomain (e.g. https://*.yogeshmallik.in)
+		if strings.HasPrefix(allowedTrimmed, "http://") || strings.HasPrefix(allowedTrimmed, "https://") {
+			if au, err := url.Parse(allowedTrimmed); err == nil {
+				if au.Scheme == scheme {
+					if strings.EqualFold(au.Hostname(), originHost) {
+						return true
+					}
+					if strings.HasPrefix(au.Hostname(), "*.") {
+						suffix := au.Hostname()[1:]
+						if strings.HasSuffix(originHost, suffix) {
+							return true
+						}
+					}
+				}
+			}
+		} else {
+			if strings.EqualFold(allowedTrimmed, originHost) {
+				return true
+			}
+			if strings.HasPrefix(allowedTrimmed, "*.") && strings.HasSuffix(originHost, allowedTrimmed[1:]) {
+				return true
+			}
 		}
 	}
 
 	// Check dev localhost
 	if cfg.AllowDevLocalhost {
-		hostname := strings.ToLower(u.Hostname())
-		if hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" {
+		if originHost == "localhost" || originHost == "127.0.0.1" || originHost == "::1" {
 			return true
 		}
 	}
@@ -170,7 +201,7 @@ func NewHub(gameService *game.Service, authService *auth.Service, cfgs ...HubCon
 
 	h.upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			return ValidateOrigin(r.Header.Get("Origin"), h.config)
+			return ValidateOrigin(r.Header.Get("Origin"), h.config, r.Host)
 		},
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -227,15 +258,26 @@ func (h *Hub) Broadcast(gameID string, msg ServerMessage) {
 		return
 	}
 
+	var dropped []*Client
 	room.mu.RLock()
-	defer room.mu.RUnlock()
 	for c := range room.clients {
 		select {
 		case c.send <- bytes:
 		default:
-			close(c.send)
-			delete(room.clients, c)
+			dropped = append(dropped, c)
 		}
+	}
+	room.mu.RUnlock()
+
+	if len(dropped) > 0 {
+		room.mu.Lock()
+		for _, c := range dropped {
+			if _, exists := room.clients[c]; exists {
+				close(c.send)
+				delete(room.clients, c)
+			}
+		}
+		room.mu.Unlock()
 	}
 }
 
@@ -415,6 +457,15 @@ func (c *Client) readPump() {
 
 func (c *Client) handleMessage(msg ClientMessage) {
 	ctx := context.Background()
+
+	// Dynamically check player seat in active game in case seat was claimed after connection
+	if !c.isPlayer && c.hub.gameService != nil && c.userID != "" {
+		if ag, err := c.hub.gameService.GetActiveGame(c.gameID); err == nil {
+			if ag.White.UserID == c.userID || ag.Black.UserID == c.userID {
+				c.isPlayer = true
+			}
+		}
+	}
 
 	// Only players can perform moves, resign, or negotiate draws
 	if msg.Type != "ping" && !c.isPlayer {

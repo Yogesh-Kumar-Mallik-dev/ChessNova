@@ -95,6 +95,14 @@ func TestWebSocketOriginValidation(t *testing.T) {
 	if ValidateOrigin("", strictCfg) {
 		t.Error("expected missing origin to be rejected when AllowMissingOrigin is false")
 	}
+
+	// Test same-host matching (e.g. Origin: https://chess.yogeshmallik.in with Host: chess.yogeshmallik.in)
+	if !ValidateOrigin("https://chess.yogeshmallik.in", strictCfg, "chess.yogeshmallik.in") {
+		t.Error("expected same-host origin to be allowed")
+	}
+	if !ValidateOrigin("https://chess.yogeshmallik.in", strictCfg, "chess.yogeshmallik.in:443") {
+		t.Error("expected same-host origin with port to be allowed")
+	}
 }
 
 func TestWebSocketUpgradeOriginRejection(t *testing.T) {

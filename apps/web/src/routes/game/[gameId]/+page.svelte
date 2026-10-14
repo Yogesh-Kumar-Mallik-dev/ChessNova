@@ -14,6 +14,7 @@
 	import GameResult from '$lib/components/game/GameResult.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import UserBadge from '$lib/components/ui/UserBadge.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import { INITIAL_FEN, type Color, type PieceType } from '$lib/chess/engine';
 	import { soundEffects } from '$lib/audio/sounds';
 	import { saveLocalGame, stageGameForReview } from '$lib/stores/localGames';
@@ -22,6 +23,9 @@
 
 	let socket: GameSocket | null = null;
 	let showResultModal = true;
+	let showResignModal = false;
+	let showLeaveModal = false;
+	let pendingNavigation: (() => void) | null = null;
 	let flipBoard = false;
 
 	// Determine current user's authenticated seat
@@ -82,15 +86,26 @@
 
 	// Warn before leaving active game
 	beforeNavigate((nav) => {
-		if (isPlayer && $gameStore.status === 'playing') {
-			const confirmed = confirm(
-				'You have an active match in progress!\n\nLeaving now will count as a forfeit/loss if you do not reconnect within 60 seconds.\n\nAre you sure you want to leave?'
-			);
-			if (!confirmed) {
-				nav.cancel();
+		if (isPlayer && $gameStore.status === 'playing' && !pendingNavigation) {
+			nav.cancel();
+			if (nav.to) {
+				const dest = nav.to.url.pathname + nav.to.url.search;
+				pendingNavigation = () => {
+					goto(dest);
+				};
 			}
+			showLeaveModal = true;
 		}
 	});
+
+	function confirmLeaveMatch() {
+		showLeaveModal = false;
+		if (pendingNavigation) {
+			const action = pendingNavigation;
+			pendingNavigation = null;
+			action();
+		}
+	}
 
 	function handleBeforeUnload(e: BeforeUnloadEvent) {
 		if (isPlayer && $gameStore.status === 'playing') {
@@ -276,9 +291,12 @@
 
 	function handleResign() {
 		if (!isPlayer || $gameStore.status !== 'playing') return;
-		if (confirm('Concede match and resign? This will be recorded as a loss.')) {
-			socket?.resign();
-		}
+		showResignModal = true;
+	}
+
+	function confirmResign() {
+		showResignModal = false;
+		socket?.resign();
 	}
 
 	function handleOfferDraw() {
@@ -599,3 +617,57 @@
 		on:close={() => (showResultModal = false)}
 	/>
 {/if}
+
+<!-- Custom Resign Confirmation Modal -->
+<Modal
+	isOpen={showResignModal}
+	title="Concede & Resign?"
+	description="Are you sure you want to resign this match? This will immediately conclude the game as a loss."
+	icon="flag"
+	iconBg="bg-rose-500/15 ring-1 ring-rose-500/30"
+	iconColor="text-rose-400"
+	confirmText="Yes, Resign"
+	confirmVariant="danger"
+	cancelText="Keep Playing"
+	on:confirm={confirmResign}
+	on:cancel={() => (showResignModal = false)}
+	on:close={() => (showResignModal = false)}
+/>
+
+<!-- Custom Leave Match Warning Modal -->
+<Modal
+	isOpen={showLeaveModal}
+	title="Leave Active Match?"
+	description="You have a live online match in progress! If you leave now, you will have 60 seconds to reconnect before forfeiting by abandonment."
+	icon="timer"
+	iconBg="bg-amber-500/15 ring-1 ring-amber-500/30"
+	iconColor="text-amber-400"
+	confirmText="Leave Anyway"
+	confirmVariant="warning"
+	cancelText="Stay & Play"
+	on:confirm={confirmLeaveMatch}
+	on:cancel={() => {
+		showLeaveModal = false;
+		pendingNavigation = null;
+	}}
+	on:close={() => {
+		showLeaveModal = false;
+		pendingNavigation = null;
+	}}
+/>
+
+<!-- Custom Draw Offer Modal -->
+<Modal
+	isOpen={isPlayer && !!$gameStore.drawOfferBy && $gameStore.drawOfferBy !== myPlayerColor}
+	title="Draw Offered"
+	description="Your opponent is proposing a mutual draw. Do you wish to accept and share the points?"
+	icon="handshake"
+	iconBg="bg-amber-500/15 ring-1 ring-amber-500/30"
+	iconColor="text-amber-400"
+	confirmText="Accept Draw"
+	confirmVariant="primary"
+	cancelText="Decline"
+	on:confirm={handleAcceptDraw}
+	on:cancel={handleDeclineDraw}
+	on:close={handleDeclineDraw}
+/>
