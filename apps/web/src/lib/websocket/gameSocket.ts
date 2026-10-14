@@ -1,5 +1,7 @@
 import { gameStore } from '$lib/stores/game';
 import { soundEffects } from '$lib/audio/sounds';
+import { sendDesktopNotification } from '$lib/utils/desktop';
+import { get } from 'svelte/store';
 
 export class GameSocket {
 	private ws: WebSocket | null = null;
@@ -56,6 +58,7 @@ export class GameSocket {
 		switch (data.type) {
 			case 'game_started':
 				soundEffects.playGameStart();
+				sendDesktopNotification('Game Started!', 'Your chess match is ready. Good luck!');
 				gameStore.update((s) => ({
 					...s,
 					gameId: data.gameId,
@@ -82,6 +85,12 @@ export class GameSocket {
 							fen: data.fen
 						});
 					}
+
+					// If it's now our turn, notify user
+					if (data.turn === s.orientation && data.status === 'playing') {
+						sendDesktopNotification('Your Turn!', `Opponent played ${data.san || 'a move'}.`);
+					}
+
 					return {
 						...s,
 						fen: data.fen,
@@ -119,6 +128,7 @@ export class GameSocket {
 
 			case 'resignation':
 			case 'game_finished':
+				sendDesktopNotification('Game Over', `Match finished: ${data.outcome || data.result || 'Game ended'}.`);
 				gameStore.update((s) => ({
 					...s,
 					status: data.status,
@@ -129,6 +139,7 @@ export class GameSocket {
 				break;
 
 			case 'draw_offer':
+				sendDesktopNotification('Draw Offer', 'Your opponent offered a draw.');
 				gameStore.update((s) => ({
 					...s,
 					drawOfferBy: data.offeredBy
@@ -136,6 +147,7 @@ export class GameSocket {
 				break;
 
 			case 'draw_accepted':
+				sendDesktopNotification('Draw Accepted', 'The game concluded in a draw.');
 				gameStore.update((s) => ({
 					...s,
 					status: data.status,

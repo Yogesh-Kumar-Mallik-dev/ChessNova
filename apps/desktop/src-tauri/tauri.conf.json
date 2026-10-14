@@ -4,22 +4,23 @@
   "version": "0.1.0",
   "identifier": "com.chessnova.desktop",
   "build": {
-    "frontendDist": "../build",
+    "frontendDist": "../../web/build",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "npm --prefix ../web run dev",
+    "beforeBuildCommand": "npm --prefix ../web run build"
   },
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "ChessNova",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 800,
-        "minHeight": 600,
+        "width": 1240,
+        "height": 840,
+        "minWidth": 850,
+        "minHeight": 650,
         "resizable": true,
         "fullscreen": false,
-        "decorations": true,
+        "decorations": false,
         "center": true
       }
     ],

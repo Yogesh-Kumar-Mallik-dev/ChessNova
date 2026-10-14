@@ -18,6 +18,8 @@ ChessNova follows the unified script orchestration standard. All platform tasks 
 | **`envi`** | Scaffolds `.env` from `.env.example` if absent and starts Docker containers (`chess-mongo`, `chess-redis`). | `scripts/envi.sh` |
 | **`uenvi`** | Tears down and stops all Docker infrastructure containers. | `scripts/uenvi.sh` |
 | **`flush`** | Flushes the Redis memory cache and drops all collections in the MongoDB database for a clean slate. | `scripts/flush_db.sh` |
+| **`desktop`** | Launches the ChessNova Tauri v2 desktop application in development mode with hot-reloading. | `scripts/desktop.sh` |
+| **`desktop-build`** | Compiles the production native desktop application release bundle (.AppImage, .deb, etc.). | `scripts/desktop.sh` |
 
 ---
 
