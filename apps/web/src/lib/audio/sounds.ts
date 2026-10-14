@@ -100,6 +100,10 @@ class ChessSoundPlayer {
 		this.play('game-end', 0.9);
 	}
 
+	public playIllegal() {
+		this.play('move', 0.5);
+	}
+
 	public toggleSound(): boolean {
 		this.enabled = !this.enabled;
 		if (typeof window !== 'undefined') {

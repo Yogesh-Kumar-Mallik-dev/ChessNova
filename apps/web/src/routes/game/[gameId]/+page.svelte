@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import { Chess } from 'chess.js';
 	import { api } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth';
@@ -15,6 +15,7 @@
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import UserBadge from '$lib/components/ui/UserBadge.svelte';
 	import { INITIAL_FEN, type Color, type PieceType } from '$lib/chess/engine';
+	import { soundEffects } from '$lib/audio/sounds';
 	import { saveLocalGame, stageGameForReview } from '$lib/stores/localGames';
 
 	let gameId = $page.params.gameId || '';
@@ -23,16 +24,26 @@
 	let showResultModal = true;
 	let flipBoard = false;
 
-	let currentOrientation: Color = 'white';
-	let opponentColor: Color = 'black';
-	let userColor: Color = 'white';
+	// Determine current user's authenticated seat
+	$: myPlayerColor = (() => {
+		if (!$authStore.user) return null;
+		const uid = $authStore.user.id;
+		if ($gameStore.whitePlayer?.userId === uid) return 'white' as Color;
+		if ($gameStore.blackPlayer?.userId === uid) return 'black' as Color;
+		return null;
+	})();
 
-	$: currentOrientation = flipBoard
-		? ($gameStore.orientation === 'white' ? 'black' : 'white')
-		: ($authStore.user && $gameStore.blackPlayer?.userId === $authStore.user.id ? 'black' : 'white');
+	$: isPlayer = myPlayerColor !== null;
+	$: isSpectator = !isPlayer;
 
-	$: opponentColor = currentOrientation === 'white' ? 'black' : 'white';
-	$: userColor = currentOrientation;
+	// Visual board orientation (defaults to player's color, or 'white' for spectators)
+	$: defaultOrientation = (myPlayerColor || 'white') as Color;
+	$: currentOrientation = (flipBoard
+		? (defaultOrientation === 'white' ? 'black' : 'white')
+		: defaultOrientation) as Color;
+
+	$: topColor = (currentOrientation === 'white' ? 'black' : 'white') as Color;
+	$: bottomColor = currentOrientation;
 
 	$: topPlayer = currentOrientation === 'white' ? $gameStore.blackPlayer : $gameStore.whitePlayer;
 	$: bottomPlayer = currentOrientation === 'white' ? $gameStore.whitePlayer : $gameStore.blackPlayer;
@@ -40,10 +51,54 @@
 	$: topTimeMs = currentOrientation === 'white' ? $gameStore.blackTime : $gameStore.whiteTime;
 	$: bottomTimeMs = currentOrientation === 'white' ? $gameStore.whiteTime : $gameStore.blackTime;
 
-	$: isTopTurn = $gameStore.status === 'playing' && $gameStore.turn === opponentColor;
-	$: isBottomTurn = $gameStore.status === 'playing' && $gameStore.turn === userColor;
+	$: isTopTurn = $gameStore.status === 'playing' && $gameStore.turn === topColor;
+	$: isBottomTurn = $gameStore.status === 'playing' && $gameStore.turn === bottomColor;
+	$: isMyTurn = isPlayer && $gameStore.status === 'playing' && $gameStore.turn === myPlayerColor;
 
 	let copiedInvite = false;
+	let opponentCountdown = 60;
+	let countdownInterval: any = null;
+
+	// Track opponent disconnection countdown
+	$: if (isPlayer && !$gameStore.opponentConnected && $gameStore.status === 'playing') {
+		if (!countdownInterval) {
+			opponentCountdown = 60;
+			countdownInterval = setInterval(() => {
+				if (opponentCountdown > 0) {
+					opponentCountdown--;
+				} else {
+					clearInterval(countdownInterval);
+					countdownInterval = null;
+				}
+			}, 1000);
+		}
+	} else {
+		if (countdownInterval) {
+			clearInterval(countdownInterval);
+			countdownInterval = null;
+		}
+		opponentCountdown = 60;
+	}
+
+	// Warn before leaving active game
+	beforeNavigate((nav) => {
+		if (isPlayer && $gameStore.status === 'playing') {
+			const confirmed = confirm(
+				'You have an active match in progress!\n\nLeaving now will count as a forfeit/loss if you do not reconnect within 60 seconds.\n\nAre you sure you want to leave?'
+			);
+			if (!confirmed) {
+				nav.cancel();
+			}
+		}
+	});
+
+	function handleBeforeUnload(e: BeforeUnloadEvent) {
+		if (isPlayer && $gameStore.status === 'playing') {
+			e.preventDefault();
+			e.returnValue = '';
+			return '';
+		}
+	}
 
 	function copyInviteLink() {
 		if (typeof window !== 'undefined') {
@@ -55,8 +110,21 @@
 		}
 	}
 
+	// Rollback snapshot for optimistic moves
+	let rollbackSnapshot: {
+		fen: string;
+		turn: Color;
+		moves: any[];
+		lastMove: any;
+		isCheck: boolean;
+	} | null = null;
+
 	onMount(async () => {
 		resetGameStore();
+
+		if (typeof window !== 'undefined') {
+			window.addEventListener('beforeunload', handleBeforeUnload);
+		}
 
 		try {
 			const info = await api.games.get(gameId);
@@ -103,10 +171,35 @@
 
 		const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
 		socket = new GameSocket(gameId, token);
+
+		// Handle server move error with rollback
+		socket.onError((errMsg) => {
+			if (rollbackSnapshot) {
+				console.warn('Server rejected move, rolling back:', errMsg);
+				gameStore.update((s) => ({
+					...s,
+					fen: rollbackSnapshot!.fen,
+					turn: rollbackSnapshot!.turn,
+					moves: rollbackSnapshot!.moves,
+					lastMove: rollbackSnapshot!.lastMove,
+					isCheck: rollbackSnapshot!.isCheck
+				}));
+				rollbackSnapshot = null;
+				soundEffects.playIllegal();
+			}
+		});
+
 		socket.connect();
 	});
 
 	onDestroy(() => {
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('beforeunload', handleBeforeUnload);
+		}
+		if (countdownInterval) {
+			clearInterval(countdownInterval);
+			countdownInterval = null;
+		}
 		if (socket) {
 			socket.disconnect();
 			socket = null;
@@ -115,26 +208,91 @@
 
 	function handleMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
 		const { from, to, promotion } = event.detail;
+
+		// Only active players on their turn can submit moves
+		if (!isPlayer || !isMyTurn || $gameStore.status !== 'playing') {
+			return;
+		}
+
+		// Optimistic UI update: apply locally using chess.js immediately
+		try {
+			const c = new Chess($gameStore.fen);
+			const moveRes = c.move({
+				from,
+				to,
+				promotion: promotion || undefined
+			});
+
+			if (moveRes) {
+				rollbackSnapshot = {
+					fen: $gameStore.fen,
+					turn: $gameStore.turn,
+					moves: [...$gameStore.moves],
+					lastMove: $gameStore.lastMove,
+					isCheck: $gameStore.isCheck
+				};
+
+				const nextFen = c.fen();
+				const nextTurn = c.turn() === 'w' ? 'white' : 'black';
+				const isCap = moveRes.flags.includes('c') || moveRes.flags.includes('e');
+				const isPromo = moveRes.flags.includes('p');
+
+				gameStore.update((s) => ({
+					...s,
+					fen: nextFen,
+					turn: nextTurn,
+					lastMove: {
+						from,
+						to,
+						san: moveRes.san,
+						isCapture: isCap,
+						isPromotion: isPromo
+					},
+					moves: [
+						...s.moves,
+						{
+							from,
+							to,
+							san: moveRes.san,
+							fen: nextFen
+						}
+					],
+					isCheck: c.inCheck()
+				}));
+
+				if (socket) {
+					socket.sendMove(from, to, promotion);
+				}
+				return;
+			}
+		} catch (e) {
+			console.warn('Optimistic move execution fallback to server:', e);
+		}
+
 		if (socket) {
 			socket.sendMove(from, to, promotion);
 		}
 	}
 
 	function handleResign() {
-		if (confirm('Concede match and resign?')) {
+		if (!isPlayer || $gameStore.status !== 'playing') return;
+		if (confirm('Concede match and resign? This will be recorded as a loss.')) {
 			socket?.resign();
 		}
 	}
 
 	function handleOfferDraw() {
+		if (!isPlayer || $gameStore.status !== 'playing') return;
 		socket?.offerDraw();
 	}
 
 	function handleAcceptDraw() {
+		if (!isPlayer || $gameStore.status !== 'playing') return;
 		socket?.acceptDraw();
 	}
 
 	function handleDeclineDraw() {
+		if (!isPlayer || $gameStore.status !== 'playing') return;
 		socket?.declineDraw();
 	}
 
@@ -196,6 +354,19 @@
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center">
 			
 			<div class="w-full max-w-[min(92vw,calc(100dvh-170px),570px)] flex flex-col items-center">
+				<!-- Opponent Disconnection Countdown Banner -->
+				{#if isPlayer && !$gameStore.opponentConnected && $gameStore.status === 'playing'}
+					<div class="w-full mb-2 p-2.5 bg-rose-950/80 border border-rose-500/50 rounded-xl flex items-center justify-between text-xs text-rose-200 animate-pulse shadow-lg">
+						<div class="flex items-center gap-2 font-bold">
+							<Icon name="wifi-off" size={15} className="text-rose-400" />
+							<span>Opponent disconnected</span>
+						</div>
+						<div class="font-mono text-[11px] font-extrabold bg-rose-900/80 px-2 py-0.5 rounded border border-rose-500/40">
+							Claiming win in {opponentCountdown}s
+						</div>
+					</div>
+				{/if}
+
 				<!-- Top Player Bar (Opponent) -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mb-1">
 					<div class="flex items-center gap-2">
@@ -220,7 +391,7 @@
 							</div>
 						{/if}
 						<div class="ml-1">
-							<CapturedPieces fen={$gameStore.fen} forColor={opponentColor} />
+							<CapturedPieces fen={$gameStore.fen} forColor={topColor} />
 						</div>
 					</div>
 
@@ -232,11 +403,12 @@
 					fen={$gameStore.fen}
 					orientation={currentOrientation}
 					turn={$gameStore.turn}
+					playerColor={isPlayer ? myPlayerColor : null}
 					selectedSquare={$gameStore.selectedSquare}
 					legalMoves={$gameStore.legalMoves}
 					lastMove={$gameStore.lastMove}
 					isCheck={$gameStore.isCheck}
-					interactive={$gameStore.status === 'playing'}
+					interactive={isPlayer && $gameStore.status === 'playing'}
 					gameOver={$gameStore.status === 'finished'}
 					gameResult={$gameStore.result || ''}
 					gameOutcome={$gameStore.outcome || ''}
@@ -263,14 +435,14 @@
 								<div class="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/40 flex items-center justify-center text-xs font-mono font-bold text-sky-400 shadow-sm">
 									<Icon name="crown" size={13} />
 								</div>
-								<span class="truncate max-w-[140px] sm:max-w-none">{bottomPlayer?.username || 'You'}</span>
+								<span class="truncate max-w-[140px] sm:max-w-none">{bottomPlayer?.username || (isPlayer ? 'You' : 'White')}</span>
 								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30">
 									{bottomPlayer?.rating || 400}
 								</span>
 							</div>
 						{/if}
 						<div class="ml-1">
-							<CapturedPieces fen={$gameStore.fen} forColor={userColor} />
+							<CapturedPieces fen={$gameStore.fen} forColor={bottomColor} />
 						</div>
 					</div>
 
@@ -323,7 +495,7 @@
 			{/if}
 
 			<!-- Draw Offer Banner -->
-			{#if $gameStore.drawOfferBy && $gameStore.drawOfferBy !== userColor}
+			{#if isPlayer && $gameStore.drawOfferBy && $gameStore.drawOfferBy !== myPlayerColor}
 				<div class="p-3 bg-amber-950/50 border-b border-amber-600/40 flex items-center justify-between text-xs animate-in fade-in duration-150">
 					<div class="flex items-center gap-2 text-amber-300 font-semibold">
 						<Icon name="handshake" size={16} />
@@ -358,21 +530,29 @@
 			<!-- Action Controls -->
 			<div class="p-3.5 border-t border-slate-800 bg-[#090d15]/80 flex gap-2">
 				{#if $gameStore.status === 'playing'}
-					<button
-						class="flex-1 py-2.5 bg-slate-800/80 hover:bg-slate-750 text-slate-300 font-bold text-xs rounded-xl transition border border-slate-700/70 flex items-center justify-center gap-1.5"
-						on:click={handleOfferDraw}
-					>
-						<Icon name="handshake" size={14} className="text-slate-400" />
-						<span>Offer Draw</span>
-					</button>
+					{#if isPlayer}
+						<button
+							class="flex-1 py-2.5 bg-slate-800/80 hover:bg-slate-750 text-slate-300 font-bold text-xs rounded-xl transition border border-slate-700/70 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+							on:click={handleOfferDraw}
+							disabled={$gameStore.drawOfferBy === myPlayerColor}
+						>
+							<Icon name="handshake" size={14} className="text-slate-400" />
+							<span>{$gameStore.drawOfferBy === myPlayerColor ? 'Draw Offered' : 'Offer Draw'}</span>
+						</button>
 
-					<button
-						class="flex-1 py-2.5 bg-slate-800/80 hover:bg-rose-950/60 hover:text-rose-300 hover:border-rose-700/60 text-slate-300 font-bold text-xs rounded-xl transition border border-slate-700/70 flex items-center justify-center gap-1.5"
-						on:click={handleResign}
-					>
-						<Icon name="flag" size={14} className="text-rose-400" />
-						<span>Resign</span>
-					</button>
+						<button
+							class="flex-1 py-2.5 bg-slate-800/80 hover:bg-rose-950/60 hover:text-rose-300 hover:border-rose-700/60 text-slate-300 font-bold text-xs rounded-xl transition border border-slate-700/70 flex items-center justify-center gap-1.5"
+							on:click={handleResign}
+						>
+							<Icon name="flag" size={14} className="text-rose-400" />
+							<span>Resign</span>
+						</button>
+					{:else}
+						<div class="flex-1 py-2.5 bg-slate-800/60 text-slate-400 text-center text-xs font-semibold rounded-xl border border-slate-800 flex items-center justify-center gap-2">
+							<Icon name="user" size={14} className="text-sky-400" />
+							<span>Spectating Match</span>
+						</div>
+					{/if}
 				{:else}
 					<div class="flex flex-col gap-2 w-full">
 						<button
@@ -413,7 +593,7 @@
 		result={$gameStore.result || '*'}
 		outcome={$gameStore.outcome || ''}
 		winner={$gameStore.winner || ''}
-		playerColor={userColor}
+		playerColor={myPlayerColor || 'white'}
 		on:newGame={handleNewGame}
 		on:analyze={handleAnalyze}
 		on:close={() => (showResultModal = false)}

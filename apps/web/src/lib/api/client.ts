@@ -107,6 +107,7 @@ export const api = {
 				body: JSON.stringify(data)
 			}),
 		get: (id: string) => request<any>(`/games/${id}`),
+		getActive: () => request<any>('/games/active'),
 		makeMove: (gameId: string, move: { from: string; to: string; promotion?: string }) =>
 			request<any>(`/games/${gameId}/moves`, {
 				method: 'POST',

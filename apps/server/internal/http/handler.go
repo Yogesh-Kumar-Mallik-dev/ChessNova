@@ -145,6 +145,7 @@ func (rt *Router) routes() {
 
 	// Games
 	rt.mux.HandleFunc("GET /api/v1/games", rt.handleListGames)
+	rt.mux.HandleFunc("GET /api/v1/games/active", rt.withAuth(rt.handleGetActiveGameForUser))
 	rt.mux.HandleFunc("POST /api/v1/games", rt.withAuth(rt.handleCreateGame))
 	rt.mux.HandleFunc("GET /api/v1/games/{id}", rt.handleGetGame)
 	rt.mux.HandleFunc("GET /api/v1/games/{id}/pgn", rt.handleGetGamePGN)
@@ -748,6 +749,33 @@ func (rt *Router) handleCreateGame(w http.ResponseWriter, r *http.Request, claim
 	}
 
 	writeJSON(w, http.StatusCreated, ag)
+}
+
+func (rt *Router) handleGetActiveGameForUser(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	if rt.gameService == nil || claims == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	ag := rt.gameService.GetActiveGameForUser(claims.UserID)
+	if ag == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	wMs, bMs, _ := ag.Clock.CurrentTimes(ag.Status)
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"id":          ag.ID,
+		"white":       ag.White,
+		"black":       ag.Black,
+		"status":      ag.Status,
+		"timeControl": ag.TimeControl,
+		"fen":         chess.ToFEN(ag.Engine.CurrentPosition),
+		"turn":        ag.Engine.CurrentPosition.SideToMove.String(),
+		"whiteTime":   wMs,
+		"blackTime":   bMs,
+		"moves":       ag.Moves,
+		"result":      ag.Engine.Result(),
+		"isCheck":     chess.IsCheck(ag.Engine.CurrentPosition),
+	})
 }
 
 func (rt *Router) handleGetGame(w http.ResponseWriter, r *http.Request) {

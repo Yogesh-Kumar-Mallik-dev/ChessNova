@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { api } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
@@ -35,6 +35,18 @@
 	let waitTimer: any = null;
 	let pollTimer: any = null;
 	let error = '';
+	let activeOngoingGame: any = null;
+
+	onMount(async () => {
+		if ($authStore.user) {
+			try {
+				const ag = await api.games.getActive();
+				if (ag && ag.status === 'playing') {
+					activeOngoingGame = ag;
+				}
+			} catch (_) {}
+		}
+	});
 
 	$: tolerance = (() => {
 		if (waitSeconds < 10) return 50;
@@ -51,6 +63,11 @@
 	async function startMatchmaking() {
 		if (!$authStore.user) {
 			goto('/login');
+			return;
+		}
+
+		if (activeOngoingGame) {
+			goto(`/game/${activeOngoingGame.id}`);
 			return;
 		}
 
@@ -136,6 +153,30 @@
 			Select your preferred time control to find a rated match.
 		</p>
 	</div>
+
+	{#if activeOngoingGame}
+		<div class="mb-6 p-4 bg-amber-500/10 border border-amber-500/40 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 max-w-xl mx-auto shadow-xl animate-in fade-in duration-200">
+			<div class="flex items-center gap-3">
+				<div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+					<Icon name="swords" size={20} />
+				</div>
+				<div>
+					<div class="text-sm font-bold text-white">Active Match in Progress</div>
+					<div class="text-xs text-amber-200/80">
+						You have an unfinished game in progress. Return to avoid abandonment forfeit!
+					</div>
+				</div>
+			</div>
+			<Button
+				variant="primary"
+				size="sm"
+				className="w-full sm:w-auto"
+				on:click={() => goto(`/game/${activeOngoingGame.id}`)}
+			>
+				Resume Match
+			</Button>
+		</div>
+	{/if}
 
 	{#if error}
 		<div class="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-sm text-rose-300 text-center max-w-md mx-auto shadow-md">

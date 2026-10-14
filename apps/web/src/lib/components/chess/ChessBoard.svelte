@@ -25,6 +25,7 @@
 	export let fen: string;
 	export let orientation: Color = 'white';
 	export let turn: Color = 'white';
+	export let playerColor: Color | null = null;
 	export let selectedSquare: string | null = null;
 	export let legalMoves: string[] = [];
 	export let lastMove: { from: string; to: string; san?: string; isCapture?: boolean; isPromotion?: boolean } | null = null;
@@ -288,6 +289,9 @@
 	function handleSquareClick(sq: string) {
 		if (!interactive) return;
 
+		// If playerColor is specified, you may only interact when it is your turn
+		if (playerColor !== null && turn !== playerColor) return;
+
 		// If a piece is already selected and user clicked another square
 		if (selectedSquare) {
 			if (selectedSquare === sq) {
@@ -298,7 +302,7 @@
 			// Check if clicked user's own piece -> switch selection to that piece
 			const [f, r] = [sq.charCodeAt(0) - 'a'.charCodeAt(0), parseInt(sq[1], 10) - 1];
 			const targetPiece = board[r][f];
-			if (targetPiece && targetPiece.color === turn) {
+			if (targetPiece && targetPiece.color === turn && (playerColor === null || targetPiece.color === playerColor)) {
 				selectedSquare = sq;
 				dispatch('select', sq);
 				return;
@@ -325,7 +329,7 @@
 		// No piece selected yet: select if it's the current player's piece
 		const [f, r] = [sq.charCodeAt(0) - 'a'.charCodeAt(0), parseInt(sq[1], 10) - 1];
 		const piece = board[r][f];
-		if (piece && piece.color === turn) {
+		if (piece && piece.color === turn && (playerColor === null || piece.color === playerColor)) {
 			selectedSquare = sq;
 			dispatch('select', sq);
 		}
@@ -333,9 +337,14 @@
 
 	function handleDragStart(e: DragEvent, sq: string) {
 		if (!interactive) return;
+		if (playerColor !== null && turn !== playerColor) {
+			e.preventDefault();
+			return;
+		}
+
 		const [f, r] = [sq.charCodeAt(0) - 'a'.charCodeAt(0), parseInt(sq[1], 10) - 1];
 		const piece = board[r][f];
-		if (!piece || piece.color !== turn) {
+		if (!piece || piece.color !== turn || (playerColor !== null && piece.color !== playerColor)) {
 			e.preventDefault();
 			return;
 		}
@@ -355,6 +364,11 @@
 
 	function handleDrop(e: CustomEvent<DragEvent>, targetSq: string) {
 		if (!interactive) return;
+		if (playerColor !== null && turn !== playerColor) {
+			draggedFrom = null;
+			return;
+		}
+
 		const sourceSq = e.detail.dataTransfer?.getData('text/plain') || draggedFrom || selectedSquare;
 		if (!sourceSq || sourceSq === targetSq) {
 			draggedFrom = null;
@@ -467,7 +481,7 @@
 						>
 							<ChessPiece
 								{piece}
-								draggable={interactive && piece.color === turn}
+								draggable={interactive && piece.color === turn && (playerColor === null || piece.color === playerColor)}
 								isDragging={draggedFrom === sq}
 								on:dragstart={(e) => handleDragStart(e, sq)}
 								on:dragend={handleDragEnd}

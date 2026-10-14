@@ -90,6 +90,25 @@ func (s *Service) GetActiveGame(id string) (*ActiveGame, error) {
 	return ag, nil
 }
 
+func (s *Service) GetActiveGameForUser(userID string) *ActiveGame {
+	if userID == "" {
+		return nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, ag := range s.activeGames {
+		ag.Lock()
+		st := ag.Status
+		isPlayer := (ag.White.UserID == userID || ag.Black.UserID == userID)
+		ag.Unlock()
+		if st == StatusPlaying && isPlayer {
+			return ag
+		}
+	}
+	return nil
+}
+
 func (s *Service) JoinGame(gameID string, player PlayerInfo) (*ActiveGame, error) {
 	ag, err := s.GetActiveGame(gameID)
 	if err != nil {

@@ -10,10 +10,15 @@ export class GameSocket {
 	private reconnectTimer: any = null;
 	private pingTimer: any = null;
 	private isExplicitlyClosed = false;
+	private errorCallback: ((err: string) => void) | null = null;
 
 	constructor(gameId: string, token: string | null) {
 		this.gameId = gameId;
 		this.token = token;
+	}
+
+	public onError(cb: (err: string) => void) {
+		this.errorCallback = cb;
 	}
 
 	public connect() {
@@ -77,13 +82,25 @@ export class GameSocket {
 			case 'move':
 				gameStore.update((s) => {
 					const newMoves = [...s.moves];
+					const lastM = newMoves.length > 0 ? newMoves[newMoves.length - 1] : null;
+					const isOptimisticMatch = lastM && lastM.from === data.move.from && lastM.to === data.move.to;
+
 					if (data.san) {
-						newMoves.push({
-							from: data.move.from,
-							to: data.move.to,
-							san: data.san,
-							fen: data.fen
-						});
+						if (isOptimisticMatch) {
+							newMoves[newMoves.length - 1] = {
+								from: data.move.from,
+								to: data.move.to,
+								san: data.san,
+								fen: data.fen
+							};
+						} else {
+							newMoves.push({
+								from: data.move.from,
+								to: data.move.to,
+								san: data.san,
+								fen: data.fen
+							});
+						}
 					}
 
 					// If it's now our turn, notify user
@@ -116,6 +133,22 @@ export class GameSocket {
 						legalMoves: []
 					};
 				});
+				break;
+
+			case 'player_disconnected':
+				gameStore.update((s) => ({
+					...s,
+					opponentConnected: false,
+					opponentDisconnectTime: Date.now()
+				}));
+				break;
+
+			case 'player_connected':
+				gameStore.update((s) => ({
+					...s,
+					opponentConnected: true,
+					opponentDisconnectTime: null
+				}));
 				break;
 
 			case 'clock_update':
@@ -166,6 +199,9 @@ export class GameSocket {
 
 			case 'error':
 				console.warn('Game error from server:', data.error);
+				if (this.errorCallback) {
+					this.errorCallback(data.error);
+				}
 				break;
 		}
 	}

@@ -37,6 +37,8 @@ export interface GameState {
 	promotionPending: { from: string; to: string } | null;
 	drawOfferBy: string | null;
 	moves: GameMoveRecord[];
+	opponentConnected: boolean;
+	opponentDisconnectTime: number | null;
 }
 
 const initialGameState: GameState = {
@@ -56,7 +58,9 @@ const initialGameState: GameState = {
 	orientation: 'white',
 	promotionPending: null,
 	drawOfferBy: null,
-	moves: []
+	moves: [],
+	opponentConnected: true,
+	opponentDisconnectTime: null
 };
 
 export const gameStore = writable<GameState>(initialGameState);

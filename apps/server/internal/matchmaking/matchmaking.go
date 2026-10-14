@@ -3,6 +3,7 @@ package matchmaking
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -55,6 +56,12 @@ func (s *Service) SetOnMatched(cb func(result MatchResult)) {
 }
 
 func (s *Service) JoinQueue(ctx context.Context, t *Ticket) error {
+	if s.gameService != nil {
+		if ag := s.gameService.GetActiveGameForUser(t.UserID); ag != nil {
+			return errors.New("you already have an active game in progress")
+		}
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
