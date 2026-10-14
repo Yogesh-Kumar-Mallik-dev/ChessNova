@@ -29,8 +29,8 @@
 	<div class="flex items-center gap-6 lg:gap-8">
 		<!-- Brand Logo -->
 		<a href="/" class="flex items-center gap-2.5 text-white font-bold text-lg sm:text-xl tracking-tight group">
-			<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md shadow-sky-500/25 group-hover:scale-105 transition-transform">
-				<Icon name="bishop" size={18} className="text-white drop-shadow" />
+			<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500/20 to-indigo-600/30 border border-sky-500/30 flex items-center justify-center p-1 shadow-md shadow-sky-500/20 group-hover:scale-105 transition-transform overflow-hidden">
+				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain drop-shadow" />
 			</div>
 			<span class="font-extrabold text-white">
 				Chess<span class="text-sky-400">Nova</span>
