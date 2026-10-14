@@ -437,3 +437,63 @@ func TestBlackCastling(t *testing.T) {
 		t.Fatalf("expected Black Rook on d8")
 	}
 }
+
+func TestTimeoutInsufficientMatingMaterial(t *testing.T) {
+	// White has King + Queen, Black has only lone King
+	fen := "8/8/8/8/8/4k3/8/4K2Q w - - 0 1"
+	g, err := NewGameFromFEN(fen)
+	if err != nil {
+		t.Fatalf("failed to create game from fen: %v", err)
+	}
+
+	// White runs out of time
+	err = g.Timeout(White)
+	if err != nil {
+		t.Fatalf("timeout failed: %v", err)
+	}
+
+	// Black cannot mate White with a lone King -> Drawn under FIDE 6.9
+	if g.Winner != nil {
+		t.Errorf("expected Winner to be nil (draw), got %v", *g.Winner)
+	}
+	if g.Result() != "1/2-1/2" {
+		t.Errorf("expected result '1/2-1/2', got %s", g.Result())
+	}
+
+	// In contrast, if Black has King + Rook and White times out:
+	fen2 := "8/8/8/8/8/4k3/8/4K2r w - - 0 1"
+	g2, _ := NewGameFromFEN(fen2)
+	_ = g2.Timeout(White)
+	if g2.Winner == nil || *g2.Winner != Black {
+		t.Errorf("expected Black win when Black has mating material")
+	}
+	if g2.Result() != "0-1" {
+		t.Errorf("expected result '0-1', got %s", g2.Result())
+	}
+}
+
+func TestSeventyFiveMoveRule(t *testing.T) {
+	pos := InitialPosition()
+	pos.Halfmove = 150 // 75 full moves without capture or pawn move
+
+	if !IsSeventyFiveMoveRule(pos) {
+		t.Errorf("expected IsSeventyFiveMoveRule to be true for 150 halfmoves")
+	}
+}
+
+func TestClaimDrawThreefoldAndFiftyMoves(t *testing.T) {
+	g := NewGame()
+	// Claiming without conditions met should fail
+	if err := g.ClaimDraw(); err == nil {
+		t.Error("expected ClaimDraw to fail on fresh starting position")
+	}
+
+	// 50-move rule claimable
+	g.CurrentPosition.Halfmove = 100
+	if err := g.ClaimDraw(); err != nil {
+		t.Errorf("expected ClaimDraw to succeed at 100 halfmoves: %v", err)
+	}
+	if g.Outcome != OutcomeFiftyMoves {
+		t.Errorf("expected OutcomeFiftyMoves, got %v", g.Outcome)
+	}
+}

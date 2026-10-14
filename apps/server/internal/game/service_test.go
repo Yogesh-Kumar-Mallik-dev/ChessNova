@@ -90,6 +90,7 @@ func TestGameServiceLifecycle(t *testing.T) {
 	gRepo := newMockGameRepo()
 	rRepo := newMockRatingRepo()
 	svc := NewService(gRepo, rRepo)
+	defer svc.Close()
 	ctx := context.Background()
 
 	white := PlayerInfo{UserID: primitive.NewObjectID().Hex(), Username: "whitePlayer", Rating: 450}
@@ -170,6 +171,7 @@ func TestGameServiceResignation(t *testing.T) {
 	gRepo := newMockGameRepo()
 	rRepo := newMockRatingRepo()
 	svc := NewService(gRepo, rRepo)
+	defer svc.Close()
 	ctx := context.Background()
 
 	white := PlayerInfo{UserID: primitive.NewObjectID().Hex(), Username: "whitePlayer", Rating: 450}

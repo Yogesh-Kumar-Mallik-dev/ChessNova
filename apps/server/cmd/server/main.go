@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -98,7 +99,15 @@ func main() {
 	authService := auth.NewService(userRepo, jwtAccessSecret, jwtRefreshSecret)
 	gameService := game.NewService(gameRepo, ratingRepo)
 	mmService := matchmaking.NewService(rdb, gameService)
-	wsHub := websocket.NewHub(gameService, authService)
+	allowedOriginsStr := getEnv("ALLOWED_ORIGINS", corsOrigin)
+	var customOrigins []string
+	for _, o := range strings.Split(allowedOriginsStr, ",") {
+		if tr := strings.TrimSpace(o); tr != "" {
+			customOrigins = append(customOrigins, tr)
+		}
+	}
+	wsCfg := websocket.DefaultHubConfig(customOrigins...)
+	wsHub := websocket.NewHub(gameService, authService, wsCfg)
 
 	// Forward matchmaking events to websocket hub
 	mmService.SetOnMatched(func(res matchmaking.MatchResult) {
@@ -167,6 +176,8 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
+
+	gameService.Close()
 
 	log.Println("Server gracefully stopped.")
 }

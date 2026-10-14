@@ -39,11 +39,13 @@ type MoveEvent struct {
 }
 
 type Service struct {
-	gameRepo    Repository
-	ratingRepo  rating.Repository
-	activeGames map[string]*ActiveGame
-	mu          sync.RWMutex
+	gameRepo     Repository
+	ratingRepo   rating.Repository
+	activeGames  map[string]*ActiveGame
+	mu           sync.RWMutex
 	onGameFinish func(doc *GameDocument)
+	stopChan     chan struct{}
+	stopOnce     sync.Once
 }
 
 func NewService(gameRepo Repository, ratingRepo rating.Repository) *Service {
@@ -51,9 +53,16 @@ func NewService(gameRepo Repository, ratingRepo rating.Repository) *Service {
 		gameRepo:    gameRepo,
 		ratingRepo:  ratingRepo,
 		activeGames: make(map[string]*ActiveGame),
+		stopChan:    make(chan struct{}),
 	}
 	go s.startTimeoutWatcher()
 	return s
+}
+
+func (s *Service) Close() {
+	s.stopOnce.Do(func() {
+		close(s.stopChan)
+	})
 }
 
 func (s *Service) SetOnGameFinish(cb func(doc *GameDocument)) {
@@ -315,6 +324,32 @@ func (s *Service) DeclineDraw(gameID, userID string) error {
 	return ag.Engine.DeclineDraw(color)
 }
 
+func (s *Service) ClaimDraw(ctx context.Context, gameID, userID string) (*GameDocument, error) {
+	ag, err := s.GetActiveGame(gameID)
+	if err != nil {
+		return nil, err
+	}
+
+	ag.Lock()
+	defer ag.Unlock()
+
+	if ag.Status != StatusPlaying {
+		return nil, ErrGameNotPlaying
+	}
+
+	if ag.White.UserID != userID && ag.Black.UserID != userID {
+		return nil, ErrNotPlayerInGame
+	}
+
+	if err := ag.Engine.ClaimDraw(); err != nil {
+		return nil, err
+	}
+
+	ag.Status = StatusFinished
+	doc := s.finalizeGame(ctx, ag)
+	return doc, nil
+}
+
 func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocument {
 	now := time.Now().UTC()
 	ag.FinishedAt = &now
@@ -429,34 +464,33 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 
 func (s *Service) startTimeoutWatcher() {
 	ticker := time.NewTicker(500 * time.Millisecond)
-	for range ticker.C {
-		s.checkAllTimeouts()
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.stopChan:
+			return
+		case <-ticker.C:
+			s.checkAllTimeouts()
+		}
 	}
 }
 
 func (s *Service) checkAllTimeouts() {
 	s.mu.RLock()
-	ids := make([]string, 0, len(s.activeGames))
-	for id, ag := range s.activeGames {
-		if ag.Status == StatusPlaying {
-			ids = append(ids, id)
-		}
+	games := make([]*ActiveGame, 0, len(s.activeGames))
+	for _, ag := range s.activeGames {
+		games = append(games, ag)
 	}
 	s.mu.RUnlock()
 
-	if len(ids) == 0 {
+	if len(games) == 0 {
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	for _, id := range ids {
-		ag, err := s.GetActiveGame(id)
-		if err != nil {
-			continue
-		}
-
+	for _, ag := range games {
 		ag.Lock()
 		if ag.Status == StatusPlaying {
 			_, _, timedOut := ag.Clock.CurrentTimes(ag.Status)

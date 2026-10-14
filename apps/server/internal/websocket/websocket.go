@@ -3,8 +3,9 @@ package websocket
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,12 +16,86 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins for dev/CORS
-	},
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+// HubConfig configures origin policy and websocket behavior
+type HubConfig struct {
+	AllowedOrigins     []string
+	AllowMissingOrigin bool
+	AllowDevLocalhost  bool
+}
+
+// DefaultHubConfig returns secure default origins including Tauri and local dev ports
+func DefaultHubConfig(customOrigins ...string) HubConfig {
+	origins := []string{
+		"http://localhost:5173",
+		"http://localhost:3000",
+		"http://localhost:4173",
+		"tauri://localhost",
+		"http://tauri.localhost",
+		"https://tauri.localhost",
+	}
+	for _, o := range customOrigins {
+		trimmed := strings.TrimSpace(o)
+		if trimmed != "" {
+			origins = append(origins, trimmed)
+		}
+	}
+	return HubConfig{
+		AllowedOrigins:     origins,
+		AllowMissingOrigin: true, // Allow non-browser desktop / test clients without Origin header
+		AllowDevLocalhost:  true,
+	}
+}
+
+// ValidateOrigin performs strict origin verification against trusted origins
+func ValidateOrigin(origin string, cfg HubConfig) bool {
+	if origin == "" {
+		return cfg.AllowMissingOrigin
+	}
+
+	u, err := url.Parse(origin)
+	if err != nil || u.Scheme == "" {
+		return false
+	}
+
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "http" && scheme != "https" && scheme != "tauri" {
+		return false
+	}
+
+	// For custom URI scheme (e.g. tauri://localhost)
+	if scheme == "tauri" {
+		full := "tauri://" + strings.ToLower(u.Host)
+		for _, allowed := range cfg.AllowedOrigins {
+			if strings.EqualFold(strings.TrimRight(allowed, "/"), full) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if u.Host == "" {
+		return false
+	}
+
+	normOrigin := scheme + "://" + strings.ToLower(u.Host)
+
+	// Check explicit allowlist
+	for _, allowed := range cfg.AllowedOrigins {
+		allowedTrimmed := strings.TrimRight(strings.ToLower(strings.TrimSpace(allowed)), "/")
+		if normOrigin == allowedTrimmed {
+			return true
+		}
+	}
+
+	// Check dev localhost
+	if cfg.AllowDevLocalhost {
+		hostname := strings.ToLower(u.Hostname())
+		if hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" {
+			return true
+		}
+	}
+
+	return false
 }
 
 type ClientMessage struct {
@@ -74,13 +149,31 @@ type Hub struct {
 	mu          sync.RWMutex
 	gameService *game.Service
 	authService *auth.Service
+	config      HubConfig
+	upgrader    websocket.Upgrader
 }
 
-func NewHub(gameService *game.Service, authService *auth.Service) *Hub {
+func NewHub(gameService *game.Service, authService *auth.Service, cfgs ...HubConfig) *Hub {
+	var cfg HubConfig
+	if len(cfgs) > 0 {
+		cfg = cfgs[0]
+	} else {
+		cfg = DefaultHubConfig()
+	}
+
 	h := &Hub{
 		rooms:       make(map[string]*GameRoom),
 		gameService: gameService,
 		authService: authService,
+		config:      cfg,
+	}
+
+	h.upgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return ValidateOrigin(r.Header.Get("Origin"), h.config)
+		},
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
 	}
 
 	if gameService != nil {
@@ -147,18 +240,25 @@ func (h *Hub) Broadcast(gameID string, msg ServerMessage) {
 }
 
 func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID string) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("websocket upgrade error: %v", err)
+		// upgrader writes error status on check origin failure
 		return
 	}
 
 	var userID string
 	var username string
 
-	// Extract token from query param or header
+	// Extract token from query param or Authorization header
 	tokenStr := r.URL.Query().Get("token")
-	if tokenStr != "" {
+	if tokenStr == "" {
+		authH := r.Header.Get("Authorization")
+		if strings.HasPrefix(authH, "Bearer ") {
+			tokenStr = strings.TrimPrefix(authH, "Bearer ")
+		}
+	}
+
+	if tokenStr != "" && h.authService != nil {
 		claims, err := h.authService.ValidateAccessToken(tokenStr)
 		if err == nil {
 			userID = claims.UserID
@@ -178,25 +278,28 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 	}
 
 	// Check if active game exists to send initial state
-	ag, err := h.gameService.GetActiveGame(gameID)
-	if err == nil {
-		client.isPlayer = (ag.White.UserID == userID || ag.Black.UserID == userID)
-		wMs, bMs, _ := ag.Clock.CurrentTimes(ag.Status)
-		initMsg := ServerMessage{
-			Type:        "game_started",
-			GameID:      ag.ID,
-			FEN:         chess.ToFEN(ag.Engine.CurrentPosition),
-			Turn:        ag.Engine.CurrentPosition.SideToMove.String(),
-			WhiteTime:   wMs,
-			BlackTime:   bMs,
-			Status:      ag.Status,
-			White:       &ag.White,
-			Black:       &ag.Black,
-			TimeControl: &ag.TimeControl,
-			IsCheck:     chess.IsCheck(ag.Engine.CurrentPosition),
+	if h.gameService != nil {
+		ag, err := h.gameService.GetActiveGame(gameID)
+		if err == nil {
+			// A player must be an authenticated user whose ID matches either seat
+			client.isPlayer = (userID != "" && (ag.White.UserID == userID || ag.Black.UserID == userID))
+			wMs, bMs, _ := ag.Clock.CurrentTimes(ag.Status)
+			initMsg := ServerMessage{
+				Type:        "game_started",
+				GameID:      ag.ID,
+				FEN:         chess.ToFEN(ag.Engine.CurrentPosition),
+				Turn:        ag.Engine.CurrentPosition.SideToMove.String(),
+				WhiteTime:   wMs,
+				BlackTime:   bMs,
+				Status:      ag.Status,
+				White:       &ag.White,
+				Black:       &ag.Black,
+				TimeControl: &ag.TimeControl,
+				IsCheck:     chess.IsCheck(ag.Engine.CurrentPosition),
+			}
+			initBytes, _ := json.Marshal(initMsg)
+			client.send <- initBytes
 		}
-		initBytes, _ := json.Marshal(initMsg)
-		client.send <- initBytes
 	}
 
 	room.mu.Lock()
@@ -219,7 +322,7 @@ func (h *Hub) handlePlayerDisconnect(gameID, userID, username string) {
 	// Give player 60 seconds grace period to reconnect
 	time.Sleep(60 * time.Second)
 
-	if h.gameService == nil {
+	if h.gameService == nil || userID == "" {
 		return
 	}
 
@@ -282,7 +385,7 @@ func (c *Client) readPump() {
 			Username: c.username,
 		})
 
-		if c.isPlayer && c.hub.gameService != nil {
+		if c.isPlayer && c.hub.gameService != nil && c.userID != "" {
 			go c.hub.handlePlayerDisconnect(c.gameID, c.userID, c.username)
 		}
 	}()
@@ -312,6 +415,17 @@ func (c *Client) readPump() {
 
 func (c *Client) handleMessage(msg ClientMessage) {
 	ctx := context.Background()
+
+	// Only players can perform moves, resign, or negotiate draws
+	if msg.Type != "ping" && !c.isPlayer {
+		c.sendError("only active players can submit moves or game actions")
+		return
+	}
+
+	if c.hub.gameService == nil {
+		c.sendError("game service unavailable")
+		return
+	}
 
 	switch msg.Type {
 	case "move":
@@ -424,6 +538,20 @@ func (c *Client) handleMessage(msg ClientMessage) {
 			Type:   "draw_declined",
 			GameID: c.gameID,
 			UserID: c.userID,
+		})
+
+	case "claim_draw":
+		doc, err := c.hub.gameService.ClaimDraw(ctx, c.gameID, c.userID)
+		if err != nil {
+			c.sendError(err.Error())
+			return
+		}
+		c.hub.Broadcast(c.gameID, ServerMessage{
+			Type:    "draw_claimed",
+			GameID:  c.gameID,
+			Status:  doc.Status,
+			Outcome: doc.Outcome,
+			Result:  doc.Result,
 		})
 
 	case "ping":

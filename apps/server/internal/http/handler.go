@@ -151,6 +151,7 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/moves", rt.withAuth(rt.handleMakeMove))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/join", rt.withAuth(rt.handleJoinGame))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/resign", rt.withAuth(rt.handleResign))
+	rt.mux.HandleFunc("POST /api/v1/games/{id}/claim-draw", rt.withAuth(rt.handleClaimDraw))
 
 	// Authoritative Chess Engine & Legal Move Rules
 	rt.mux.HandleFunc("POST /api/v1/chess/legal-moves", rt.handleLegalMoves)
@@ -869,6 +870,16 @@ func (rt *Router) handleResign(w http.ResponseWriter, r *http.Request, claims *a
 	doc, err := rt.gameService.Resign(r.Context(), id, claims.UserID)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "RESIGN_ERROR", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, doc)
+}
+
+func (rt *Router) handleClaimDraw(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	id := r.PathValue("id")
+	doc, err := rt.gameService.ClaimDraw(r.Context(), id, claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "CLAIM_DRAW_ERROR", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, doc)

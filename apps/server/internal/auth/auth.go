@@ -3,12 +3,15 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"chess-platform/server/internal/user"
 
 	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -16,11 +19,13 @@ var (
 	ErrInvalidCredentials = errors.New("invalid username or password")
 	ErrUserAlreadyExists  = errors.New("username or email already in use")
 	ErrInvalidToken       = errors.New("invalid or expired token")
+	ErrInsecureSecret     = errors.New("jwt secret must be non-empty and at least 16 characters")
 )
 
 type Claims struct {
-	UserID   string `json:"userId"`
-	Username string `json:"username"`
+	UserID    string `json:"userId"`
+	Username  string `json:"username"`
+	TokenType string `json:"tokenType"` // "access" or "refresh"
 	jwt.RegisteredClaims
 }
 
@@ -39,6 +44,10 @@ type Service struct {
 }
 
 func NewService(userRepo user.Repository, accessSecret, refreshSecret string) *Service {
+	if len(accessSecret) < 16 || len(refreshSecret) < 16 {
+		panic("JWT access and refresh secrets must each be at least 16 characters for security")
+	}
+
 	return &Service{
 		userRepo:      userRepo,
 		accessSecret:  []byte(accessSecret),
@@ -48,12 +57,35 @@ func NewService(userRepo user.Repository, accessSecret, refreshSecret string) *S
 	}
 }
 
-func (s *Service) Register(ctx context.Context, username, email, password string) (*user.User, *TokenPair, error) {
-	if existing, _ := s.userRepo.FindByUsername(ctx, username); existing != nil {
-		return nil, nil, ErrUserAlreadyExists
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
 	}
-	if existing, _ := s.userRepo.FindByEmail(ctx, email); existing != nil {
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return true
+	}
+	errLower := strings.ToLower(err.Error())
+	return strings.Contains(errLower, "not found")
+}
+
+func (s *Service) Register(ctx context.Context, username, email, password string) (*user.User, *TokenPair, error) {
+	username = strings.TrimSpace(username)
+	email = strings.TrimSpace(strings.ToLower(email))
+
+	if username == "" || email == "" || password == "" {
+		return nil, nil, errors.New("username, email, and password are required")
+	}
+
+	if existing, err := s.userRepo.FindByUsername(ctx, username); err == nil && existing != nil {
 		return nil, nil, ErrUserAlreadyExists
+	} else if err != nil && !isNotFoundError(err) {
+		return nil, nil, err
+	}
+
+	if existing, err := s.userRepo.FindByEmail(ctx, email); err == nil && existing != nil {
+		return nil, nil, ErrUserAlreadyExists
+	} else if err != nil && !isNotFoundError(err) {
+		return nil, nil, err
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -69,6 +101,9 @@ func (s *Service) Register(ctx context.Context, username, email, password string
 	}
 
 	if err := s.userRepo.Create(ctx, u); err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return nil, nil, ErrUserAlreadyExists
+		}
 		return nil, nil, err
 	}
 
@@ -81,9 +116,13 @@ func (s *Service) Register(ctx context.Context, username, email, password string
 }
 
 func (s *Service) Login(ctx context.Context, username, password string) (*user.User, *TokenPair, error) {
+	username = strings.TrimSpace(username)
 	u, err := s.userRepo.FindByUsername(ctx, username)
 	if err != nil {
-		return nil, nil, ErrInvalidCredentials
+		if isNotFoundError(err) {
+			return nil, nil, ErrInvalidCredentials
+		}
+		return nil, nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)); err != nil {
@@ -100,6 +139,9 @@ func (s *Service) Login(ctx context.Context, username, password string) (*user.U
 
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	token, err := jwt.ParseWithClaims(refreshToken, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != jwt.SigningMethodHS256 {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
 		return s.refreshSecret, nil
 	})
 	if err != nil || !token.Valid {
@@ -107,7 +149,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	}
 
 	claims, ok := token.Claims.(*Claims)
-	if !ok {
+	if !ok || claims.TokenType != "refresh" {
 		return nil, ErrInvalidToken
 	}
 
@@ -126,6 +168,9 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 
 func (s *Service) ValidateAccessToken(tokenStr string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != jwt.SigningMethodHS256 {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
 		return s.accessSecret, nil
 	})
 	if err != nil || !token.Valid {
@@ -133,7 +178,7 @@ func (s *Service) ValidateAccessToken(tokenStr string) (*Claims, error) {
 	}
 
 	claims, ok := token.Claims.(*Claims)
-	if !ok {
+	if !ok || claims.TokenType != "access" {
 		return nil, ErrInvalidToken
 	}
 
@@ -143,8 +188,9 @@ func (s *Service) ValidateAccessToken(tokenStr string) (*Claims, error) {
 func (s *Service) GenerateTokenPair(u *user.User) (*TokenPair, error) {
 	now := time.Now().UTC()
 	accessClaims := Claims{
-		UserID:   u.ID.Hex(),
-		Username: u.Username,
+		UserID:    u.ID.Hex(),
+		Username:  u.Username,
+		TokenType: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.accessExpiry)),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -157,8 +203,9 @@ func (s *Service) GenerateTokenPair(u *user.User) (*TokenPair, error) {
 	}
 
 	refreshClaims := Claims{
-		UserID:   u.ID.Hex(),
-		Username: u.Username,
+		UserID:    u.ID.Hex(),
+		Username:  u.Username,
+		TokenType: "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.refreshExpiry)),
 			IssuedAt:  jwt.NewNumericDate(now),

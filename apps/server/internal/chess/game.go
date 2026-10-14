@@ -13,6 +13,8 @@ const (
 	OutcomeInsufficientMaterial GameOutcome = "insufficient_material"
 	OutcomeFiftyMoves           GameOutcome = "fifty_moves"
 	OutcomeThreefoldRepetition  GameOutcome = "threefold_repetition"
+	OutcomeFivefoldRepetition   GameOutcome = "fivefold_repetition"
+	OutcomeSeventyFiveMoves     GameOutcome = "seventy_five_moves"
 	OutcomeResignation          GameOutcome = "resignation"
 	OutcomeTimeout              GameOutcome = "timeout"
 	OutcomeDrawAgreed           GameOutcome = "draw_agreed"
@@ -134,17 +136,27 @@ func (g *Game) updateGameStatus() {
 		return
 	}
 
-	if IsFiftyMoveRule(g.CurrentPosition) {
-		g.Outcome = OutcomeFiftyMoves
+	// Automatic FIDE 9.6.2: 75-move rule
+	if IsSeventyFiveMoveRule(g.CurrentPosition) {
+		g.Outcome = OutcomeSeventyFiveMoves
 		return
 	}
 
+	// Automatic FIDE 9.6.1: Fivefold repetition
+	if g.Repetitions[g.CurrentPosition.RepetitionKey()] >= 5 {
+		g.Outcome = OutcomeFivefoldRepetition
+		return
+	}
+
+	// In online chess: default automatic claim on 3-fold or 50 moves if threshold met
 	if g.CanClaimThreefoldRepetition() {
-		// In online chess, automatic threefold claim or available claim
-		if g.Repetitions[g.CurrentPosition.RepetitionKey()] >= 3 {
-			g.Outcome = OutcomeThreefoldRepetition
-			return
-		}
+		g.Outcome = OutcomeThreefoldRepetition
+		return
+	}
+
+	if g.CanClaimFiftyMoves() {
+		g.Outcome = OutcomeFiftyMoves
+		return
 	}
 }
 
@@ -158,6 +170,21 @@ func (g *Game) IsOver() bool {
 
 func (g *Game) CanClaimFiftyMoves() bool {
 	return IsFiftyMoveRule(g.CurrentPosition)
+}
+
+func (g *Game) ClaimDraw() error {
+	if g.Outcome != OutcomePlaying {
+		return errors.New("game is already finished")
+	}
+	if g.CanClaimThreefoldRepetition() {
+		g.Outcome = OutcomeThreefoldRepetition
+		return nil
+	}
+	if g.CanClaimFiftyMoves() {
+		g.Outcome = OutcomeFiftyMoves
+		return nil
+	}
+	return errors.New("draw conditions (threefold repetition or 50 moves) not satisfied")
 }
 
 func (g *Game) Resign(color Color) error {
@@ -175,8 +202,13 @@ func (g *Game) Timeout(color Color) error {
 		return errors.New("game is already finished")
 	}
 	g.Outcome = OutcomeTimeout
-	winner := color.Other()
-	g.Winner = &winner
+	opp := color.Other()
+	if !CanOpponentMate(g.CurrentPosition, opp) {
+		// FIDE 6.9: Draw if opponent has insufficient material to mate by any series of legal moves
+		g.Winner = nil
+	} else {
+		g.Winner = &opp
+	}
 	return nil
 }
 

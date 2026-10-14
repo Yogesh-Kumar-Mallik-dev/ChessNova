@@ -14,8 +14,63 @@ func IsStalemate(p Position) bool {
 	return len(LegalMoves(p)) == 0
 }
 
+// IsFiftyMoveRule returns true when 50 full moves (100 halfmoves) have passed without capture or pawn move
+// Under FIDE 9.3, this gives the right to claim a draw.
 func IsFiftyMoveRule(p Position) bool {
 	return p.Halfmove >= 100
+}
+
+// IsSeventyFiveMoveRule returns true when 75 full moves (150 halfmoves) have passed without capture or pawn move
+// Under FIDE 9.6.2, this is an automatic draw.
+func IsSeventyFiveMoveRule(p Position) bool {
+	return p.Halfmove >= 150
+}
+
+// CanOpponentMate checks whether the opponent has sufficient material to theoretically deliver checkmate
+// under any legal series of moves (per FIDE Article 6.9).
+func CanOpponentMate(p Position, opp Color) bool {
+	var oppPawns, oppRooks, oppQueens, oppKnights, oppBishops int
+	var otherPieces int
+
+	for sq := Square(0); sq < 64; sq++ {
+		piece := p.Board.Get(sq)
+		if piece.IsEmpty() || piece.Type == King {
+			continue
+		}
+		if piece.Color == opp {
+			switch piece.Type {
+			case Pawn:
+				oppPawns++
+			case Rook:
+				oppRooks++
+			case Queen:
+				oppQueens++
+			case Knight:
+				oppKnights++
+			case Bishop:
+				oppBishops++
+			}
+		} else {
+			otherPieces++
+		}
+	}
+
+	// If opponent has pawns, rooks, or queens, checkmate is always theoretically possible
+	if oppPawns > 0 || oppRooks > 0 || oppQueens > 0 {
+		return true
+	}
+
+	// Lone king cannot mate
+	if oppKnights == 0 && oppBishops == 0 {
+		return false
+	}
+
+	// Single minor piece (K+B or K+N) vs lone king cannot deliver mate under any legal move sequence
+	if oppKnights+oppBishops == 1 && otherPieces == 0 {
+		return false
+	}
+
+	return true
 }
 
 func IsInsufficientMaterial(p Position) bool {
@@ -76,5 +131,5 @@ func IsInsufficientMaterial(p Position) bool {
 }
 
 func IsDraw(p Position) bool {
-	return IsStalemate(p) || IsFiftyMoveRule(p) || IsInsufficientMaterial(p)
+	return IsStalemate(p) || IsFiftyMoveRule(p) || IsInsufficientMaterial(p) || IsSeventyFiveMoveRule(p)
 }
