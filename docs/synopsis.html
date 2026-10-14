@@ -28,13 +28,20 @@
     break-before: page;
   }
 
-  /* Title Page */
+  /* Title Page - Completely Centralized */
   .title-page {
     text-align: center;
     line-height: 1.4;
+    width: 100%;
+    height: calc(29.7cm - 3.75cm);
+    transform: translate(-1.125cm, -0.625cm);
     box-sizing: border-box;
-    padding-top: 25px;
-    padding-bottom: 25px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    padding: 0;
   }
 
   .title-project {
