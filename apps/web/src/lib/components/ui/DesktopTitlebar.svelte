@@ -56,8 +56,8 @@
 	>
 		<!-- Left: Branding & Draggable Title -->
 		<div class="flex items-center gap-2 pointer-events-none" data-tauri-drag-region>
-			<div class="w-5 h-5 rounded-md bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-xs">
-				<Icon name="bishop" size={13} className="text-white" />
+			<div class="w-5 h-5 rounded-md bg-gradient-to-tr from-sky-500/20 to-indigo-600/30 border border-sky-500/30 flex items-center justify-center p-0.5 shadow-xs overflow-hidden">
+				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain" />
 			</div>
 			<div class="flex items-center gap-1.5 font-bold tracking-tight text-white text-[11px]">
 				<span>Chess<span class="text-sky-400">Nova</span></span>
