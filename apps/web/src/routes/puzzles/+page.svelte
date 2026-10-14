@@ -7,11 +7,14 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import { Chess } from 'chess.js';
+	import { soundEffects } from '$lib/audio/sounds';
 	import { executeMoveClient, type Color, type PieceType } from '$lib/chess/engine';
 
 	let currentPuzzle: any = null;
 	let currentFen = '';
 	let solutionIndex = 0;
+	let finishedWithMate = false;
 	let statusMessage = 'Find the best move in this position.';
 	let statusType: 'info' | 'success' | 'error' = 'info';
 	let loading = true;
@@ -49,6 +52,7 @@
 				: 'Find the best tactical sequence in this position.';
 		statusType = 'info';
 		solutionIndex = 0;
+		finishedWithMate = false;
 		lastMove = null;
 		ratingDiff = null;
 		isRetrying = false;
@@ -163,7 +167,13 @@
 				playSolutionStep(idx + 1);
 			}, 600);
 		} else {
-			statusMessage = 'Solution complete! Review the tactical pattern.';
+			const chk = new Chess(currentFen);
+			if (chk.isCheckmate()) {
+				statusMessage = 'Solution complete: Decisive checkmate delivered!';
+				finishedWithMate = true;
+			} else {
+				statusMessage = 'Solution complete! Review the tactical pattern.';
+			}
 		}
 	}
 
@@ -171,6 +181,7 @@
 		if (!currentPuzzle) return;
 		currentFen = currentPuzzle.fen;
 		solutionIndex = 0;
+		finishedWithMate = false;
 		isRetrying = true;
 		hintSquare = null;
 		hintArrow = null;
@@ -180,6 +191,13 @@
 		turn = parts[1] === 'w' ? 'white' : 'black';
 		statusMessage = 'Position reset. Find the optimal tactical combination!';
 		statusType = 'info';
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (statusType === 'success' && (e.key === ' ' || e.key === 'Enter')) {
+			e.preventDefault();
+			loadRandomPuzzle();
+		}
 	}
 
 	async function handleMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
@@ -196,6 +214,9 @@
 		hintSquare = null;
 		hintArrow = null;
 
+		const chk = new Chess(res.newFen);
+		const isMate = chk.isCheckmate();
+
 		try {
 			const check = await api.puzzles.solve(currentPuzzle.id, {
 				move: uci,
@@ -206,15 +227,28 @@
 
 			if (check.correct) {
 				if (check.finished) {
-					if (hasAssistance || isRetrying) {
-						statusMessage = 'Puzzle solved with practice/assistance! (Rating unaffected)';
+					finishedWithMate = isMate;
+					if (isMate) {
+						if (hasAssistance || isRetrying) {
+							statusMessage = 'Checkmate! Puzzle solved with practice/assistance.';
+						} else {
+							statusMessage = 'Checkmate! You discovered the winning mating sequence.';
+							userRating = check.newRating;
+							ratingDiff = check.diff;
+							solvedCount++;
+						}
 					} else {
-						statusMessage = 'Brilliant! Puzzle completed successfully.';
-						userRating = check.newRating;
-						ratingDiff = check.diff;
-						solvedCount++;
+						if (hasAssistance || isRetrying) {
+							statusMessage = 'Puzzle solved with practice/assistance! (Rating unaffected)';
+						} else {
+							statusMessage = 'Brilliant! Tactical combination completed successfully.';
+							userRating = check.newRating;
+							ratingDiff = check.diff;
+							solvedCount++;
+						}
 					}
 					statusType = 'success';
+					soundEffects.playGameStart();
 				} else {
 					statusMessage = 'Best move found! Continue the tactical sequence...';
 					statusType = 'info';
@@ -256,6 +290,8 @@
 		loadRandomPuzzle();
 	});
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div class="flex-1 max-w-6xl mx-auto w-full p-2 sm:px-4 sm:py-2.5 flex flex-col justify-center">
 	<!-- Header -->
@@ -388,6 +424,7 @@
 						{lastMove}
 						{hintSquare}
 						{hintArrow}
+						mode="puzzle"
 						interactive={!isSolutionRevealed && statusType !== 'success'}
 						boardSizeClass="w-full"
 						on:move={handleMove}
@@ -461,82 +498,140 @@
 
 			<!-- Status Feedback Banner -->
 			<div
-				class="p-4 rounded-xl border flex items-center gap-3 transition-all duration-200 {statusType === 'success'
-					? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
+				class="p-4 rounded-xl border flex items-center justify-between gap-3 transition-all duration-200 {statusType === 'success'
+					? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200 shadow-lg shadow-emerald-500/10'
 					: statusType === 'error'
 						? 'bg-rose-950/40 border-rose-500/40 text-rose-200'
 						: 'bg-slate-950/60 border-slate-800 text-slate-300'}"
 			>
-				<div class="shrink-0">
-					{#if statusType === 'success'}
-						<div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-							<Icon name="check" size={16} />
+				<div class="flex items-center gap-3 min-w-0">
+					<div class="shrink-0">
+						{#if statusType === 'success'}
+							<div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+								<Icon name={finishedWithMate ? 'crown' : 'check'} size={16} />
+							</div>
+						{:else if statusType === 'error'}
+							<div class="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
+								<Icon name="x" size={16} />
+							</div>
+						{:else}
+							<div class="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-500/30">
+								<Icon name="sparkles" size={16} />
+							</div>
+						{/if}
+					</div>
+					<div>
+						{#if statusType === 'success' && finishedWithMate}
+							<div class="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+								Checkmate Delivered
+							</div>
+						{/if}
+						<div class="text-xs font-semibold leading-relaxed">
+							{statusMessage}
 						</div>
-					{:else if statusType === 'error'}
-						<div class="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center">
-							<Icon name="x" size={16} />
-						</div>
-					{:else}
-						<div class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center">
-							<Icon name="sparkles" size={16} />
-						</div>
-					{/if}
+					</div>
 				</div>
-				<div class="text-xs font-semibold leading-relaxed">
-					{statusMessage}
-				</div>
+
+				{#if statusType === 'success' && ratingDiff && ratingDiff > 0}
+					<span class="px-2 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono font-bold text-xs shrink-0 animate-bounce">
+						+{ratingDiff}
+					</span>
+				{/if}
 			</div>
 
 			<!-- Tactical Laboratory Actions -->
 			<div class="flex flex-col gap-2 pt-2">
-				<div class="grid grid-cols-2 gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={statusType === 'success' || isSolutionRevealed}
-						on:click={requestHint}
-						className="w-full text-slate-200"
-						title="Get tactical hint without penalty"
-					>
-						<Icon name="sparkles" size={14} className="text-amber-400" />
-						<span>{hintCount === 0 ? 'Get Hint' : 'Target Hint'}</span>
-					</Button>
-
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={isSolutionRevealed}
-						on:click={revealSolution}
-						className="w-full text-slate-200"
-						title="Reveal the winning move sequence"
-					>
-						<Icon name="eye" size={14} className="text-cyan-400" />
-						<span>Show Solution</span>
-					</Button>
-				</div>
-
-				<div class="grid grid-cols-2 gap-2">
-					<Button
-						variant="secondary"
-						size="sm"
-						on:click={resetToInitial}
-						className="w-full text-slate-200"
-						title="Retry the current position from the start"
-					>
-						<Icon name="rotate-ccw" size={14} />
-						<span>Retry Puzzle</span>
-					</Button>
-
+				{#if statusType === 'success'}
 					<Button
 						variant="primary"
-						size="sm"
-						className="w-full"
+						size="default"
+						className="w-full shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 font-bold justify-center gap-2"
 						on:click={loadRandomPuzzle}
 					>
 						<span>Next Puzzle</span>
-						<Icon name="arrow-right" size={14} />
+						<Icon name="arrow-right" size={15} />
+						<span class="text-[10px] text-white/70 font-mono font-normal ml-0.5">(Enter)</span>
 					</Button>
-				</div>
+
+					<div class="grid grid-cols-2 gap-2 mt-0.5">
+						<Button
+							variant="outline"
+							size="sm"
+							on:click={resetToInitial}
+							className="w-full text-slate-300"
+							title="Retry the current position from the start"
+						>
+							<Icon name="rotate-ccw" size={13} />
+							<span>Retry Move</span>
+						</Button>
+
+						<a
+							href="/analysis?fen={encodeURIComponent(currentFen)}"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="w-full"
+						>
+							<Button
+								variant="outline"
+								size="sm"
+								className="w-full text-slate-300"
+								title="Analyze this final tactical position in analysis board"
+							>
+								<Icon name="search" size={13} />
+								<span>Analyze</span>
+							</Button>
+						</a>
+					</div>
+				{:else}
+					<div class="grid grid-cols-2 gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={isSolutionRevealed}
+							on:click={requestHint}
+							className="w-full text-slate-200"
+							title="Get tactical hint without penalty"
+						>
+							<Icon name="sparkles" size={14} className="text-amber-400" />
+							<span>{hintCount === 0 ? 'Get Hint' : 'Target Hint'}</span>
+						</Button>
+
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={isSolutionRevealed}
+							on:click={revealSolution}
+							className="w-full text-slate-200"
+							title="Reveal the winning move sequence"
+						>
+							<Icon name="eye" size={14} className="text-cyan-400" />
+							<span>Show Solution</span>
+						</Button>
+					</div>
+
+					<div class="grid grid-cols-2 gap-2">
+						<Button
+							variant="secondary"
+							size="sm"
+							on:click={resetToInitial}
+							className="w-full text-slate-200"
+							title="Retry the current position from the start"
+						>
+							<Icon name="rotate-ccw" size={14} />
+							<span>Retry Puzzle</span>
+						</Button>
+
+						<Button
+							variant="primary"
+							size="sm"
+							className="w-full"
+							on:click={loadRandomPuzzle}
+						>
+							<span>Next Puzzle</span>
+							<Icon name="arrow-right" size={14} />
+						</Button>
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>

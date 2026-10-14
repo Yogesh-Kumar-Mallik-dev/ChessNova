@@ -422,6 +422,7 @@
 					{orientation}
 					{turn}
 					{lastMove}
+					mode="analysis"
 					boardSizeClass="w-full"
 					reviewMove={activeReviewMove}
 					on:move={handleMove}

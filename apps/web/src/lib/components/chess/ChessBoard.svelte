@@ -36,6 +36,7 @@
 	export let gameOutcome = '';
 	export let gameWinner = '';
 	export let disableGameOverModal = false;
+	export let mode: 'game' | 'puzzle' | 'analysis' = 'game';
 	export let hintSquare: string | null = null;
 	export let hintArrow: { from: string; to: string } | null = null;
 	export let reviewMove: {
@@ -129,11 +130,12 @@
 	$: isDraw = gameOver
 		? gameResult === '1/2-1/2' || ['stalemate', 'threefold_repetition', 'fifty_moves', 'insufficient_material', 'draw_agreed'].includes(gameOutcome)
 		: engineState.isDraw;
-	$: isGameOver = gameOver || isCheckmate || isDraw;
+	$: isGameOver = mode === 'game' ? (gameOver || isCheckmate || isDraw) : false;
 
-	$: winnerColor = gameOver ? gameWinner : (isCheckmate ? (turn === 'white' ? 'black' : 'white') : '');
+	$: winnerColor = mode === 'game' ? (gameOver ? gameWinner : (isCheckmate ? (turn === 'white' ? 'black' : 'white') : '')) : '';
 
 	$: losingKingSquare = (() => {
+		if (mode !== 'game') return null;
 		if (isCheckmate) return getCheckedKingSquare(fen);
 		if (gameOver && winnerColor && winnerColor !== 'draw') {
 			const loserColor = winnerColor === 'white' ? 'black' : 'white';
@@ -150,6 +152,7 @@
 	})();
 
 	$: winningKingSquare = (() => {
+		if (mode !== 'game') return null;
 		if (!winnerColor || winnerColor === 'draw') return null;
 		for (let r = 0; r < 8; r++) {
 			for (let f = 0; f < 8; f++) {
@@ -198,7 +201,7 @@
 	let prevGameOver = false;
 	$: if (isGameOver && !prevGameOver) {
 		prevGameOver = true;
-		if (!isCheckmate) {
+		if (!isCheckmate && mode === 'game') {
 			soundEffects.playGameEnd();
 		}
 	} else if (!isGameOver) {
@@ -237,7 +240,11 @@
 		} else if (explicitCapture && (category === 'normal' || category === 'castle')) {
 			category = 'capture';
 		}
-		playMoveSoundByCategory(category);
+		if (mode === 'puzzle' && category === 'checkmate') {
+			soundEffects.playCheck();
+		} else {
+			playMoveSoundByCategory(category);
+		}
 
 		// 2. Calculate primary slide animation delta
 		const primaryDelta = getSlideDelta(fromSq, toSq);
@@ -395,9 +402,10 @@
 	// Calculate 8x8 squares in order depending on orientation
 	$: ranks = orientation === 'white' ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
 	$: files = orientation === 'white' ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
+	$: effectiveDisableGameOverModal = disableGameOverModal || mode !== 'game';
 </script>
 
-<div class="relative w-full aspect-square {boardSizeClass} rounded-2xl overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.85)] border-4 border-slate-800 ring-1 ring-slate-700/60 select-none {isCheckmate ? 'ring-2 ring-amber-400/80 animate-[boardImpact_450ms_ease-out]' : ''}">
+<div class="relative w-full aspect-square {boardSizeClass} rounded-2xl overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.85)] border-4 border-slate-800 ring-1 ring-slate-700/60 select-none {mode === 'game' && isCheckmate ? 'ring-2 ring-amber-400/80 animate-[boardImpact_450ms_ease-out]' : ''}">
 	{#if showSoundToggle}
 		<button
 			class="absolute top-2 right-2 z-30 p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 transition shadow-md"
@@ -438,7 +446,7 @@
 					{isCapture}
 					isHintSquare={hintSquare === sq}
 					{legalCategory}
-					isCheck={isCheckSquare && !isCheckmate}
+					isCheck={isCheckSquare && (mode !== 'game' || !isCheckmate)}
 					isWinningKing={winningKingSquare === sq}
 					isLosingKing={losingKingSquare === sq}
 					{losingKingReason}
@@ -522,7 +530,7 @@
 	{/if}
 
 	<!-- Game Over Modal -->
-	{#if isGameOver && !disableGameOverModal && showGameOverModal}
+	{#if isGameOver && !effectiveDisableGameOverModal && showGameOverModal}
 		<div class="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in duration-200">
 			<div class="relative bg-slate-900/95 border border-slate-800 rounded-2xl p-6 shadow-2xl max-w-[320px] sm:max-w-[340px] w-full flex flex-col items-center text-center">
 				<!-- Close 'X' button to dismiss modal and view the board freely -->
@@ -586,7 +594,7 @@
 	{/if}
 
 	<!-- Minimized Bottom Status Bar -->
-	{#if isGameOver && !disableGameOverModal && !showGameOverModal}
+	{#if isGameOver && !effectiveDisableGameOverModal && !showGameOverModal}
 		<div class="absolute bottom-3 inset-x-3 z-40 bg-slate-900/95 border border-slate-800 shadow-2xl rounded-xl py-2 px-3 flex items-center justify-between text-xs backdrop-blur-md animate-in fade-in">
 			<div class="flex items-center gap-2 truncate pr-2">
 				{#if !isDraw}
