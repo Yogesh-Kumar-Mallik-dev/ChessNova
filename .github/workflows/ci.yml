@@ -1,0 +1,68 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-and-test:
+    name: Backend, Web, & Desktop Verification
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: apps/server/go.sum
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/desktop/package-lock.json
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux GUI Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Install Dependencies
+        run: |
+          npm --prefix apps/web ci || npm --prefix apps/web install
+          npm --prefix apps/desktop ci || npm --prefix apps/desktop install
+          cd apps/server && go mod download
+
+      - name: Run Backend Tests
+        run: cd apps/server && go test ./...
+
+      - name: Run Web Check & Tests
+        run: |
+          npm --prefix apps/web run check
+          npm --prefix apps/web run test
+
+      - name: Build Web Bundle
+        run: npm --prefix apps/web run build
+
+      - name: Check Desktop Rust Crate
+        run: cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml

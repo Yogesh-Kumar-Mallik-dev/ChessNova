@@ -96,17 +96,25 @@ Comprehensive architectural specifications, mathematical formulations, and opera
 ```text
 chess-platform/
 ├── apps/
-│   ├── web/                     # SvelteKit + TypeScript + Tailwind CSS
+│   ├── web/                     # SvelteKit + TypeScript + Tailwind CSS (SPA mode)
 │   │   ├── src/
 │   │   │   ├── routes/          # Pages (+page, /play, /play/online, /game/[id], /leaderboard, /puzzles, /analysis, /profile)
 │   │   │   ├── lib/
-│   │   │   │   ├── components/  # ChessBoard, ChessSquare, GameReview, ReviewBadge, EvalBar, GameClock, MoveList, Icon
+│   │   │   │   ├── components/  # ChessBoard, DesktopTitlebar, GameReview, ReviewBadge, EvalBar, GameClock, MoveList, Icon
 │   │   │   │   ├── api/         # Typed REST client
-│   │   │   │   ├── websocket/   # WebSocket client with auto-reconnection
+│   │   │   │   ├── websocket/   # WebSocket client with desktop notifications & auto-reconnect
 │   │   │   │   ├── stores/      # Reactive Auth, Game, Preferences, and localGames stores
 │   │   │   │   ├── chess/       # Client board helpers & vector Staunton pieces
+│   │   │   │   ├── utils/       # Desktop bridge & platform detection
 │   │   │   │   └── audio/       # Web Audio synthesizer & sound player
 │   │   │   └── app.html
+│   │   └── package.json
+│   │
+│   ├── desktop/                 # Dedicated Native Desktop Application (Tauri v2)
+│   │   ├── src-tauri/           # Rust shell, system tray, frameless window, notifications
+│   │   │   ├── Cargo.toml
+│   │   │   ├── tauri.conf.json
+│   │   │   └── src/ (main.rs, lib.rs)
 │   │   └── package.json
 │   │
 │   └── server/                  # Modular Go Monolith
@@ -177,3 +185,19 @@ All lifecycle tasks are orchestrated through the root entrypoint:
 | `envi` | Scaffold `.env` and start Docker infrastructure containers (`chess-mongo`, `chess-redis`) |
 | `uenvi` | Stop and tear down Docker containers |
 | `flush` | Flush Redis cache and reset MongoDB database |
+| `desktop` | Launch ChessNova Tauri v2 desktop application in development mode |
+| `desktop-build` | Compile native desktop application release bundle (.AppImage, .deb, etc.) |
+
+---
+
+## Native Desktop Application (Tauri v2)
+
+ChessNova includes a dedicated desktop shell in [`apps/desktop/`](file:///home/yogesh/ChessNova/apps/desktop) (accessible also via the repo root shortcut `desktop/`):
+
+- **Custom Frameless Titlebar:** Seamless window header matching the theme palette with drag region (`data-tauri-drag-region`), minimize, maximize/restore, and close buttons.
+- **Native System Tray:** Persistent system tray icon with "Show ChessNova" and "Quit ChessNova" context menus.
+- **Desktop Notifications:** Real-time native system notifications for match start, opponent moves, draw offers, and game completion.
+- **Cross-Platform CI Compilation:** Automated matrix builds via GitHub Actions ([`.github/workflows/desktop-release.yml`](file:///home/yogesh/ChessNova/.github/workflows/desktop-release.yml)) packaging:
+  - **Linux:** `.deb` and `.AppImage`
+  - **Windows:** `.msi` and `.exe` (NSIS)
+  - **macOS:** `.dmg` and `.app` (Universal Darwin)
