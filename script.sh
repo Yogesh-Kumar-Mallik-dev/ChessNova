@@ -24,6 +24,8 @@ function show_help() {
   echo "  deps     Install Go and npm dependencies"
   echo "  envi     Initialize local environment and start Docker services"
   echo "  uenvi    Tear down local Docker containers"
+  echo "  desktop  Launch ChessNova Tauri desktop application in dev mode"
+  echo "  desktop-build Build ChessNova Tauri desktop native release binary"
   echo "  flush    Flush database (MongoDB) and Redis caches"
   echo "  help     Display this help message"
   echo "=================================================================="
@@ -91,6 +93,22 @@ case "$COMMAND" in
       exec "$SCRIPT_DIR/scripts/flush_db.sh" "$@"
     else
       echo "scripts/flush_db.sh not found"
+      exit 1
+    fi
+    ;;
+  desktop)
+    if [ -f "$SCRIPT_DIR/scripts/desktop.sh" ]; then
+      exec "$SCRIPT_DIR/scripts/desktop.sh" dev "$@"
+    else
+      echo "scripts/desktop.sh not found"
+      exit 1
+    fi
+    ;;
+  desktop-build)
+    if [ -f "$SCRIPT_DIR/scripts/desktop.sh" ]; then
+      exec "$SCRIPT_DIR/scripts/desktop.sh" build "$@"
+    else
+      echo "scripts/desktop.sh not found"
       exit 1
     fi
     ;;
