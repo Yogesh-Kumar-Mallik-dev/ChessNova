@@ -175,3 +175,95 @@ func TestWebSocketUpgradePassesThroughMiddleware(t *testing.T) {
 	}
 }
 
+func TestMatchmakingMetrics(t *testing.T) {
+	metrics := NewMetricRegistry("test-mm-inst")
+	metrics.IncMatchmakingJoin()
+	metrics.IncMatchmakingJoin()
+	metrics.IncMatchmakingLeave()
+	metrics.IncMatchmakingMatch()
+
+	// Check Prometheus output
+	rrProm := httptest.NewRecorder()
+	reqProm := httptest.NewRequest("GET", "/metrics", nil)
+	metrics.PrometheusHandler()(rrProm, reqProm)
+	body := rrProm.Body.String()
+
+	if !strings.Contains(body, "chessnova_matchmaking_joins_total{instance=\"test-mm-inst\"} 2") {
+		t.Errorf("Prometheus missing joins total: %s", body)
+	}
+	if !strings.Contains(body, "chessnova_matchmaking_leaves_total{instance=\"test-mm-inst\"} 1") {
+		t.Errorf("Prometheus missing leaves total: %s", body)
+	}
+	if !strings.Contains(body, "chessnova_matchmaking_matches_total{instance=\"test-mm-inst\"} 1") {
+		t.Errorf("Prometheus missing matches total: %s", body)
+	}
+
+	// Check JSON output
+	rrJSON := httptest.NewRecorder()
+	reqJSON := httptest.NewRequest("GET", "/api/v1/metrics", nil)
+	metrics.JSONHandler()(rrJSON, reqJSON)
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(rrJSON.Body.Bytes(), &data); err != nil {
+		t.Fatalf("failed to parse json: %v", err)
+	}
+	chess := data["chess"].(map[string]interface{})
+	if chess["matchmakingJoins"].(float64) != 2 {
+		t.Errorf("expected 2 joins, got %v", chess["matchmakingJoins"])
+	}
+	if chess["matchmakingLeaves"].(float64) != 1 {
+		t.Errorf("expected 1 leave, got %v", chess["matchmakingLeaves"])
+	}
+	if chess["matchmakingMatches"].(float64) != 1 {
+		t.Errorf("expected 1 match, got %v", chess["matchmakingMatches"])
+	}
+}
+
+func TestLoggerRingBufferAndHTTPHandler(t *testing.T) {
+	logger := NewLogger("logger-inst", false)
+	logger.Info("info message 1", map[string]interface{}{"key": "val1"})
+	logger.Warn("warn message 2")
+	logger.Error("error message 3", map[string]interface{}{"errCode": 500})
+
+	// Test RecentLogs
+	allLogs := logger.RecentLogs(10, "")
+	if len(allLogs) != 3 {
+		t.Fatalf("expected 3 logs, got %d", len(allLogs))
+	}
+	// RecentLogs returns newest first
+	if allLogs[0].Message != "error message 3" {
+		t.Errorf("expected newest log to be error message 3, got %s", allLogs[0].Message)
+	}
+
+	// Filter by level
+	errLogs := logger.RecentLogs(10, LevelError)
+	if len(errLogs) != 1 || errLogs[0].Message != "error message 3" {
+		t.Fatalf("expected 1 error log, got %d", len(errLogs))
+	}
+
+	// Test HTTPHandler
+	req := httptest.NewRequest("GET", "/api/v1/logs?level=ERROR&limit=5", nil)
+	rr := httptest.NewRecorder()
+	logger.HTTPHandler()(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+
+	var resp struct {
+		InstanceID string     `json:"instanceId"`
+		Count      int        `json:"count"`
+		Logs       []LogEntry `json:"logs"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to unmarshal log response: %v", err)
+	}
+	if resp.Count != 1 || len(resp.Logs) != 1 {
+		t.Errorf("expected 1 log in HTTP response, got %d", resp.Count)
+	}
+	if resp.Logs[0].Level != "ERROR" {
+		t.Errorf("expected ERROR level, got %s", resp.Logs[0].Level)
+	}
+}
+
+

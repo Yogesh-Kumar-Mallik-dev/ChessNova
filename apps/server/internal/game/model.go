@@ -181,8 +181,9 @@ func NewActiveGame(id string, white, black PlayerInfo, tc TimeControl) *ActiveGa
 	}
 }
 
-func (ag *ActiveGame) Lock()   { ag.mu.Lock() }
-func (ag *ActiveGame) Unlock() { ag.mu.Unlock() }
+func (ag *ActiveGame) Lock()    { ag.mu.Lock() }
+func (ag *ActiveGame) Unlock()  { ag.mu.Unlock() }
+func (ag *ActiveGame) TryLock() bool { return ag.mu.TryLock() }
 
 func ParsePlayerObjectID(s string) (primitive.ObjectID, error) {
 	return primitive.ObjectIDFromHex(s)

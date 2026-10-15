@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,6 +27,8 @@ type Logger struct {
 	instanceID string
 	mu         sync.Mutex
 	isJSON     bool
+	buffer     []LogEntry
+	maxBuffer  int
 }
 
 var DefaultLogger = NewLogger("default", true)
@@ -34,6 +37,8 @@ func NewLogger(instanceID string, jsonFormat bool) *Logger {
 	return &Logger{
 		instanceID: instanceID,
 		isJSON:     jsonFormat,
+		buffer:     make([]LogEntry, 0, 500),
+		maxBuffer:  500,
 	}
 }
 
@@ -54,14 +59,21 @@ func (l *Logger) log(level Level, msg string, fields map[string]interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	entry := LogEntry{
+		Timestamp:  now,
+		Level:      string(level),
+		InstanceID: l.instanceID,
+		Message:    msg,
+		Fields:     fields,
+	}
+
+	// Append to in-memory circular buffer for observability
+	l.buffer = append(l.buffer, entry)
+	if len(l.buffer) > l.maxBuffer {
+		l.buffer = l.buffer[len(l.buffer)-l.maxBuffer:]
+	}
+
 	if l.isJSON {
-		entry := LogEntry{
-			Timestamp:  now,
-			Level:      string(level),
-			InstanceID: l.instanceID,
-			Message:    msg,
-			Fields:     fields,
-		}
 		data, err := json.Marshal(entry)
 		if err == nil {
 			fmt.Println(string(data))
@@ -74,6 +86,44 @@ func (l *Logger) log(level Level, msg string, fields map[string]interface{}) {
 		fmt.Printf("[%s] [%s] [%s] %s %v\n", now, level, l.instanceID, msg, fields)
 	} else {
 		fmt.Printf("[%s] [%s] [%s] %s\n", now, level, l.instanceID, msg)
+	}
+}
+
+func (l *Logger) RecentLogs(limit int, levelFilter Level) []LogEntry {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	var result []LogEntry
+	for i := len(l.buffer) - 1; i >= 0; i-- {
+		entry := l.buffer[i]
+		if levelFilter != "" && !strings.EqualFold(entry.Level, string(levelFilter)) {
+			continue
+		}
+		result = append(result, entry)
+		if limit > 0 && len(result) >= limit {
+			break
+		}
+	}
+	return result
+}
+
+func (l *Logger) HTTPHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		limit := 100
+		if lStr := r.URL.Query().Get("limit"); lStr != "" {
+			if parsed, err := strconv.Atoi(lStr); err == nil && parsed > 0 {
+				limit = parsed
+			}
+		}
+		lvl := Level(strings.ToUpper(r.URL.Query().Get("level")))
+		logs := l.RecentLogs(limit, lvl)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"instanceId": l.instanceID,
+			"count":      len(logs),
+			"logs":       logs,
+		})
 	}
 }
 

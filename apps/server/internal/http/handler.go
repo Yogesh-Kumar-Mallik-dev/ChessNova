@@ -124,6 +124,7 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("GET /health", rt.handleHealth)
 	rt.mux.HandleFunc("GET /metrics", observability.DefaultMetrics.PrometheusHandler())
 	rt.mux.HandleFunc("GET /api/v1/metrics", observability.DefaultMetrics.JSONHandler())
+	rt.mux.HandleFunc("GET /api/v1/logs", observability.DefaultLogger.HTTPHandler())
 
 	// Auth
 	rt.mux.HandleFunc("POST /api/v1/auth/register", rt.handleRegister)

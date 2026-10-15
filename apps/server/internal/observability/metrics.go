@@ -28,6 +28,9 @@ type MetricRegistry struct {
 	activeWebSockets      int64
 	activeGames           int64
 	matchmakingQueueSize  int64
+	matchmakingJoins      int64
+	matchmakingLeaves     int64
+	matchmakingMatches    int64
 	stockfishEvaluations  int64
 }
 
@@ -97,6 +100,18 @@ func (m *MetricRegistry) SetActiveGames(count int64) {
 
 func (m *MetricRegistry) SetMatchmakingQueueSize(size int64) {
 	atomic.StoreInt64(&m.matchmakingQueueSize, size)
+}
+
+func (m *MetricRegistry) IncMatchmakingJoin() {
+	atomic.AddInt64(&m.matchmakingJoins, 1)
+}
+
+func (m *MetricRegistry) IncMatchmakingLeave() {
+	atomic.AddInt64(&m.matchmakingLeaves, 1)
+}
+
+func (m *MetricRegistry) IncMatchmakingMatch() {
+	atomic.AddInt64(&m.matchmakingMatches, 1)
 }
 
 func (m *MetricRegistry) IncStockfishEvaluation() {
@@ -169,6 +184,18 @@ func (m *MetricRegistry) PrometheusHandler() http.HandlerFunc {
 		sb.WriteString("# HELP chessnova_matchmaking_queue_size Number of players waiting in matchmaking queue\n")
 		sb.WriteString("# TYPE chessnova_matchmaking_queue_size gauge\n")
 		sb.WriteString(fmt.Sprintf("chessnova_matchmaking_queue_size{instance=\"%s\"} %d\n\n", m.instanceID, queueSize))
+
+		sb.WriteString("# HELP chessnova_matchmaking_joins_total Total players who joined matchmaking queue\n")
+		sb.WriteString("# TYPE chessnova_matchmaking_joins_total counter\n")
+		sb.WriteString(fmt.Sprintf("chessnova_matchmaking_joins_total{instance=\"%s\"} %d\n\n", m.instanceID, atomic.LoadInt64(&m.matchmakingJoins)))
+
+		sb.WriteString("# HELP chessnova_matchmaking_leaves_total Total players who left matchmaking queue\n")
+		sb.WriteString("# TYPE chessnova_matchmaking_leaves_total counter\n")
+		sb.WriteString(fmt.Sprintf("chessnova_matchmaking_leaves_total{instance=\"%s\"} %d\n\n", m.instanceID, atomic.LoadInt64(&m.matchmakingLeaves)))
+
+		sb.WriteString("# HELP chessnova_matchmaking_matches_total Total matches formed by matchmaking\n")
+		sb.WriteString("# TYPE chessnova_matchmaking_matches_total counter\n")
+		sb.WriteString(fmt.Sprintf("chessnova_matchmaking_matches_total{instance=\"%s\"} %d\n\n", m.instanceID, atomic.LoadInt64(&m.matchmakingMatches)))
 
 		sb.WriteString("# HELP chessnova_stockfish_evaluations_total Total engine analysis requests processed\n")
 		sb.WriteString("# TYPE chessnova_stockfish_evaluations_total counter\n")
@@ -271,6 +298,9 @@ func (m *MetricRegistry) JSONHandler() http.HandlerFunc {
 				"activeWebSockets":      atomic.LoadInt64(&m.activeWebSockets),
 				"activeGames":           atomic.LoadInt64(&m.activeGames),
 				"matchmakingQueueSize":  atomic.LoadInt64(&m.matchmakingQueueSize),
+				"matchmakingJoins":      atomic.LoadInt64(&m.matchmakingJoins),
+				"matchmakingLeaves":     atomic.LoadInt64(&m.matchmakingLeaves),
+				"matchmakingMatches":    atomic.LoadInt64(&m.matchmakingMatches),
 				"stockfishEvaluations":  atomic.LoadInt64(&m.stockfishEvaluations),
 			},
 			"http": map[string]interface{}{

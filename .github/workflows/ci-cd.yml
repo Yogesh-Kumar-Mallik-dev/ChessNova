@@ -188,8 +188,8 @@ jobs:
           ssh -p "$SSH_PORT" -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" '
             mv /opt/chessnova/bin/server.new /opt/chessnova/bin/server
             chmod +x /opt/chessnova/bin/server
-            sudo systemctl restart chessnova
-            systemctl is-active --quiet chessnova && echo "chessnova service restarted successfully."
+            sudo systemctl restart chessnova@8081 chessnova@8082 chessnova@8083 2>/dev/null || sudo systemctl restart chessnova
+            (systemctl is-active --quiet chessnova@8081 || systemctl is-active --quiet chessnova) && echo "chessnova backend restarted successfully."
           '
 
       - name: Post-Deployment Health Check

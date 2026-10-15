@@ -91,6 +91,15 @@ func (s *Service) JoinQueue(ctx context.Context, t *Ticket) error {
 	}
 
 	observability.DefaultMetrics.SetMatchmakingQueueSize(int64(len(s.localQueue)))
+	observability.DefaultMetrics.IncMatchmakingJoin()
+	observability.DefaultLogger.Info("Player joined matchmaking queue", map[string]interface{}{
+		"userId":         t.UserID,
+		"username":       t.Username,
+		"rating":         t.Rating,
+		"initialSeconds": t.TimeControl.InitialSeconds,
+		"increment":      t.TimeControl.Increment,
+		"queueSize":      len(s.localQueue),
+	})
 
 	return nil
 }
@@ -113,6 +122,11 @@ func (s *Service) LeaveQueue(ctx context.Context, userID string) error {
 	}
 
 	observability.DefaultMetrics.SetMatchmakingQueueSize(int64(len(s.localQueue)))
+	observability.DefaultMetrics.IncMatchmakingLeave()
+	observability.DefaultLogger.Info("Player left matchmaking queue", map[string]interface{}{
+		"userId":    userID,
+		"queueSize": len(s.localQueue),
+	})
 
 	return nil
 }
@@ -313,6 +327,19 @@ func (s *Service) createMatchedGame(a, b *Ticket) {
 		Black:       blackPlayer,
 		TimeControl: a.TimeControl,
 	}
+
+	observability.DefaultMetrics.IncMatchmakingMatch()
+	observability.DefaultLogger.Info("Matchmaking formed game", map[string]interface{}{
+		"gameId":         ag.ID,
+		"whiteUserId":    whitePlayer.UserID,
+		"whiteUsername":  whitePlayer.Username,
+		"whiteRating":    whitePlayer.Rating,
+		"blackUserId":    blackPlayer.UserID,
+		"blackUsername":  blackPlayer.Username,
+		"blackRating":    blackPlayer.Rating,
+		"initialSeconds": a.TimeControl.InitialSeconds,
+		"increment":      a.TimeControl.Increment,
+	})
 
 	if s.onMatched != nil {
 		s.onMatched(res)

@@ -155,7 +155,9 @@ func (s *Service) GetActiveGameForUser(userID string) *ActiveGame {
 	defer s.mu.RUnlock()
 
 	for _, ag := range s.activeGames {
-		ag.Lock()
+		if !ag.TryLock() {
+			continue
+		}
 		st := ag.Status
 		isPlayer := (strings.EqualFold(ag.White.UserID, userID) || strings.EqualFold(ag.Black.UserID, userID))
 		ag.Unlock()
