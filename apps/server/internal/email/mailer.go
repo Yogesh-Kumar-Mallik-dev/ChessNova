@@ -1,11 +1,15 @@
 package email
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"net/smtp"
 	"strings"
 	"time"
@@ -17,39 +21,49 @@ type Mailer interface {
 }
 
 type Config struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	From     string
+	ResendAPIKey string
+	Host         string
+	Port         string
+	User         string
+	Password     string
+	From         string
 }
 
-type SMTPMailer struct {
-	cfg Config
+type UniversalMailer struct {
+	cfg        Config
+	httpClient *http.Client
 }
 
 func NewMailer(cfg Config) Mailer {
-	return &SMTPMailer{cfg: cfg}
+	return &UniversalMailer{
+		cfg: cfg,
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
 }
 
-func (m *SMTPMailer) IsConfigured() bool {
-	return m.cfg.Host != ""
+func (m *UniversalMailer) IsConfigured() bool {
+	return m.cfg.ResendAPIKey != "" || (m.cfg.Host != "" && m.cfg.User != "" && m.cfg.Password != "") || (m.cfg.Host == "127.0.0.1" || m.cfg.Host == "localhost")
 }
 
-func (m *SMTPMailer) SendVerificationOTP(ctx context.Context, toEmail, username, otp string) error {
+func (m *UniversalMailer) SendVerificationOTP(ctx context.Context, toEmail, username, otp string) error {
 	toEmail = strings.TrimSpace(toEmail)
 	if !m.IsConfigured() {
-		log.Printf("[MAILER NOTICE] SMTP not configured. Mocking OTP email for %s (%s): %s", username, toEmail, otp)
+		log.Printf("[MAILER NOTICE] No email provider configured. Verification code for %s (%s): %s", username, toEmail, otp)
 		return nil
 	}
 
 	from := m.cfg.From
 	if from == "" {
-		from = fmt.Sprintf("ChessNova <noreply@%s>", m.cfg.Host)
+		if m.cfg.ResendAPIKey != "" {
+			from = "ChessNova <onboarding@resend.dev>"
+		} else {
+			from = "ChessNova <noreply@chess.yogeshmallik.in>"
+		}
 	}
 
 	subject := fmt.Sprintf("%s is your ChessNova verification code", otp)
-	boundary := "CHESSNOVA_MULTIPART_BOUNDARY"
 
 	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
 <html>
@@ -112,6 +126,56 @@ func (m *SMTPMailer) SendVerificationOTP(ctx context.Context, toEmail, username,
 
 	plainText := fmt.Sprintf("Welcome, %s!\n\nYour ChessNova verification code is: %s\n\nThis code expires in 10 minutes. If you did not request this, please ignore this email.\n\n- The ChessNova Team", username, otp)
 
+	// 1. Resend HTTP API (Industry-standard proven solution, 100% deliverability over HTTPS)
+	if m.cfg.ResendAPIKey != "" {
+		return m.sendViaResend(ctx, from, toEmail, subject, htmlBody, plainText)
+	}
+
+	// 2. SMTP Transport (Gmail App Password, Brevo, SendGrid, or local relay)
+	return m.sendViaSMTP(ctx, from, toEmail, subject, htmlBody, plainText)
+}
+
+func (m *UniversalMailer) sendViaResend(ctx context.Context, from, toEmail, subject, html, text string) error {
+	payload := map[string]interface{}{
+		"from":    from,
+		"to":      []string{toEmail},
+		"subject": subject,
+		"html":    html,
+		"text":    text,
+	}
+
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal resend payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create resend request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+m.cfg.ResendAPIKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		log.Printf("[RESEND ERROR] HTTP request failed: %v", err)
+		return fmt.Errorf("failed to send via Resend: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		log.Printf("[RESEND ERROR] Resend returned %d: %s", resp.StatusCode, string(respBody))
+		return fmt.Errorf("resend email delivery failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	log.Printf("[RESEND SUCCESS] Dispatched verification code to %s", toEmail)
+	return nil
+}
+
+func (m *UniversalMailer) sendViaSMTP(ctx context.Context, from, toEmail, subject, htmlBody, plainText string) error {
+	boundary := "CHESSNOVA_MULTIPART_BOUNDARY"
 	msg := fmt.Sprintf("From: %s\r\n"+
 		"To: %s\r\n"+
 		"Subject: %s\r\n"+
@@ -172,18 +236,49 @@ func (m *SMTPMailer) SendVerificationOTP(ctx context.Context, toEmail, username,
 		return w.Close()
 	}
 
-	// Port 587, 25, or standard SMTP
-	var auth smtp.Auth
-	if m.cfg.User != "" && m.cfg.Password != "" {
-		auth = smtp.PlainAuth("", m.cfg.User, m.cfg.Password, m.cfg.Host)
-	}
-	err := smtp.SendMail(addr, auth, cleanAddress(from), []string{toEmail}, []byte(msg))
+	// Port 587, 25, or standard SMTP with STARTTLS
+	c, err := smtp.Dial(addr)
 	if err != nil {
-		log.Printf("[MAILER ERROR] Failed to send email via %s: %v", addr, err)
+		log.Printf("[MAILER ERROR] Failed to connect to SMTP at %s: %v", addr, err)
 		return err
 	}
+	defer c.Close()
 
-	return nil
+	if ok, _ := c.Extension("STARTTLS"); ok {
+		tlsConfig := &tls.Config{
+			ServerName: m.cfg.Host,
+		}
+		if m.cfg.Host == "127.0.0.1" || m.cfg.Host == "localhost" {
+			tlsConfig.InsecureSkipVerify = true
+		}
+		if err := c.StartTLS(tlsConfig); err != nil {
+			log.Printf("[MAILER ERROR] STARTTLS failed on %s: %v", addr, err)
+			return err
+		}
+	}
+
+	if m.cfg.User != "" && m.cfg.Password != "" {
+		auth := smtp.PlainAuth("", m.cfg.User, m.cfg.Password, m.cfg.Host)
+		if err := c.Auth(auth); err != nil {
+			log.Printf("[MAILER ERROR] SMTP auth failed on %s: %v", addr, err)
+			return err
+		}
+	}
+
+	if err := c.Mail(cleanAddress(from)); err != nil {
+		return err
+	}
+	if err := c.Rcpt(toEmail); err != nil {
+		return err
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(msg)); err != nil {
+		return err
+	}
+	return w.Close()
 }
 
 func cleanAddress(addr string) string {

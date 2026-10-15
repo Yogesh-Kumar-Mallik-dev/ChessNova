@@ -46,6 +46,7 @@ func main() {
 	corsOrigin := getEnv("CORS_ORIGIN", "http://localhost:5173")
 	jwtAccessSecret := getEnv("JWT_ACCESS_SECRET", "super-secret-access-key-production-strength-12345")
 	jwtRefreshSecret := getEnv("JWT_REFRESH_SECRET", "super-secret-refresh-key-production-strength-67890")
+	resendAPIKey := getEnv("RESEND_API_KEY", "")
 	smtpHost := getEnv("SMTP_HOST", "")
 	smtpPort := getEnv("SMTP_PORT", "587")
 	smtpUser := getEnv("SMTP_USER", "")
@@ -103,11 +104,12 @@ func main() {
 
 	// 4. Initialize Domain Services
 	mailer := email.NewMailer(email.Config{
-		Host:     smtpHost,
-		Port:     smtpPort,
-		User:     smtpUser,
-		Password: smtpPass,
-		From:     smtpFrom,
+		ResendAPIKey: resendAPIKey,
+		Host:         smtpHost,
+		Port:         smtpPort,
+		User:         smtpUser,
+		Password:     smtpPass,
+		From:         smtpFrom,
 	})
 	authService := auth.NewService(userRepo, jwtAccessSecret, jwtRefreshSecret)
 	authService.SetRedis(rdb)
