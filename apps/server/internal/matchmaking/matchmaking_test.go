@@ -77,3 +77,48 @@ func TestMatchmakingQueueLifecycle(t *testing.T) {
 		t.Errorf("expected nil ticket after leaving queue, got %v", stAfter)
 	}
 }
+
+func TestJoinQueueAutoResignsExistingGame(t *testing.T) {
+	ctx := context.Background()
+	gameSvc := game.NewService(nil, nil)
+	mmSvc := NewService(nil, gameSvc)
+
+	u1 := game.PlayerInfo{UserID: "alice", Username: "Alice", Rating: 1500}
+	u2 := game.PlayerInfo{UserID: "bob", Username: "Bob", Rating: 1500}
+	tc := game.TimeControl{InitialSeconds: 300, Increment: 0}
+
+	// Alice starts a match with Bob
+	ag, err := gameSvc.CreateGame(u1, u2, tc)
+	if err != nil {
+		t.Fatalf("failed to create game: %v", err)
+	}
+	if ag.Status != game.StatusPlaying {
+		t.Fatalf("expected game status to be playing, got %s", ag.Status)
+	}
+
+	// Alice tries to join matchmaking while match is still active
+	ticket := &Ticket{
+		ID:          "ticket-alice",
+		UserID:      "alice",
+		Username:    "Alice",
+		Rating:      1500,
+		TimeControl: tc,
+	}
+
+	// Joining queue MUST auto-resign the previous match without error
+	if err := mmSvc.JoinQueue(ctx, ticket); err != nil {
+		t.Fatalf("expected JoinQueue to succeed by auto-resigning existing match, got error: %v", err)
+	}
+
+	// Verify previous game is cleanly finished
+	activeAg, _ := gameSvc.GetActiveGame(ag.ID)
+	if activeAg.Status != game.StatusFinished {
+		t.Errorf("expected old game to be finished, got %s", activeAg.Status)
+	}
+
+	// Verify alice is in queue
+	st, err := mmSvc.GetStatus(ctx, "alice")
+	if err != nil || st == nil {
+		t.Fatalf("expected alice to be in matchmaking queue, got %v", st)
+	}
+}

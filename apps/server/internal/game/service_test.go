@@ -191,4 +191,58 @@ func TestGameServiceResignation(t *testing.T) {
 	if doc.Result != "1-0" {
 		t.Errorf("expected result 1-0 on black resignation, got %s", doc.Result)
 	}
+
+	// Resigning again is idempotent and returns the finished doc
+	doc2, err := svc.Resign(ctx, ag.ID, black.UserID)
+	if err != nil {
+		t.Fatalf("expected idempotent resign to succeed, got error: %v", err)
+	}
+	if doc2 == nil || doc2.Result != "1-0" {
+		t.Errorf("expected idempotent doc to match, got %v", doc2)
+	}
+
+	// GetActiveGameForUser must return nil for both players
+	if activeW := svc.GetActiveGameForUser(white.UserID); activeW != nil {
+		t.Errorf("expected no active game for white after resign, got %v", activeW.ID)
+	}
+	if activeB := svc.GetActiveGameForUser(black.UserID); activeB != nil {
+		t.Errorf("expected no active game for black after resign, got %v", activeB.ID)
+	}
+}
+
+func TestCloseAllActiveGames(t *testing.T) {
+	gRepo := newMockGameRepo()
+	rRepo := newMockRatingRepo()
+	svc := NewService(gRepo, rRepo)
+	defer svc.Close()
+	ctx := context.Background()
+
+	tc := TimeControl{InitialSeconds: 180, Increment: 0}
+	for i := 0; i < 3; i++ {
+		w := PlayerInfo{UserID: primitive.NewObjectID().Hex(), Username: "w", Rating: 500}
+		b := PlayerInfo{UserID: primitive.NewObjectID().Hex(), Username: "b", Rating: 500}
+		_, err := svc.CreateGame(w, b, tc)
+		if err != nil {
+			t.Fatalf("failed to create game %d: %v", i, err)
+		}
+	}
+
+	svc.mu.RLock()
+	countBefore := len(svc.activeGames)
+	svc.mu.RUnlock()
+	if countBefore != 3 {
+		t.Fatalf("expected 3 active games, got %d", countBefore)
+	}
+
+	closed := svc.CloseAllActiveGames(ctx)
+	if closed != 3 {
+		t.Errorf("expected 3 games closed, got %d", closed)
+	}
+
+	svc.mu.RLock()
+	countAfter := len(svc.activeGames)
+	svc.mu.RUnlock()
+	if countAfter != 0 {
+		t.Errorf("expected 0 active games after CloseAllActiveGames, got %d", countAfter)
+	}
 }

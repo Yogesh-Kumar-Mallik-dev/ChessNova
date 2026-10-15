@@ -3,7 +3,6 @@ package matchmaking
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -59,7 +58,9 @@ func (s *Service) SetOnMatched(cb func(result MatchResult)) {
 func (s *Service) JoinQueue(ctx context.Context, t *Ticket) error {
 	if s.gameService != nil {
 		if ag := s.gameService.GetActiveGameForUser(t.UserID); ag != nil {
-			return errors.New("you already have an active game in progress")
+			// Auto-resign / forfeit any previous abandoned or stuck match
+			// so the user is never blocked by "you already have an active game in progress"
+			_, _ = s.gameService.Resign(ctx, ag.ID, t.UserID)
 		}
 	}
 

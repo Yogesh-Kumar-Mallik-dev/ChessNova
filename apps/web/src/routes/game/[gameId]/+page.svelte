@@ -296,9 +296,12 @@
 		showResignModal = true;
 	}
 
-	function confirmResign() {
+	async function confirmResign() {
 		showResignModal = false;
 		socket?.resign();
+		try {
+			await api.games.resign(gameId);
+		} catch (_) {}
 	}
 
 	function handleOfferDraw() {

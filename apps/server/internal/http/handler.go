@@ -161,6 +161,7 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/join", rt.withAuth(rt.handleJoinGame))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/resign", rt.withAuth(rt.handleResign))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/claim-draw", rt.withAuth(rt.handleClaimDraw))
+	rt.mux.HandleFunc("POST /api/v1/games/close-all", rt.handleCloseAllGames)
 
 	// Authoritative Chess Engine & Legal Move Rules
 	rt.mux.HandleFunc("POST /api/v1/chess/legal-moves", rt.handleLegalMoves)
@@ -875,6 +876,12 @@ func (rt *Router) handleCreateGame(w http.ResponseWriter, r *http.Request, claim
 		}
 	}
 
+	if rt.gameService != nil {
+		if agOld := rt.gameService.GetActiveGameForUser(claims.UserID); agOld != nil {
+			_, _ = rt.gameService.Resign(r.Context(), agOld.ID, claims.UserID)
+		}
+	}
+
 	ag, err := rt.gameService.CreateGame(whitePlayer, blackPlayer, tc)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "GAME_CREATE_FAIL", err.Error())
@@ -1044,7 +1051,36 @@ func (rt *Router) handleResign(w http.ResponseWriter, r *http.Request, claims *a
 		writeError(w, http.StatusBadRequest, "RESIGN_ERROR", err.Error())
 		return
 	}
+
+	winner := "white"
+	if doc.Result == "0-1" {
+		winner = "black"
+	}
+
+	if rt.wsHub != nil {
+		rt.wsHub.Broadcast(id, websocket.ServerMessage{
+			Type:    "resignation",
+			GameID:  id,
+			Status:  doc.Status,
+			Outcome: doc.Outcome,
+			Result:  doc.Result,
+			Winner:  winner,
+			UserID:  claims.UserID,
+		})
+	}
+
 	writeJSON(w, http.StatusOK, doc)
+}
+
+func (rt *Router) handleCloseAllGames(w http.ResponseWriter, r *http.Request) {
+	count := 0
+	if rt.gameService != nil {
+		count = rt.gameService.CloseAllActiveGames(r.Context())
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"closed":  count,
+		"message": "all active games terminated",
+	})
 }
 
 func (rt *Router) handleClaimDraw(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {

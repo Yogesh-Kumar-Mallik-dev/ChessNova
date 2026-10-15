@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -294,25 +295,77 @@ func (s *Service) Resign(ctx context.Context, gameID, userID string) (*GameDocum
 	defer ag.Unlock()
 
 	if ag.Status != StatusPlaying {
+		// Game is already finished; return current document state idempotently
+		if s.gameRepo != nil {
+			doc, errRepo := s.gameRepo.FindByID(ctx, gameID)
+			if errRepo == nil && doc != nil {
+				return doc, nil
+			}
+		}
 		return nil, ErrGameNotPlaying
 	}
 
 	var color chess.Color
-	if ag.White.UserID == userID {
+	if strings.EqualFold(ag.White.UserID, userID) {
 		color = chess.White
-	} else if ag.Black.UserID == userID {
+	} else if strings.EqualFold(ag.Black.UserID, userID) {
 		color = chess.Black
 	} else {
 		return nil, ErrNotPlayerInGame
 	}
 
 	if err := ag.Engine.Resign(color); err != nil {
+		// If engine was already over, still finalize status cleanly
+		if ag.Engine.Outcome != chess.OutcomePlaying {
+			ag.Status = StatusFinished
+			doc := s.finalizeGame(ctx, ag)
+			return doc, nil
+		}
 		return nil, err
 	}
 
 	ag.Status = StatusFinished
 	doc := s.finalizeGame(ctx, ag)
 	return doc, nil
+}
+
+// CloseAllActiveGames terminates and finalizes all active games across the service
+func (s *Service) CloseAllActiveGames(ctx context.Context) int {
+	s.mu.Lock()
+	games := make([]*ActiveGame, 0, len(s.activeGames))
+	for _, ag := range s.activeGames {
+		games = append(games, ag)
+	}
+	s.mu.Unlock()
+
+	closed := 0
+	for _, ag := range games {
+		ag.Lock()
+		if ag.Status == StatusPlaying {
+			ag.Status = StatusFinished
+			if ag.Engine != nil && ag.Engine.Outcome == chess.OutcomePlaying {
+				ag.Engine.Outcome = chess.OutcomeAborted
+			}
+			_ = s.finalizeGame(ctx, ag)
+			closed++
+		}
+		ag.Unlock()
+	}
+
+	// Purge all active game keys in Redis
+	if s.rdb != nil {
+		keys, err := s.rdb.Keys(ctx, "active_game:*").Result()
+		if err == nil && len(keys) > 0 {
+			_ = s.rdb.Del(ctx, keys...).Err()
+		}
+	}
+
+	s.mu.Lock()
+	s.activeGames = make(map[string]*ActiveGame)
+	s.mu.Unlock()
+	observability.DefaultMetrics.SetActiveGames(0)
+
+	return closed
 }
 
 func (s *Service) OfferDraw(gameID, userID string) (chess.Color, error) {

@@ -67,8 +67,10 @@
 		}
 
 		if (activeOngoingGame) {
-			goto(`/game/${activeOngoingGame.id}`);
-			return;
+			try {
+				await api.games.resign(activeOngoingGame.id);
+			} catch (_) {}
+			activeOngoingGame = null;
 		}
 
 		error = '';
@@ -119,6 +121,12 @@
 			goto('/login');
 			return;
 		}
+		if (activeOngoingGame) {
+			try {
+				await api.games.resign(activeOngoingGame.id);
+			} catch (_) {}
+			activeOngoingGame = null;
+		}
 		try {
 			const ag = await api.games.create({
 				initial: selectedPreset.initial,
@@ -167,14 +175,31 @@
 					</div>
 				</div>
 			</div>
-			<Button
-				variant="primary"
-				size="sm"
-				className="w-full sm:w-auto"
-				on:click={() => goto(`/game/${activeOngoingGame.id}`)}
-			>
-				Resume Match
-			</Button>
+			<div class="flex items-center gap-2 w-full sm:w-auto">
+				<Button
+					variant="outline"
+					size="sm"
+					className="flex-1 sm:flex-initial text-rose-400 hover:text-rose-300 border-rose-500/40 hover:bg-rose-500/10"
+					on:click={async () => {
+						if (activeOngoingGame) {
+							try {
+								await api.games.resign(activeOngoingGame.id);
+							} catch (_) {}
+							activeOngoingGame = null;
+						}
+					}}
+				>
+					Forfeit
+				</Button>
+				<Button
+					variant="primary"
+					size="sm"
+					className="flex-1 sm:flex-initial"
+					on:click={() => goto(`/game/${activeOngoingGame.id}`)}
+				>
+					Resume
+				</Button>
+			</div>
 		</div>
 	{/if}
 
