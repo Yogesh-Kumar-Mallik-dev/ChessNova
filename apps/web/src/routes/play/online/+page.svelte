@@ -93,7 +93,8 @@
 					if (status && status.status === 'matched') {
 						stopTimers();
 						isSearching = false;
-						goto(`/game/${status.gameId}`);
+						const colorQuery = status.color ? `?color=${status.color}` : '';
+						goto(`/game/${status.gameId}${colorQuery}`);
 					}
 				} catch (e) {
 					// keep polling
@@ -132,7 +133,7 @@
 				initial: selectedPreset.initial,
 				increment: selectedPreset.increment
 			});
-			goto(`/game/${ag.id}`);
+			goto(`/game/${ag.id}?color=white`);
 		} catch (err: any) {
 			error = err.message;
 		}

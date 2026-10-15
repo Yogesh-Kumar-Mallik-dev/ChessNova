@@ -190,6 +190,18 @@ export const api = {
 			request<any>(`/games/${gameId}/resign`, {
 				method: 'POST'
 			}),
+		offerDraw: (gameId: string) =>
+			request<any>(`/games/${gameId}/draw-offer`, {
+				method: 'POST'
+			}),
+		acceptDraw: (gameId: string) =>
+			request<any>(`/games/${gameId}/draw-accept`, {
+				method: 'POST'
+			}),
+		declineDraw: (gameId: string) =>
+			request<any>(`/games/${gameId}/draw-decline`, {
+				method: 'POST'
+			}),
 		join: (gameId: string) =>
 			request<any>(`/games/${gameId}/join`, {
 				method: 'POST'

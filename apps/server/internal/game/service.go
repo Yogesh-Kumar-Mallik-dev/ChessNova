@@ -382,9 +382,9 @@ func (s *Service) OfferDraw(gameID, userID string) (chess.Color, error) {
 	}
 
 	var color chess.Color
-	if ag.White.UserID == userID {
+	if strings.EqualFold(ag.White.UserID, userID) {
 		color = chess.White
-	} else if ag.Black.UserID == userID {
+	} else if strings.EqualFold(ag.Black.UserID, userID) {
 		color = chess.Black
 	} else {
 		return chess.White, ErrNotPlayerInGame
@@ -407,9 +407,9 @@ func (s *Service) AcceptDraw(ctx context.Context, gameID, userID string) (*GameD
 	}
 
 	var color chess.Color
-	if ag.White.UserID == userID {
+	if strings.EqualFold(ag.White.UserID, userID) {
 		color = chess.White
-	} else if ag.Black.UserID == userID {
+	} else if strings.EqualFold(ag.Black.UserID, userID) {
 		color = chess.Black
 	} else {
 		return nil, ErrNotPlayerInGame
@@ -434,9 +434,9 @@ func (s *Service) DeclineDraw(gameID, userID string) error {
 	defer ag.Unlock()
 
 	var color chess.Color
-	if ag.White.UserID == userID {
+	if strings.EqualFold(ag.White.UserID, userID) {
 		color = chess.White
-	} else if ag.Black.UserID == userID {
+	} else if strings.EqualFold(ag.Black.UserID, userID) {
 		color = chess.Black
 	} else {
 		return ErrNotPlayerInGame
@@ -458,7 +458,7 @@ func (s *Service) ClaimDraw(ctx context.Context, gameID, userID string) (*GameDo
 		return nil, ErrGameNotPlaying
 	}
 
-	if ag.White.UserID != userID && ag.Black.UserID != userID {
+	if !strings.EqualFold(ag.White.UserID, userID) && !strings.EqualFold(ag.Black.UserID, userID) {
 		return nil, ErrNotPlayerInGame
 	}
 

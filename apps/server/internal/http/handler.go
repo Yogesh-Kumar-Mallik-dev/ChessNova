@@ -160,6 +160,9 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/moves", rt.withAuth(rt.handleMakeMove))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/join", rt.withAuth(rt.handleJoinGame))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/resign", rt.withAuth(rt.handleResign))
+	rt.mux.HandleFunc("POST /api/v1/games/{id}/draw-offer", rt.withAuth(rt.handleOfferDraw))
+	rt.mux.HandleFunc("POST /api/v1/games/{id}/draw-accept", rt.withAuth(rt.handleAcceptDraw))
+	rt.mux.HandleFunc("POST /api/v1/games/{id}/draw-decline", rt.withAuth(rt.handleDeclineDraw))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/claim-draw", rt.withAuth(rt.handleClaimDraw))
 	rt.mux.HandleFunc("POST /api/v1/games/close-all", rt.handleCloseAllGames)
 
@@ -1081,6 +1084,60 @@ func (rt *Router) handleCloseAllGames(w http.ResponseWriter, r *http.Request) {
 		"closed":  count,
 		"message": "all active games terminated",
 	})
+}
+
+func (rt *Router) handleOfferDraw(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	id := r.PathValue("id")
+	color, err := rt.gameService.OfferDraw(id, claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "DRAW_OFFER_ERROR", err.Error())
+		return
+	}
+	if rt.wsHub != nil {
+		rt.wsHub.Broadcast(id, websocket.ServerMessage{
+			Type:      "draw_offer",
+			GameID:    id,
+			OfferedBy: color.String(),
+			UserID:    claims.UserID,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "draw offered", "offeredBy": color.String()})
+}
+
+func (rt *Router) handleAcceptDraw(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	id := r.PathValue("id")
+	doc, err := rt.gameService.AcceptDraw(r.Context(), id, claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "DRAW_ACCEPT_ERROR", err.Error())
+		return
+	}
+	if rt.wsHub != nil {
+		rt.wsHub.Broadcast(id, websocket.ServerMessage{
+			Type:    "draw_accepted",
+			GameID:  id,
+			Status:  doc.Status,
+			Outcome: doc.Outcome,
+			Result:  doc.Result,
+		})
+	}
+	writeJSON(w, http.StatusOK, doc)
+}
+
+func (rt *Router) handleDeclineDraw(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	id := r.PathValue("id")
+	err := rt.gameService.DeclineDraw(id, claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "DRAW_DECLINE_ERROR", err.Error())
+		return
+	}
+	if rt.wsHub != nil {
+		rt.wsHub.Broadcast(id, websocket.ServerMessage{
+			Type:   "draw_declined",
+			GameID: id,
+			UserID: claims.UserID,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "draw declined"})
 }
 
 func (rt *Router) handleClaimDraw(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {

@@ -27,15 +27,35 @@
 	let showOfferDrawModal = false;
 	let showLeaveModal = false;
 	let pendingNavigation: (() => void) | null = null;
+	let allowNavigation = false;
 	let flipBoard = false;
 
-	// Determine current user's authenticated seat (check ID and fallback to username)
+	// Determine current user's authenticated seat (check ID, username, and query params)
 	$: myPlayerColor = (() => {
-		if (!$authStore.user) return null;
+		const colorParam = $page.url.searchParams.get('color');
+		if (!$authStore.user) {
+			if (colorParam === 'black' || colorParam === 'white') return colorParam as Color;
+			return null;
+		}
 		const uid = $authStore.user.id;
 		const uname = $authStore.user.username;
-		if ($gameStore.whitePlayer?.userId === uid || (uname && $gameStore.whitePlayer?.username === uname)) return 'white' as Color;
-		if ($gameStore.blackPlayer?.userId === uid || (uname && $gameStore.blackPlayer?.username === uname)) return 'black' as Color;
+
+		const isWhite = !!($gameStore.whitePlayer?.userId && $gameStore.whitePlayer.userId === uid) ||
+			!!(uname && $gameStore.whitePlayer?.username && $gameStore.whitePlayer.username.toLowerCase() === uname.toLowerCase());
+
+		const isBlack = !!($gameStore.blackPlayer?.userId && $gameStore.blackPlayer.userId === uid) ||
+			!!(uname && $gameStore.blackPlayer?.username && $gameStore.blackPlayer.username.toLowerCase() === uname.toLowerCase());
+
+		if (isWhite && isBlack) {
+			// In self-play / same account testing across tabs, respect ?color query parameter!
+			if (colorParam === 'black' || colorParam === 'white') return colorParam as Color;
+			return 'white' as Color;
+		}
+		if (isWhite) return 'white' as Color;
+		if (isBlack) return 'black' as Color;
+
+		// Fallback to URL parameter if assigned via matchmaking or direct match
+		if (colorParam === 'black' || colorParam === 'white') return colorParam as Color;
 		return null;
 	})();
 
@@ -43,7 +63,7 @@
 	$: isSpectator = !isPlayer;
 
 	// Visual board orientation (defaults to player's color, or 'white' for spectators)
-	$: defaultOrientation = (myPlayerColor || 'white') as Color;
+	$: defaultOrientation = (myPlayerColor || ($page.url.searchParams.get('color') as Color) || 'white') as Color;
 	$: currentOrientation = (flipBoard
 		? (defaultOrientation === 'white' ? 'black' : 'white')
 		: defaultOrientation) as Color;
@@ -88,11 +108,13 @@
 
 	// Warn before leaving active game
 	beforeNavigate((nav) => {
-		if (isPlayer && $gameStore.status === 'playing' && !pendingNavigation) {
+		if (allowNavigation) return;
+		if (isPlayer && $gameStore.status === 'playing') {
 			nav.cancel();
 			if (nav.to) {
 				const dest = nav.to.url.pathname + nav.to.url.search;
 				pendingNavigation = () => {
+					allowNavigation = true;
 					goto(dest);
 				};
 			}
@@ -136,6 +158,19 @@
 		isCheck: boolean;
 	} | null = null;
 
+	async function getResolvedUser(): Promise<any> {
+		if ($authStore.user) return $authStore.user;
+		if (!$authStore.loading) return null;
+		return new Promise((resolve) => {
+			const unsub = authStore.subscribe((state) => {
+				if (!state.loading) {
+					unsub();
+					resolve(state.user);
+				}
+			});
+		});
+	}
+
 	onMount(async () => {
 		resetGameStore();
 
@@ -144,18 +179,20 @@
 		}
 
 		try {
-			const info = await api.games.get(gameId);
+			const currentUser = await getResolvedUser();
+			let info = await api.games.get(gameId);
 
-			// If current user is not white and black is guest, claim the challenge seat!
+			// If current user is logged in, not white, and black seat is open/guest, claim the black seat!
 			if (
-				$authStore.user &&
-				info.white?.userId !== $authStore.user.id &&
+				currentUser &&
+				info.white?.userId !== currentUser.id &&
 				(info.black?.userId === 'guest-opponent' || !info.black?.userId)
 			) {
 				try {
 					const joined = await api.games.join(gameId);
-					if (joined && joined.black) {
-						info.black = joined.black;
+					if (joined) {
+						if (joined.white) info.white = joined.white;
+						if (joined.black) info.black = joined.black;
 					}
 				} catch (e) {
 					console.warn('Could not join match:', e);
@@ -309,19 +346,28 @@
 		showOfferDrawModal = true;
 	}
 
-	function confirmOfferDraw() {
+	async function confirmOfferDraw() {
 		showOfferDrawModal = false;
 		socket?.offerDraw();
+		try {
+			await api.games.offerDraw(gameId);
+		} catch (_) {}
 	}
 
-	function handleAcceptDraw() {
+	async function handleAcceptDraw() {
 		if (!isPlayer || $gameStore.status !== 'playing') return;
 		socket?.acceptDraw();
+		try {
+			await api.games.acceptDraw(gameId);
+		} catch (_) {}
 	}
 
-	function handleDeclineDraw() {
+	async function handleDeclineDraw() {
 		if (!isPlayer || $gameStore.status !== 'playing') return;
 		socket?.declineDraw();
+		try {
+			await api.games.declineDraw(gameId);
+		} catch (_) {}
 	}
 
 	function handleNewGame() {
