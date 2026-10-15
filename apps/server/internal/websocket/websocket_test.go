@@ -1,12 +1,19 @@
 package websocket
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"chess-platform/server/internal/auth"
+	"chess-platform/server/internal/game"
+	"chess-platform/server/internal/user"
 
 	gorillaWs "github.com/gorilla/websocket"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestHubRoomCreationAndBroadcast(t *testing.T) {
@@ -139,4 +146,222 @@ func TestWebSocketUpgradeOriginRejection(t *testing.T) {
 		t.Fatalf("expected dial to succeed with trusted origin: %v", err)
 	}
 	conn.Close()
+}
+
+func readNextMessage(t *testing.T, conn *gorillaWs.Conn) ServerMessage {
+	t.Helper()
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	for {
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("failed to read expected websocket message: %v", err)
+		}
+		var msg ServerMessage
+		if err := json.Unmarshal(raw, &msg); err != nil {
+			continue
+		}
+		// Skip initial connection/ping notices to get to actual game events
+		if msg.Type == "player_connected" || msg.Type == "ping" {
+			continue
+		}
+		return msg
+	}
+}
+
+func TestMultiplayerWebSocketMoveAndDrawFlow(t *testing.T) {
+	jwtSecret := "super-secure-jwt-secret-at-least-32-chars-long"
+	authService := auth.NewService(nil, jwtSecret, jwtSecret)
+	gameService := game.NewService(nil, nil)
+	cfg := HubConfig{
+		AllowedOrigins:     []string{"http://localhost:5173"},
+		AllowMissingOrigin: true,
+	}
+	hub := NewHub(gameService, authService, cfg)
+
+	uWhite := &user.User{ID: primitive.NewObjectID(), Username: "alice"}
+	uBlack := &user.User{ID: primitive.NewObjectID(), Username: "bob"}
+
+	whiteTokens, _ := authService.GenerateTokenPair(uWhite)
+	blackTokens, _ := authService.GenerateTokenPair(uBlack)
+
+	whitePlayer := game.PlayerInfo{UserID: uWhite.ID.Hex(), Username: uWhite.Username, Rating: 1500}
+	blackPlayer := game.PlayerInfo{UserID: uBlack.ID.Hex(), Username: uBlack.Username, Rating: 1500}
+	tc := game.TimeControl{InitialSeconds: 300, Increment: 0}
+
+	ag, err := gameService.CreateGame(whitePlayer, blackPlayer, tc)
+	if err != nil {
+		t.Fatalf("failed to create game: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hub.HandleWebSocket(w, r, ag.ID)
+	}))
+	defer server.Close()
+
+	baseURL := "ws" + strings.TrimPrefix(server.URL, "http")
+
+	dialer := gorillaWs.Dialer{}
+	header := http.Header{"Origin": []string{"http://localhost:5173"}}
+
+	// 1. Connect White Player
+	whiteConn, _, err := dialer.Dial(baseURL+"?token="+whiteTokens.AccessToken, header)
+	if err != nil {
+		t.Fatalf("white player failed to connect: %v", err)
+	}
+	defer whiteConn.Close()
+
+	// 2. Connect Black Player
+	blackConn, _, err := dialer.Dial(baseURL+"?token="+blackTokens.AccessToken, header)
+	if err != nil {
+		t.Fatalf("black player failed to connect: %v", err)
+	}
+	defer blackConn.Close()
+
+	// Drain initial game_started messages
+	_ = readNextMessage(t, whiteConn)
+	_ = readNextMessage(t, blackConn)
+
+	// 3. Test Move Translation: White plays 1. e4
+	err = whiteConn.WriteJSON(ClientMessage{
+		Type: "move",
+		From: "e2",
+		To:   "e4",
+	})
+	if err != nil {
+		t.Fatalf("white failed to send move: %v", err)
+	}
+
+	// Black client must receive move with SAN "e4"
+	moveMsgForBlack := readNextMessage(t, blackConn)
+	if moveMsgForBlack.Type != "move" || moveMsgForBlack.SAN != "e4" {
+		t.Fatalf("expected black to receive move e4, got type=%s, san=%s", moveMsgForBlack.Type, moveMsgForBlack.SAN)
+	}
+	// White client also receives broadcast confirmation of move e4
+	moveMsgForWhiteEcho := readNextMessage(t, whiteConn)
+	if moveMsgForWhiteEcho.Type != "move" || moveMsgForWhiteEcho.SAN != "e4" {
+		t.Fatalf("expected white to receive echoed move e4, got type=%s, san=%s", moveMsgForWhiteEcho.Type, moveMsgForWhiteEcho.SAN)
+	}
+
+	// 4. Test Move Translation: Black plays 1... e5
+	err = blackConn.WriteJSON(ClientMessage{
+		Type: "move",
+		From: "e7",
+		To:   "e5",
+	})
+	if err != nil {
+		t.Fatalf("black failed to send move: %v", err)
+	}
+
+	// White client must receive move with SAN "e5"
+	moveMsgForWhite := readNextMessage(t, whiteConn)
+	if moveMsgForWhite.Type != "move" || moveMsgForWhite.SAN != "e5" {
+		t.Fatalf("expected white to receive move e5, got type=%s, san=%s", moveMsgForWhite.Type, moveMsgForWhite.SAN)
+	}
+	// Black client also receives echoed move e5
+	moveMsgForBlackEcho := readNextMessage(t, blackConn)
+	if moveMsgForBlackEcho.Type != "move" || moveMsgForBlackEcho.SAN != "e5" {
+		t.Fatalf("expected black to receive echoed move e5, got type=%s, san=%s", moveMsgForBlackEcho.Type, moveMsgForBlackEcho.SAN)
+	}
+
+	// 5. Test Draw Negotiation: White offers draw
+	err = whiteConn.WriteJSON(ClientMessage{
+		Type: "draw_offer",
+	})
+	if err != nil {
+		t.Fatalf("white failed to offer draw: %v", err)
+	}
+
+	drawOfferMsg := readNextMessage(t, blackConn)
+	if drawOfferMsg.Type != "draw_offer" {
+		t.Fatalf("expected black to receive draw_offer, got type=%s", drawOfferMsg.Type)
+	}
+	drawOfferEcho := readNextMessage(t, whiteConn)
+	if drawOfferEcho.Type != "draw_offer" {
+		t.Fatalf("expected white to receive echoed draw_offer, got type=%s", drawOfferEcho.Type)
+	}
+
+	// 6. Black accepts draw
+	err = blackConn.WriteJSON(ClientMessage{
+		Type: "draw_accept",
+	})
+	if err != nil {
+		t.Fatalf("black failed to accept draw: %v", err)
+	}
+
+	// Both receive game_finished or draw_accepted
+	drawFinForWhite := readNextMessage(t, whiteConn)
+	if drawFinForWhite.Type != "game_finished" && drawFinForWhite.Type != "draw_accepted" {
+		t.Fatalf("expected white to receive game_finished/draw_accepted, got type=%s", drawFinForWhite.Type)
+	}
+
+	drawFinForBlack := readNextMessage(t, blackConn)
+	if drawFinForBlack.Type != "game_finished" && drawFinForBlack.Type != "draw_accepted" {
+		t.Fatalf("expected black to receive game_finished/draw_accepted, got type=%s", drawFinForBlack.Type)
+	}
+}
+
+func TestMultiplayerResignationFlow(t *testing.T) {
+	jwtSecret := "super-secure-jwt-secret-at-least-32-chars-long"
+	authService := auth.NewService(nil, jwtSecret, jwtSecret)
+	gameService := game.NewService(nil, nil)
+	cfg := HubConfig{
+		AllowedOrigins:     []string{"http://localhost:5173"},
+		AllowMissingOrigin: true,
+	}
+	hub := NewHub(gameService, authService, cfg)
+
+	uWhite := &user.User{ID: primitive.NewObjectID(), Username: "alice"}
+	uBlack := &user.User{ID: primitive.NewObjectID(), Username: "bob"}
+
+	whiteTokens, _ := authService.GenerateTokenPair(uWhite)
+	blackTokens, _ := authService.GenerateTokenPair(uBlack)
+
+	whitePlayer := game.PlayerInfo{UserID: uWhite.ID.Hex(), Username: uWhite.Username, Rating: 1500}
+	blackPlayer := game.PlayerInfo{UserID: uBlack.ID.Hex(), Username: uBlack.Username, Rating: 1500}
+	tc := game.TimeControl{InitialSeconds: 300, Increment: 0}
+
+	ag, err := gameService.CreateGame(whitePlayer, blackPlayer, tc)
+	if err != nil {
+		t.Fatalf("failed to create game: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hub.HandleWebSocket(w, r, ag.ID)
+	}))
+	defer server.Close()
+
+	baseURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	dialer := gorillaWs.Dialer{}
+	header := http.Header{"Origin": []string{"http://localhost:5173"}}
+
+	whiteConn, _, _ := dialer.Dial(baseURL+"?token="+whiteTokens.AccessToken, header)
+	defer whiteConn.Close()
+
+	blackConn, _, _ := dialer.Dial(baseURL+"?token="+blackTokens.AccessToken, header)
+	defer blackConn.Close()
+
+	_ = readNextMessage(t, whiteConn)
+	_ = readNextMessage(t, blackConn)
+
+	// White resigns
+	err = whiteConn.WriteJSON(ClientMessage{
+		Type: "resign",
+	})
+	if err != nil {
+		t.Fatalf("white failed to send resign: %v", err)
+	}
+
+	// Black receives game_finished and resignation events, both indicating winner=black
+	msg1 := readNextMessage(t, blackConn)
+	msg2 := readNextMessage(t, blackConn)
+
+	gotGameFinished := (msg1.Type == "game_finished" || msg2.Type == "game_finished")
+	gotResignation := (msg1.Type == "resignation" || msg2.Type == "resignation")
+
+	if !gotGameFinished || !gotResignation {
+		t.Fatalf("expected black to receive game_finished and resignation, got %s and %s", msg1.Type, msg2.Type)
+	}
+	if msg1.Winner != "black" && msg2.Winner != "black" {
+		t.Fatalf("expected winner to be black, got msg1.winner=%s msg2.winner=%s", msg1.Winner, msg2.Winner)
+	}
 }

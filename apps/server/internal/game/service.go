@@ -512,7 +512,9 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 		FinishedAt:      ag.FinishedAt,
 	}
 
-	_ = s.gameRepo.Save(ctx, doc)
+	if s.gameRepo != nil {
+		_ = s.gameRepo.Save(ctx, doc)
+	}
 
 	if s.rdb != nil {
 		_ = s.rdb.Del(ctx, fmt.Sprintf("active_game:%s", ag.ID)).Err()
