@@ -23,6 +23,11 @@ ALLOWED_ORIGINS=https://chess.yogeshmallik.in,http://chess.yogeshmallik.in,http:
 JWT_ACCESS_SECRET=chessnova-production-jwt-access-secret-32-chars-long-987123
 JWT_REFRESH_SECRET=chessnova-production-jwt-refresh-secret-32-chars-long-456789
 LOCAL_UPLOAD_DIR=/opt/chessnova/uploads/avatars
+SMTP_HOST=127.0.0.1
+SMTP_PORT=25
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=ChessNova <noreply@chess.yogeshmallik.in>
 EOF
 chown yogesh:yogesh /opt/chessnova/.env
 chmod 600 /opt/chessnova/.env

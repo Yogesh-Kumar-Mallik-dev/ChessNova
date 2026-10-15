@@ -15,7 +15,6 @@
 	let email = '';
 	let password = '';
 	let otp = '';
-	let devOtp = '';
 	let error = '';
 	let successMsg = '';
 	let loading = false;
@@ -44,8 +43,7 @@
 		successMsg = '';
 		loading = true;
 		try {
-			const res = await api.auth.sendRegisterOtp({ username, email, password });
-			devOtp = res.devOtp || '';
+			await api.auth.sendRegisterOtp({ username, email, password });
 			successMsg = `Verification code sent to ${email}`;
 			step = 'otp';
 			startCooldown(60);
@@ -80,8 +78,7 @@
 		error = '';
 		loading = true;
 		try {
-			const res = await api.auth.resendRegisterOtp({ email });
-			if (res.devOtp) devOtp = res.devOtp;
+			await api.auth.resendRegisterOtp({ email });
 			successMsg = 'A fresh verification code has been dispatched to your email.';
 			startCooldown(60);
 		} catch (err: any) {
@@ -130,19 +127,6 @@
 			<div class="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in duration-150">
 				<Icon name="check" size={14} className="shrink-0 text-emerald-400" />
 				<span>{successMsg}</span>
-			</div>
-		{/if}
-
-		{#if devOtp}
-			<div class="mb-4 p-3 bg-sky-950/60 border border-sky-500/40 rounded-xl text-xs text-sky-200 flex items-center justify-between">
-				<span>Verification Code: <strong class="font-mono tracking-widest text-white text-sm">{devOtp}</strong></span>
-				<button
-					type="button"
-					class="px-2 py-0.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded text-[11px]"
-					on:click={() => (otp = devOtp)}
-				>
-					Fill
-				</button>
 			</div>
 		{/if}
 

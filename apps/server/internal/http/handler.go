@@ -279,7 +279,7 @@ func (rt *Router) handleRegisterSendOTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	devOtp, err := rt.authService.InitiateRegistration(r.Context(), req.Username, req.Email, req.Password)
+	err := rt.authService.InitiateRegistration(r.Context(), req.Username, req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, auth.ErrUserAlreadyExists) {
 			writeError(w, http.StatusConflict, "USER_EXISTS", err.Error())
@@ -289,16 +289,11 @@ func (rt *Router) handleRegisterSendOTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	res := map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"message":   "Verification code sent to email",
 		"email":     req.Email,
 		"expiresIn": 600,
-	}
-	if devOtp != "" {
-		res["devOtp"] = devOtp
-	}
-
-	writeJSON(w, http.StatusOK, res)
+	})
 }
 
 type verifyOTPReq struct {
@@ -359,7 +354,7 @@ func (rt *Router) handleRegisterResendOTP(w http.ResponseWriter, r *http.Request
 
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 
-	devOtp, err := rt.authService.ResendRegistrationOTP(r.Context(), req.Email)
+	err := rt.authService.ResendRegistrationOTP(r.Context(), req.Email)
 	if err != nil {
 		if errors.Is(err, auth.ErrResendTooSoon) {
 			writeError(w, http.StatusTooManyRequests, "RESEND_TOO_SOON", err.Error())
@@ -373,16 +368,11 @@ func (rt *Router) handleRegisterResendOTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	res := map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"message":   "New verification code sent",
 		"email":     req.Email,
 		"expiresIn": 600,
-	}
-	if devOtp != "" {
-		res["devOtp"] = devOtp
-	}
-
-	writeJSON(w, http.StatusOK, res)
+	})
 }
 
 type loginReq struct {

@@ -33,7 +33,7 @@ func NewMailer(cfg Config) Mailer {
 }
 
 func (m *SMTPMailer) IsConfigured() bool {
-	return m.cfg.Host != "" && m.cfg.User != ""
+	return m.cfg.Host != ""
 }
 
 func (m *SMTPMailer) SendVerificationOTP(ctx context.Context, toEmail, username, otp string) error {
@@ -172,8 +172,11 @@ func (m *SMTPMailer) SendVerificationOTP(ctx context.Context, toEmail, username,
 		return w.Close()
 	}
 
-	// Port 587 or standard with STARTTLS
-	auth := smtp.PlainAuth("", m.cfg.User, m.cfg.Password, m.cfg.Host)
+	// Port 587, 25, or standard SMTP
+	var auth smtp.Auth
+	if m.cfg.User != "" && m.cfg.Password != "" {
+		auth = smtp.PlainAuth("", m.cfg.User, m.cfg.Password, m.cfg.Host)
+	}
 	err := smtp.SendMail(addr, auth, cleanAddress(from), []string{toEmail}, []byte(msg))
 	if err != nil {
 		log.Printf("[MAILER ERROR] Failed to send email via %s: %v", addr, err)

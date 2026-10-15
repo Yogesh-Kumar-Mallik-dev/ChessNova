@@ -98,7 +98,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const api = {
 	auth: {
 		sendRegisterOtp: (data: { username: string; email: string; password: string }) =>
-			request<{ message: string; email: string; expiresIn: number; devOtp?: string }>('/auth/register/send-otp', {
+			request<{ message: string; email: string; expiresIn: number }>('/auth/register/send-otp', {
 				method: 'POST',
 				body: JSON.stringify(data)
 			}),
@@ -108,7 +108,7 @@ export const api = {
 				body: JSON.stringify(data)
 			}),
 		resendRegisterOtp: (data: { email: string }) =>
-			request<{ message: string; email: string; expiresIn: number; devOtp?: string }>('/auth/register/resend-otp', {
+			request<{ message: string; email: string; expiresIn: number }>('/auth/register/resend-otp', {
 				method: 'POST',
 				body: JSON.stringify(data)
 			}),

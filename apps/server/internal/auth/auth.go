@@ -320,29 +320,29 @@ func (s *Service) deletePending(ctx context.Context, emailStr string) {
 	s.mu.Unlock()
 }
 
-func (s *Service) InitiateRegistration(ctx context.Context, username, emailStr, password string) (string, error) {
+func (s *Service) InitiateRegistration(ctx context.Context, username, emailStr, password string) error {
 	username = strings.TrimSpace(username)
 	emailStr = strings.TrimSpace(strings.ToLower(emailStr))
 
 	if username == "" || emailStr == "" || password == "" {
-		return "", errors.New("username, email, and password are required")
+		return errors.New("username, email, and password are required")
 	}
 
 	if existing, err := s.userRepo.FindByUsername(ctx, username); err == nil && existing != nil {
-		return "", ErrUserAlreadyExists
+		return ErrUserAlreadyExists
 	} else if err != nil && !isNotFoundError(err) {
-		return "", err
+		return err
 	}
 
 	if existing, err := s.userRepo.FindByEmail(ctx, emailStr); err == nil && existing != nil {
-		return "", ErrUserAlreadyExists
+		return ErrUserAlreadyExists
 	} else if err != nil && !isNotFoundError(err) {
-		return "", err
+		return err
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	otp := generateSecureOTP()
@@ -359,21 +359,19 @@ func (s *Service) InitiateRegistration(ctx context.Context, username, emailStr, 
 	}
 
 	if err := s.savePending(ctx, pending); err != nil {
-		return "", fmt.Errorf("failed to save registration: %w", err)
+		return fmt.Errorf("failed to save registration: %w", err)
 	}
 
-	devOtp := ""
 	if s.mailer != nil && s.mailer.IsConfigured() {
 		if err := s.mailer.SendVerificationOTP(ctx, emailStr, username, otp); err != nil {
-			log.Printf("[AUTH] Warning: mailer failed to send to %s: %v", emailStr, err)
-			devOtp = otp
+			log.Printf("[AUTH] Failed to send email to %s: %v", emailStr, err)
+			return fmt.Errorf("failed to dispatch verification email: %w", err)
 		}
 	} else {
-		log.Printf("[AUTH OTP] Verification code for %s (%s): %s", username, emailStr, otp)
-		devOtp = otp
+		log.Printf("[AUTH NOTICE] SMTP not configured. OTP for %s (%s): %s", username, emailStr, otp)
 	}
 
-	return devOtp, nil
+	return nil
 }
 
 func (s *Service) VerifyRegistrationOTP(ctx context.Context, emailStr, otp string) (*user.User, *TokenPair, error) {
@@ -427,16 +425,16 @@ func (s *Service) VerifyRegistrationOTP(ctx context.Context, emailStr, otp strin
 	return u, tokens, nil
 }
 
-func (s *Service) ResendRegistrationOTP(ctx context.Context, emailStr string) (string, error) {
+func (s *Service) ResendRegistrationOTP(ctx context.Context, emailStr string) error {
 	emailStr = strings.TrimSpace(strings.ToLower(emailStr))
 
 	pending, err := s.getPending(ctx, emailStr)
 	if err != nil {
-		return "", ErrOTPExpired
+		return ErrOTPExpired
 	}
 
 	if time.Since(pending.CreatedAt) < 30*time.Second {
-		return "", ErrResendTooSoon
+		return ErrResendTooSoon
 	}
 
 	newOTP := generateSecureOTP()
@@ -447,19 +445,17 @@ func (s *Service) ResendRegistrationOTP(ctx context.Context, emailStr string) (s
 	pending.ExpiresAt = now.Add(otpTTL)
 
 	if err := s.savePending(ctx, pending); err != nil {
-		return "", err
+		return err
 	}
 
-	devOtp := ""
 	if s.mailer != nil && s.mailer.IsConfigured() {
 		if err := s.mailer.SendVerificationOTP(ctx, emailStr, pending.Username, newOTP); err != nil {
-			log.Printf("[AUTH] Warning: mailer failed to send to %s: %v", emailStr, err)
-			devOtp = newOTP
+			log.Printf("[AUTH] Failed to send email to %s: %v", emailStr, err)
+			return fmt.Errorf("failed to dispatch verification email: %w", err)
 		}
 	} else {
-		log.Printf("[AUTH OTP RESEND] Verification code for %s (%s): %s", pending.Username, emailStr, newOTP)
-		devOtp = newOTP
+		log.Printf("[AUTH NOTICE] SMTP not configured. OTP for %s (%s): %s", pending.Username, emailStr, newOTP)
 	}
 
-	return devOtp, nil
+	return nil
 }
