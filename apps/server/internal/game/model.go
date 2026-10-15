@@ -34,6 +34,7 @@ type ClockState struct {
 	BlackTimeMs int64       `bson:"blackTimeMs" json:"blackTimeMs"`
 	LastMoveAt  time.Time   `bson:"lastMoveAt" json:"lastMoveAt"`
 	ActiveColor chess.Color `bson:"activeColor" json:"activeColor"`
+	Started     bool        `bson:"started" json:"started"`
 }
 
 func NewClock(tc TimeControl) ClockState {
@@ -43,6 +44,7 @@ func NewClock(tc TimeControl) ClockState {
 		BlackTimeMs: totalMs,
 		LastMoveAt:  time.Now().UTC(),
 		ActiveColor: chess.White,
+		Started:     false,
 	}
 }
 
@@ -51,7 +53,7 @@ func (c *ClockState) CurrentTimes(status Status) (whiteMs, blackMs int64, timedO
 	whiteMs = c.WhiteTimeMs
 	blackMs = c.BlackTimeMs
 
-	if status != StatusPlaying {
+	if status != StatusPlaying || !c.Started {
 		return whiteMs, blackMs, nil
 	}
 
@@ -78,6 +80,16 @@ func (c *ClockState) CurrentTimes(status Status) (whiteMs, blackMs int64, timedO
 // UpdateAfterMove calculates elapsed time with network lag compensation, subtracts from active side, adds increment, switches active color
 func (c *ClockState) UpdateAfterMove(incrementSeconds int) (timedOut bool) {
 	now := time.Now().UTC()
+	if !c.Started {
+		// First move in the game: initialize clock start time and switch to Black
+		c.Started = true
+		c.LastMoveAt = now
+		incMs := int64(incrementSeconds) * 1000
+		c.WhiteTimeMs += incMs
+		c.ActiveColor = chess.Black
+		return false
+	}
+
 	elapsed := now.Sub(c.LastMoveAt).Milliseconds()
 	c.LastMoveAt = now
 

@@ -873,11 +873,22 @@ func (rt *Router) handleMakeMove(w http.ResponseWriter, r *http.Request, claims 
 		return
 	}
 
+	var promoStr string
+	if res.Move.Promotion != nil {
+		promoStr = res.Move.Promotion.String()
+	}
+	webMove := &websocket.WebMove{
+		From:      res.Move.From.String(),
+		To:        res.Move.To.String(),
+		Promotion: promoStr,
+		SAN:       res.SAN,
+	}
+
 	// Broadcast move via WebSocket Hub
 	rt.wsHub.Broadcast(id, websocket.ServerMessage{
 		Type:      "move",
 		GameID:    id,
-		Move:      &res.Move,
+		Move:      webMove,
 		SAN:       res.SAN,
 		FEN:       res.FEN,
 		Turn:      res.Turn,

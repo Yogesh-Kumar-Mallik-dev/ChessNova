@@ -1,7 +1,18 @@
 import { gameStore } from '$lib/stores/game';
 import { soundEffects } from '$lib/audio/sounds';
 import { sendDesktopNotification } from '$lib/utils/desktop';
-import { get } from 'svelte/store';
+
+function toSquareNotation(val: any): string {
+	if (typeof val === 'string' && val.length === 2 && val[0] >= 'a' && val[0] <= 'h' && val[1] >= '1' && val[1] <= '8') {
+		return val;
+	}
+	if (typeof val === 'number' && val >= 0 && val < 64) {
+		const file = String.fromCharCode('a'.charCodeAt(0) + (val % 8));
+		const rank = String(Math.floor(val / 8) + 1);
+		return `${file}${rank}`;
+	}
+	return String(val || '');
+}
 
 export class GameSocket {
 	private ws: WebSocket | null = null;
@@ -11,10 +22,15 @@ export class GameSocket {
 	private pingTimer: any = null;
 	private isExplicitlyClosed = false;
 	private errorCallback: ((err: string) => void) | null = null;
+	private messageQueue: any[] = [];
 
 	constructor(gameId: string, token: string | null) {
 		this.gameId = gameId;
 		this.token = token;
+	}
+
+	public isConnected(): boolean {
+		return !!(this.ws && this.ws.readyState === WebSocket.OPEN);
 	}
 
 	public onError(cb: (err: string) => void) {
@@ -23,6 +39,8 @@ export class GameSocket {
 
 	public connect() {
 		this.isExplicitlyClosed = false;
+		if (typeof window === 'undefined') return;
+
 		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 		const host = window.location.host;
 		const tokenParam = this.token ? `?token=${encodeURIComponent(this.token)}` : '';
@@ -35,6 +53,16 @@ export class GameSocket {
 		this.ws.onopen = () => {
 			gameStore.update((s) => ({ ...s, connectionStatus: 'connected' }));
 			this.startPing();
+
+			// Flush buffered outbound messages upon connection
+			while (this.messageQueue.length > 0) {
+				const msg = this.messageQueue.shift();
+				try {
+					this.ws?.send(JSON.stringify(msg));
+				} catch (e) {
+					console.error('Failed to flush message to socket:', e);
+				}
+			}
 		};
 
 		this.ws.onmessage = (event) => {
@@ -50,7 +78,7 @@ export class GameSocket {
 			this.stopPing();
 			gameStore.update((s) => ({ ...s, connectionStatus: 'disconnected' }));
 			if (!this.isExplicitlyClosed) {
-				this.reconnectTimer = setTimeout(() => this.connect(), 2000);
+				this.reconnectTimer = setTimeout(() => this.connect(), 1500);
 			}
 		};
 
@@ -75,31 +103,50 @@ export class GameSocket {
 					whitePlayer: data.white,
 					blackPlayer: data.black,
 					timeControl: data.timeControl,
-					isCheck: data.isCheck
+					isCheck: data.isCheck,
+					drawOfferBy: null
 				}));
 				break;
 
-			case 'move':
+			case 'move': {
+				const moveFrom = toSquareNotation(data.move?.from);
+				const moveTo = toSquareNotation(data.move?.to);
+
 				gameStore.update((s) => {
 					const newMoves = [...s.moves];
 					const lastM = newMoves.length > 0 ? newMoves[newMoves.length - 1] : null;
-					const isOptimisticMatch = lastM && lastM.from === data.move.from && lastM.to === data.move.to;
+					const isOptimisticMatch = lastM && lastM.from === moveFrom && lastM.to === moveTo;
 
 					if (data.san) {
 						if (isOptimisticMatch) {
 							newMoves[newMoves.length - 1] = {
-								from: data.move.from,
-								to: data.move.to,
+								from: moveFrom,
+								to: moveTo,
 								san: data.san,
 								fen: data.fen
 							};
 						} else {
 							newMoves.push({
-								from: data.move.from,
-								to: data.move.to,
+								from: moveFrom,
+								to: moveTo,
 								san: data.san,
 								fen: data.fen
 							});
+						}
+					}
+
+					// Sound effect for move event
+					if (data.status === 'playing') {
+						if (data.isCheck) {
+							soundEffects.playCheck();
+						} else if (data.san?.includes('x')) {
+							soundEffects.playCapture();
+						} else if (data.san?.startsWith('O-O')) {
+							soundEffects.playCastle();
+						} else if (data.san?.includes('=')) {
+							soundEffects.playPromotion();
+						} else {
+							soundEffects.playNormalMove();
 						}
 					}
 
@@ -119,13 +166,14 @@ export class GameSocket {
 						result: data.result,
 						winner: data.winner,
 						isCheck: data.isCheck,
-						lastMove: data.move
+						drawOfferBy: null, // Any subsequent move implicitly declines an outstanding draw offer
+						lastMove: moveFrom && moveTo
 							? {
-									from: data.move.from,
-									to: data.move.to,
+									from: moveFrom,
+									to: moveTo,
 									san: data.san,
 									isCapture: data.san?.includes('x'),
-									isPromotion: data.san?.includes('=') || !!data.move.promotion
+									isPromotion: data.san?.includes('=') || !!data.move?.promotion
 								}
 							: null,
 						moves: newMoves,
@@ -134,6 +182,7 @@ export class GameSocket {
 					};
 				});
 				break;
+			}
 
 			case 'player_disconnected':
 				gameStore.update((s) => ({
@@ -161,13 +210,15 @@ export class GameSocket {
 
 			case 'resignation':
 			case 'game_finished':
+				soundEffects.playGameEnd();
 				sendDesktopNotification('Game Over', `Match finished: ${data.outcome || data.result || 'Game ended'}.`);
 				gameStore.update((s) => ({
 					...s,
 					status: data.status,
 					outcome: data.outcome,
 					result: data.result,
-					winner: data.winner || s.winner
+					winner: data.winner || s.winner,
+					drawOfferBy: null
 				}));
 				break;
 
@@ -180,6 +231,7 @@ export class GameSocket {
 				break;
 
 			case 'draw_accepted':
+				soundEffects.playGameEnd();
 				sendDesktopNotification('Draw Accepted', 'The game concluded in a draw.');
 				gameStore.update((s) => ({
 					...s,
@@ -191,6 +243,7 @@ export class GameSocket {
 				break;
 
 			case 'draw_declined':
+				sendDesktopNotification('Draw Declined', 'Opponent declined the draw offer.');
 				gameStore.update((s) => ({
 					...s,
 					drawOfferBy: null
@@ -233,7 +286,17 @@ export class GameSocket {
 
 	private send(msg: any) {
 		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-			this.ws.send(JSON.stringify(msg));
+			try {
+				this.ws.send(JSON.stringify(msg));
+			} catch (e) {
+				console.warn('Failed to send on open socket, queueing:', e);
+				this.messageQueue.push(msg);
+			}
+		} else {
+			this.messageQueue.push(msg);
+			if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
+				this.connect();
+			}
 		}
 	}
 
@@ -244,16 +307,23 @@ export class GameSocket {
 	}
 
 	private stopPing() {
-		if (this.pingTimer) clearInterval(this.pingTimer);
+		if (this.pingTimer) {
+			clearInterval(this.pingTimer);
+			this.pingTimer = null;
+		}
 	}
 
 	public disconnect() {
 		this.isExplicitlyClosed = true;
 		this.stopPing();
-		if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = null;
+		}
 		if (this.ws) {
 			this.ws.close();
 			this.ws = null;
 		}
+		this.messageQueue = [];
 	}
 }

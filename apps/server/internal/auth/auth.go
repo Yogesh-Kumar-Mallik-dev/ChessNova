@@ -52,8 +52,8 @@ func NewService(userRepo user.Repository, accessSecret, refreshSecret string) *S
 		userRepo:      userRepo,
 		accessSecret:  []byte(accessSecret),
 		refreshSecret: []byte(refreshSecret),
-		accessExpiry:  15 * time.Minute,
-		refreshExpiry: 7 * 24 * time.Hour,
+		accessExpiry:  7 * 24 * time.Hour,
+		refreshExpiry: 30 * 24 * time.Hour,
 	}
 }
 

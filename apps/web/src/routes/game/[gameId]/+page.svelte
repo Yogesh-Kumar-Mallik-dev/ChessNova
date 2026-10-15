@@ -24,16 +24,18 @@
 	let socket: GameSocket | null = null;
 	let showResultModal = true;
 	let showResignModal = false;
+	let showOfferDrawModal = false;
 	let showLeaveModal = false;
 	let pendingNavigation: (() => void) | null = null;
 	let flipBoard = false;
 
-	// Determine current user's authenticated seat
+	// Determine current user's authenticated seat (check ID and fallback to username)
 	$: myPlayerColor = (() => {
 		if (!$authStore.user) return null;
 		const uid = $authStore.user.id;
-		if ($gameStore.whitePlayer?.userId === uid) return 'white' as Color;
-		if ($gameStore.blackPlayer?.userId === uid) return 'black' as Color;
+		const uname = $authStore.user.username;
+		if ($gameStore.whitePlayer?.userId === uid || (uname && $gameStore.whitePlayer?.username === uname)) return 'white' as Color;
+		if ($gameStore.blackPlayer?.userId === uid || (uname && $gameStore.blackPlayer?.username === uname)) return 'black' as Color;
 		return null;
 	})();
 
@@ -301,6 +303,11 @@
 
 	function handleOfferDraw() {
 		if (!isPlayer || $gameStore.status !== 'playing') return;
+		showOfferDrawModal = true;
+	}
+
+	function confirmOfferDraw() {
+		showOfferDrawModal = false;
 		socket?.offerDraw();
 	}
 
@@ -656,7 +663,7 @@
 	}}
 />
 
-<!-- Custom Draw Offer Modal -->
+<!-- Custom Draw Offer Modal (Received) -->
 <Modal
 	isOpen={isPlayer && !!$gameStore.drawOfferBy && $gameStore.drawOfferBy !== myPlayerColor}
 	title="Draw Offered"
@@ -670,4 +677,20 @@
 	on:confirm={handleAcceptDraw}
 	on:cancel={handleDeclineDraw}
 	on:close={handleDeclineDraw}
+/>
+
+<!-- Custom Offer Draw Confirmation Modal (Initiating) -->
+<Modal
+	isOpen={showOfferDrawModal}
+	title="Propose a Draw?"
+	description="Are you sure you want to offer a mutual draw to your opponent?"
+	icon="handshake"
+	iconBg="bg-amber-500/15 ring-1 ring-amber-500/30"
+	iconColor="text-amber-400"
+	confirmText="Offer Draw"
+	confirmVariant="warning"
+	cancelText="Keep Playing"
+	on:confirm={confirmOfferDraw}
+	on:cancel={() => (showOfferDrawModal = false)}
+	on:close={() => (showOfferDrawModal = false)}
 />

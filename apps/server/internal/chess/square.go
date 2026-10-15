@@ -55,3 +55,33 @@ func ParseSquare(s string) (Square, error) {
 	}
 	return NewSquare(file, rank), nil
 }
+
+func (s Square) MarshalJSON() ([]byte, error) {
+	if !s.IsValid() {
+		return []byte(`"-"`), nil
+	}
+	return []byte(fmt.Sprintf("%q", s.String())), nil
+}
+
+func (s *Square) UnmarshalJSON(b []byte) error {
+	str := string(b)
+	if len(str) >= 2 && str[0] == '"' && str[len(str)-1] == '"' {
+		str = str[1 : len(str)-1]
+	}
+	if str == "-" || str == "" {
+		*s = NoSquare
+		return nil
+	}
+	sq, err := ParseSquare(str)
+	if err == nil {
+		*s = sq
+		return nil
+	}
+	var num int8
+	if _, errScan := fmt.Sscanf(string(b), "%d", &num); errScan == nil {
+		*s = Square(num)
+		return nil
+	}
+	return fmt.Errorf("invalid square: %s", string(b))
+}
+

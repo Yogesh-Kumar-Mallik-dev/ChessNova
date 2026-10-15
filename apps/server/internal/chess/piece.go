@@ -2,6 +2,7 @@ package chess
 
 import (
 	"fmt"
+	"strings"
 	"unicode"
 )
 
@@ -102,3 +103,47 @@ func PieceFromRune(r rune) (Piece, error) {
 	}
 	return Piece{Type: pt, Color: c}, nil
 }
+
+func (pt PieceType) MarshalJSON() ([]byte, error) {
+	switch pt {
+	case Queen:
+		return []byte(`"q"`), nil
+	case Rook:
+		return []byte(`"r"`), nil
+	case Bishop:
+		return []byte(`"b"`), nil
+	case Knight:
+		return []byte(`"n"`), nil
+	case Pawn:
+		return []byte(`"p"`), nil
+	case King:
+		return []byte(`"k"`), nil
+	default:
+		return []byte(`""`), nil
+	}
+}
+
+func (pt *PieceType) UnmarshalJSON(b []byte) error {
+	str := string(b)
+	if len(str) >= 2 && str[0] == '"' && str[len(str)-1] == '"' {
+		str = str[1 : len(str)-1]
+	}
+	switch strings.ToLower(str) {
+	case "q", "queen":
+		*pt = Queen
+	case "r", "rook":
+		*pt = Rook
+	case "b", "bishop":
+		*pt = Bishop
+	case "n", "knight":
+		*pt = Knight
+	case "p", "pawn":
+		*pt = Pawn
+	case "k", "king":
+		*pt = King
+	default:
+		*pt = NoPiece
+	}
+	return nil
+}
+

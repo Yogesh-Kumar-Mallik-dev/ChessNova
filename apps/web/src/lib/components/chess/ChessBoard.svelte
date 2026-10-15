@@ -210,6 +210,19 @@
 	}
 
 	function getSlideDelta(fromSq: string, toSq: string) {
+		if (
+			typeof fromSq !== 'string' ||
+			typeof toSq !== 'string' ||
+			fromSq.length < 2 ||
+			toSq.length < 2 ||
+			fromSq[0] < 'a' ||
+			fromSq[0] > 'h' ||
+			toSq[0] < 'a' ||
+			toSq[0] > 'h'
+		) {
+			return { dx: 0, dy: 0 };
+		}
+
 		const fromF = fromSq.charCodeAt(0) - 'a'.charCodeAt(0);
 		const fromR = parseInt(fromSq[1], 10) - 1;
 		const toF = toSq.charCodeAt(0) - 'a'.charCodeAt(0);
@@ -234,6 +247,10 @@
 		explicitCapture?: boolean,
 		explicitPromotion?: boolean
 	) {
+		if (typeof fromSq !== 'string' || typeof toSq !== 'string' || fromSq.length < 2 || toSq.length < 2) {
+			return;
+		}
+
 		// 1. Detect iconic move category: normal, capture, castle, en_passant, promote, check, or checkmate
 		let category = detectMoveCategory(fen, fromSq, toSq, fenBefore, san, explicitPromotion);
 		if (explicitPromotion && category !== 'checkmate') {

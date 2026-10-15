@@ -136,10 +136,17 @@ type ClientMessage struct {
 	Promotion string `json:"promotion,omitempty"`
 }
 
+type WebMove struct {
+	From      string `json:"from"`
+	To        string `json:"to"`
+	Promotion string `json:"promotion,omitempty"`
+	SAN       string `json:"san,omitempty"`
+}
+
 type ServerMessage struct {
 	Type        string            `json:"type"`
 	GameID      string            `json:"gameId,omitempty"`
-	Move        *chess.Move       `json:"move,omitempty"`
+	Move        *WebMove          `json:"move,omitempty"`
 	SAN         string            `json:"san,omitempty"`
 	FEN         string            `json:"fen,omitempty"`
 	Turn        string            `json:"turn,omitempty"`
@@ -170,9 +177,10 @@ type Client struct {
 }
 
 type GameRoom struct {
-	gameID  string
-	clients map[*Client]bool
-	mu      sync.RWMutex
+	gameID           string
+	clients          map[*Client]bool
+	disconnectTimers map[string]*time.Timer
+	mu               sync.RWMutex
 }
 
 type Hub struct {
@@ -237,8 +245,9 @@ func (h *Hub) getOrCreateRoom(gameID string) *GameRoom {
 	room, ok := h.rooms[gameID]
 	if !ok {
 		room = &GameRoom{
-			gameID:  gameID,
-			clients: make(map[*Client]bool),
+			gameID:           gameID,
+			clients:          make(map[*Client]bool),
+			disconnectTimers: make(map[string]*time.Timer),
 		}
 		h.rooms[gameID] = room
 	}
@@ -346,6 +355,13 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 
 	room.mu.Lock()
 	room.clients[client] = true
+	// Cancel any active abandonment timer if this user reconnected
+	if userID != "" {
+		if t, ok := room.disconnectTimers[userID]; ok && t != nil {
+			t.Stop()
+			delete(room.disconnectTimers, userID)
+		}
+	}
 	room.mu.Unlock()
 
 	// Notify connection
@@ -361,15 +377,7 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 }
 
 func (h *Hub) handlePlayerDisconnect(gameID, userID, username string) {
-	// Give player 60 seconds grace period to reconnect
-	time.Sleep(60 * time.Second)
-
 	if h.gameService == nil || userID == "" {
-		return
-	}
-
-	ag, err := h.gameService.GetActiveGame(gameID)
-	if err != nil || ag.Status != game.StatusPlaying {
 		return
 	}
 
@@ -380,34 +388,37 @@ func (h *Hub) handlePlayerDisconnect(gameID, userID, username string) {
 		return
 	}
 
-	room.mu.RLock()
-	reconnected := false
+	room.mu.Lock()
+	delete(room.disconnectTimers, userID)
 	for client := range room.clients {
 		if client.userID == userID {
-			reconnected = true
-			break
+			room.mu.Unlock()
+			return // User successfully reconnected before grace period expired
 		}
 	}
-	room.mu.RUnlock()
+	room.mu.Unlock()
 
-	if !reconnected {
-		doc, err := h.gameService.Resign(context.Background(), gameID, userID)
-		if err == nil {
-			winner := "white"
-			if doc.Result == "0-1" {
-				winner = "black"
-			}
-			h.Broadcast(gameID, ServerMessage{
-				Type:     "resignation",
-				GameID:   gameID,
-				Status:   doc.Status,
-				Outcome:  "abandonment",
-				Result:   doc.Result,
-				Winner:   winner,
-				UserID:   userID,
-				Username: username,
-			})
+	ag, err := h.gameService.GetActiveGame(gameID)
+	if err != nil || ag.Status != game.StatusPlaying {
+		return
+	}
+
+	doc, err := h.gameService.Resign(context.Background(), gameID, userID)
+	if err == nil {
+		winner := "white"
+		if doc.Result == "0-1" {
+			winner = "black"
 		}
+		h.Broadcast(gameID, ServerMessage{
+			Type:     "resignation",
+			GameID:   gameID,
+			Status:   doc.Status,
+			Outcome:  "abandonment",
+			Result:   doc.Result,
+			Winner:   winner,
+			UserID:   userID,
+			Username: username,
+		})
 	}
 }
 
@@ -416,7 +427,31 @@ func (c *Client) readPump() {
 		room := c.hub.getOrCreateRoom(c.gameID)
 		room.mu.Lock()
 		delete(room.clients, c)
+
+		// Check if the user has another active client connection in this room
+		hasRemaining := false
+		if c.userID != "" {
+			for remaining := range room.clients {
+				if remaining.userID == c.userID {
+					hasRemaining = true
+					break
+				}
+			}
+		}
+
+		if !hasRemaining && c.isPlayer && c.hub.gameService != nil && c.userID != "" {
+			if prev, ok := room.disconnectTimers[c.userID]; ok && prev != nil {
+				prev.Stop()
+			}
+			userID := c.userID
+			gameID := c.gameID
+			username := c.username
+			room.disconnectTimers[c.userID] = time.AfterFunc(60*time.Second, func() {
+				c.hub.handlePlayerDisconnect(gameID, userID, username)
+			})
+		}
 		room.mu.Unlock()
+
 		close(c.send)
 		c.conn.Close()
 
@@ -426,10 +461,6 @@ func (c *Client) readPump() {
 			UserID:   c.userID,
 			Username: c.username,
 		})
-
-		if c.isPlayer && c.hub.gameService != nil && c.userID != "" {
-			go c.hub.handlePlayerDisconnect(c.gameID, c.userID, c.username)
-		}
 	}()
 
 	c.conn.SetReadLimit(4096)
@@ -444,6 +475,8 @@ func (c *Client) readPump() {
 		if err != nil {
 			break
 		}
+		// Refresh read deadline on ANY received packet (including text pings and moves)
+		_ = c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 
 		var req ClientMessage
 		if err := json.Unmarshal(message, &req); err != nil {
@@ -482,26 +515,26 @@ func (c *Client) handleMessage(msg ClientMessage) {
 	case "move":
 		fromSq, err := chess.ParseSquare(msg.From)
 		if err != nil {
-			c.sendError("invalid from square")
+			c.sendError("invalid from square: " + msg.From)
 			return
 		}
 		toSq, err := chess.ParseSquare(msg.To)
 		if err != nil {
-			c.sendError("invalid to square")
+			c.sendError("invalid to square: " + msg.To)
 			return
 		}
 
 		var promo *chess.PieceType
 		if msg.Promotion != "" {
 			var pt chess.PieceType
-			switch msg.Promotion {
-			case "q", "queen", "Q":
+			switch strings.ToLower(msg.Promotion) {
+			case "q", "queen":
 				pt = chess.Queen
-			case "r", "rook", "R":
+			case "r", "rook":
 				pt = chess.Rook
-			case "b", "bishop", "B":
+			case "b", "bishop":
 				pt = chess.Bishop
-			case "n", "knight", "N":
+			case "n", "knight":
 				pt = chess.Knight
 			}
 			if pt != chess.NoPiece {
@@ -516,10 +549,22 @@ func (c *Client) handleMessage(msg ClientMessage) {
 			return
 		}
 
+		var promoStr string
+		if event.Move.Promotion != nil {
+			promoStr = event.Move.Promotion.String()
+		}
+
+		webMove := &WebMove{
+			From:      event.Move.From.String(),
+			To:        event.Move.To.String(),
+			Promotion: promoStr,
+			SAN:       event.SAN,
+		}
+
 		c.hub.Broadcast(c.gameID, ServerMessage{
 			Type:      "move",
 			GameID:    c.gameID,
-			Move:      &event.Move,
+			Move:      webMove,
 			SAN:       event.SAN,
 			FEN:       event.FEN,
 			Turn:      event.Turn,
