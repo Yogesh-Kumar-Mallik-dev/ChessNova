@@ -34,7 +34,8 @@ function createAuthStore() {
 		init: async () => {
 			if (typeof window === 'undefined') return;
 			const token = localStorage.getItem('access_token');
-			if (!token) {
+			const refreshToken = localStorage.getItem('refresh_token');
+			if (!token && !refreshToken) {
 				update((s) => ({ ...s, loading: false }));
 				return;
 			}
@@ -44,10 +45,31 @@ function createAuthStore() {
 				set({
 					user: res.user,
 					ratings: res.ratings || {},
-					token,
+					token: localStorage.getItem('access_token') || token,
 					loading: false
 				});
 			} catch (err) {
+				if (refreshToken) {
+					try {
+						const refreshed = await api.auth.refresh(refreshToken);
+						const newAccess = (refreshed as any).accessToken;
+						const newRefresh = (refreshed as any).refreshToken;
+						if (newAccess) {
+							localStorage.setItem('access_token', newAccess);
+							if (newRefresh) localStorage.setItem('refresh_token', newRefresh);
+							const res = await api.users.getMe();
+							set({
+								user: res.user,
+								ratings: res.ratings || {},
+								token: newAccess,
+								loading: false
+							});
+							return;
+						}
+					} catch (_) {
+						// refresh failed as well
+					}
+				}
 				localStorage.removeItem('access_token');
 				localStorage.removeItem('refresh_token');
 				set({ user: null, ratings: {}, token: null, loading: false });

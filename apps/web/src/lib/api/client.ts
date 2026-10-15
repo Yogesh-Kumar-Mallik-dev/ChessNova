@@ -5,8 +5,54 @@ function getToken(): string | null {
 	return localStorage.getItem('access_token');
 }
 
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+	if (typeof window === 'undefined') return null;
+	const refreshToken = localStorage.getItem('refresh_token');
+	if (!refreshToken) return null;
+
+	if (isRefreshing && refreshPromise) {
+		return refreshPromise;
+	}
+
+	isRefreshing = true;
+	refreshPromise = (async () => {
+		try {
+			const res = await fetch(`${API_BASE}/auth/refresh`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ refreshToken })
+			});
+			if (!res.ok) {
+				localStorage.removeItem('access_token');
+				localStorage.removeItem('refresh_token');
+				return null;
+			}
+			const data = await res.json();
+			const newAccess = data.accessToken || data.tokens?.accessToken;
+			const newRefresh = data.refreshToken || data.tokens?.refreshToken;
+			if (newAccess) {
+				localStorage.setItem('access_token', newAccess);
+				if (newRefresh) localStorage.setItem('refresh_token', newRefresh);
+				return newAccess;
+			}
+			return null;
+		} catch (e) {
+			console.error('Failed to refresh token:', e);
+			return null;
+		} finally {
+			isRefreshing = false;
+			refreshPromise = null;
+		}
+	})();
+
+	return refreshPromise;
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-	const token = getToken();
+	let token = getToken();
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 		...(options.headers as Record<string, string>)
@@ -16,10 +62,22 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 		headers['Authorization'] = `Bearer ${token}`;
 	}
 
-	const res = await fetch(`${API_BASE}${endpoint}`, {
+	let res = await fetch(`${API_BASE}${endpoint}`, {
 		...options,
 		headers
 	});
+
+	// If unauthorized (401), automatically refresh the access token and retry once
+	if (res.status === 401 && !endpoint.startsWith('/auth/')) {
+		const newAccess = await refreshAccessToken();
+		if (newAccess) {
+			headers['Authorization'] = `Bearer ${newAccess}`;
+			res = await fetch(`${API_BASE}${endpoint}`, {
+				...options,
+				headers
+			});
+		}
+	}
 
 	if (!res.ok) {
 		let errMsg = `Request failed: ${res.statusText}`;
@@ -34,11 +92,26 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 		throw new Error(errMsg);
 	}
 
-	return await res.json() as Promise<T>;
+	return (await res.json()) as Promise<T>;
 }
 
 export const api = {
 	auth: {
+		sendRegisterOtp: (data: { username: string; email: string; password: string }) =>
+			request<{ message: string; email: string; expiresIn: number; devOtp?: string }>('/auth/register/send-otp', {
+				method: 'POST',
+				body: JSON.stringify(data)
+			}),
+		verifyRegisterOtp: (data: { email: string; otp: string }) =>
+			request<{ user: any; tokens: { accessToken: string; refreshToken: string } }>('/auth/register/verify-otp', {
+				method: 'POST',
+				body: JSON.stringify(data)
+			}),
+		resendRegisterOtp: (data: { email: string }) =>
+			request<{ message: string; email: string; expiresIn: number; devOtp?: string }>('/auth/register/resend-otp', {
+				method: 'POST',
+				body: JSON.stringify(data)
+			}),
 		register: (data: { username: string; email: string; password: string }) =>
 			request<{ user: any; tokens: { accessToken: string; refreshToken: string } }>('/auth/register', {
 				method: 'POST',

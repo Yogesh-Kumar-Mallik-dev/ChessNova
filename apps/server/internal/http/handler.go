@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -122,6 +123,9 @@ func (rt *Router) routes() {
 
 	// Auth
 	rt.mux.HandleFunc("POST /api/v1/auth/register", rt.handleRegister)
+	rt.mux.HandleFunc("POST /api/v1/auth/register/send-otp", rt.handleRegisterSendOTP)
+	rt.mux.HandleFunc("POST /api/v1/auth/register/verify-otp", rt.handleRegisterVerifyOTP)
+	rt.mux.HandleFunc("POST /api/v1/auth/register/resend-otp", rt.handleRegisterResendOTP)
 	rt.mux.HandleFunc("POST /api/v1/auth/login", rt.handleLogin)
 	rt.mux.HandleFunc("POST /api/v1/auth/refresh", rt.handleRefresh)
 	rt.mux.HandleFunc("POST /api/v1/auth/logout", rt.handleLogout)
@@ -249,6 +253,136 @@ func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
 		"user":   u,
 		"tokens": tokens,
 	})
+}
+
+func (rt *Router) handleRegisterSendOTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB payload limit
+	var req registerReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
+		return
+	}
+
+	req.Username = strings.TrimSpace(req.Username)
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+	if !usernameRegex.MatchString(req.Username) {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid username: 3-30 characters (letters, numbers, underscores, hyphens)")
+		return
+	}
+	if !emailRegex.MatchString(req.Email) {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid email address")
+		return
+	}
+	if len(req.Password) < 6 {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "password must be at least 6 characters")
+		return
+	}
+
+	devOtp, err := rt.authService.InitiateRegistration(r.Context(), req.Username, req.Email, req.Password)
+	if err != nil {
+		if errors.Is(err, auth.ErrUserAlreadyExists) {
+			writeError(w, http.StatusConflict, "USER_EXISTS", err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "OTP_ERROR", err.Error())
+		return
+	}
+
+	res := map[string]interface{}{
+		"message":   "Verification code sent to email",
+		"email":     req.Email,
+		"expiresIn": 600,
+	}
+	if devOtp != "" {
+		res["devOtp"] = devOtp
+	}
+
+	writeJSON(w, http.StatusOK, res)
+}
+
+type verifyOTPReq struct {
+	Email string `json:"email"`
+	OTP   string `json:"otp"`
+}
+
+func (rt *Router) handleRegisterVerifyOTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req verifyOTPReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
+		return
+	}
+
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	req.OTP = strings.TrimSpace(req.OTP)
+
+	u, tokens, err := rt.authService.VerifyRegistrationOTP(r.Context(), req.Email, req.OTP)
+	if err != nil {
+		if errors.Is(err, auth.ErrOTPExpired) {
+			writeError(w, http.StatusBadRequest, "OTP_EXPIRED", "Verification code expired or not found. Please request a new code.")
+			return
+		}
+		if errors.Is(err, auth.ErrTooManyAttempts) {
+			writeError(w, http.StatusTooManyRequests, "OTP_TOO_MANY_ATTEMPTS", "Too many incorrect attempts. Please request a new code.")
+			return
+		}
+		if errors.Is(err, auth.ErrOTPInvalid) {
+			writeError(w, http.StatusBadRequest, "OTP_INVALID", "Invalid verification code.")
+			return
+		}
+		if errors.Is(err, auth.ErrUserAlreadyExists) {
+			writeError(w, http.StatusConflict, "USER_EXISTS", err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "VERIFY_ERROR", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"user":   u,
+		"tokens": tokens,
+	})
+}
+
+type resendOTPReq struct {
+	Email string `json:"email"`
+}
+
+func (rt *Router) handleRegisterResendOTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req resendOTPReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
+		return
+	}
+
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+	devOtp, err := rt.authService.ResendRegistrationOTP(r.Context(), req.Email)
+	if err != nil {
+		if errors.Is(err, auth.ErrResendTooSoon) {
+			writeError(w, http.StatusTooManyRequests, "RESEND_TOO_SOON", err.Error())
+			return
+		}
+		if errors.Is(err, auth.ErrOTPExpired) {
+			writeError(w, http.StatusBadRequest, "NO_PENDING_REGISTRATION", "No pending registration found for this email. Please register again.")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "RESEND_ERROR", err.Error())
+		return
+	}
+
+	res := map[string]interface{}{
+		"message":   "New verification code sent",
+		"email":     req.Email,
+		"expiresIn": 600,
+	}
+	if devOtp != "" {
+		res["devOtp"] = devOtp
+	}
+
+	writeJSON(w, http.StatusOK, res)
 }
 
 type loginReq struct {

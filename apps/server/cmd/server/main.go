@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"chess-platform/server/internal/auth"
+	"chess-platform/server/internal/email"
 	"chess-platform/server/internal/engine"
 	"chess-platform/server/internal/game"
 	"chess-platform/server/internal/external"
@@ -45,6 +46,11 @@ func main() {
 	corsOrigin := getEnv("CORS_ORIGIN", "http://localhost:5173")
 	jwtAccessSecret := getEnv("JWT_ACCESS_SECRET", "super-secret-access-key-production-strength-12345")
 	jwtRefreshSecret := getEnv("JWT_REFRESH_SECRET", "super-secret-refresh-key-production-strength-67890")
+	smtpHost := getEnv("SMTP_HOST", "")
+	smtpPort := getEnv("SMTP_PORT", "587")
+	smtpUser := getEnv("SMTP_USER", "")
+	smtpPass := getEnv("SMTP_PASS", "")
+	smtpFrom := getEnv("SMTP_FROM", "ChessNova <noreply@chess.yogeshmallik.in>")
 
 	// 1. Connect MongoDB
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -96,7 +102,16 @@ func main() {
 	puzzleService := puzzle.NewService(puzzleRepo)
 
 	// 4. Initialize Domain Services
+	mailer := email.NewMailer(email.Config{
+		Host:     smtpHost,
+		Port:     smtpPort,
+		User:     smtpUser,
+		Password: smtpPass,
+		From:     smtpFrom,
+	})
 	authService := auth.NewService(userRepo, jwtAccessSecret, jwtRefreshSecret)
+	authService.SetRedis(rdb)
+	authService.SetMailer(mailer)
 	gameService := game.NewService(gameRepo, ratingRepo)
 	mmService := matchmaking.NewService(rdb, gameService)
 	allowedOriginsStr := getEnv("ALLOWED_ORIGINS", corsOrigin)

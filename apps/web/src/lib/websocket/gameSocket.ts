@@ -150,11 +150,6 @@ export class GameSocket {
 						}
 					}
 
-					// If it's now our turn, notify user
-					if (data.turn === s.orientation && data.status === 'playing') {
-						sendDesktopNotification('Your Turn!', `Opponent played ${data.san || 'a move'}.`);
-					}
-
 					return {
 						...s,
 						fen: data.fen,
