@@ -67,17 +67,22 @@ func (s *Service) JoinQueue(ctx context.Context, t *Ticket) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Avoid duplicates for same user
-	for _, item := range s.localQueue {
+	t.CreatedAt = time.Now().UTC()
+
+	// Update or append in localQueue
+	found := false
+	for i, item := range s.localQueue {
 		if item.UserID == t.UserID {
-			return nil
+			s.localQueue[i] = t
+			found = true
+			break
 		}
 	}
+	if !found {
+		s.localQueue = append(s.localQueue, t)
+	}
 
-	t.CreatedAt = time.Now().UTC()
-	s.localQueue = append(s.localQueue, t)
-
-	// Also store in Redis if redis client is available
+	// Always store/overwrite in Redis if redis client is available
 	if s.rdb != nil {
 		data, _ := json.Marshal(t)
 		key := fmt.Sprintf("mm:ticket:%s", t.UserID)
@@ -116,12 +121,7 @@ func (s *Service) GetStatus(ctx context.Context, userID string) (*Ticket, error)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, t := range s.localQueue {
-		if t.UserID == userID {
-			return t, nil
-		}
-	}
-
+	// In multi-instance cluster, Redis is the authoritative source of truth
 	if s.rdb != nil {
 		data, err := s.rdb.Get(ctx, fmt.Sprintf("mm:ticket:%s", userID)).Result()
 		if err == nil {
@@ -129,6 +129,12 @@ func (s *Service) GetStatus(ctx context.Context, userID string) (*Ticket, error)
 			if json.Unmarshal([]byte(data), &t) == nil {
 				return &t, nil
 			}
+		}
+	}
+
+	for _, t := range s.localQueue {
+		if t.UserID == userID {
+			return t, nil
 		}
 	}
 
@@ -143,22 +149,35 @@ func (s *Service) matchmakingLoop() {
 }
 
 func (s *Service) tryMatch() {
+	ctx := context.Background()
+
+	// In multi-instance cluster, acquire short distributed lock so instances don't collide
+	if s.rdb != nil {
+		ok, err := s.rdb.SetNX(ctx, "mm:lock:try_match", "1", 800*time.Millisecond).Result()
+		if err != nil || !ok {
+			return // Another instance is currently executing tryMatch
+		}
+		defer s.rdb.Del(ctx, "mm:lock:try_match")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	var queue []*Ticket
-	ctx := context.Background()
 
 	if s.rdb != nil {
 		userIDs, err := s.rdb.SMembers(ctx, "mm:active_users").Result()
 		if err == nil && len(userIDs) > 0 {
 			for _, uID := range userIDs {
 				data, err := s.rdb.Get(ctx, fmt.Sprintf("mm:ticket:%s", uID)).Result()
-				if err == nil {
-					var tk Ticket
-					if json.Unmarshal([]byte(data), &tk) == nil && tk.MatchedGameID == "" {
-						queue = append(queue, &tk)
-					}
+				if err != nil {
+					// Clean up expired ghost tickets from active users set
+					_ = s.rdb.SRem(ctx, "mm:active_users", uID).Err()
+					continue
+				}
+				var tk Ticket
+				if json.Unmarshal([]byte(data), &tk) == nil && tk.MatchedGameID == "" {
+					queue = append(queue, &tk)
 				}
 			}
 		}
@@ -246,8 +265,10 @@ func toleranceForWait(seconds float64) int {
 		return 100
 	case seconds < 30:
 		return 200
+	case seconds < 45:
+		return 500
 	default:
-		return 300
+		return 10000 // Unbounded expansion after 45s so waiting players always match
 	}
 }
 

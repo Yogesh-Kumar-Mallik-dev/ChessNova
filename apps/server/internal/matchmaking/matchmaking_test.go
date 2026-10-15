@@ -4,7 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"time"
+
 	"chess-platform/server/internal/game"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func TestToleranceForWait(t *testing.T) {
@@ -18,8 +22,10 @@ func TestToleranceForWait(t *testing.T) {
 		{19.9, 100},
 		{20.0, 200},
 		{29.9, 200},
-		{30.0, 300},
-		{100.0, 300},
+		{30.0, 500},
+		{44.9, 500},
+		{45.0, 10000},
+		{100.0, 10000},
 	}
 
 	for _, tt := range tests {
@@ -122,3 +128,74 @@ func TestJoinQueueAutoResignsExistingGame(t *testing.T) {
 		t.Fatalf("expected alice to be in matchmaking queue, got %v", st)
 	}
 }
+
+func TestMultiInstanceMatchmakingRedisSync(t *testing.T) {
+	ctx := context.Background()
+	rdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:6379"})
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		t.Skip("Redis is not available; skipping multi-instance test")
+	}
+
+	// Clean up test keys
+	_ = rdb.Del(ctx, "mm:active_users", "mm:ticket:player_inst1", "mm:ticket:player_inst2", "mm:lock:try_match").Err()
+
+	gameSvc := game.NewService(nil, nil)
+	gameSvc.SetRedis(rdb)
+
+	// Instance 1
+	svc1 := NewService(rdb, gameSvc)
+	// Instance 2
+	svc2 := NewService(rdb, gameSvc)
+
+	tc := game.TimeControl{InitialSeconds: 600, Increment: 0}
+
+	t1 := &Ticket{
+		ID:          "ticket-1",
+		UserID:      "player_inst1",
+		Username:    "PlayerOne",
+		Rating:      400,
+		TimeControl: tc,
+	}
+
+	t2 := &Ticket{
+		ID:          "ticket-2",
+		UserID:      "player_inst2",
+		Username:    "PlayerTwo",
+		Rating:      355, // rating difference is 45!
+		TimeControl: tc,
+	}
+
+	// Player 1 joins on Instance 1
+	if err := svc1.JoinQueue(ctx, t1); err != nil {
+		t.Fatalf("svc1 JoinQueue failed: %v", err)
+	}
+
+	// Player 2 joins on Instance 2
+	if err := svc2.JoinQueue(ctx, t2); err != nil {
+		t.Fatalf("svc2 JoinQueue failed: %v", err)
+	}
+
+	// Wait up to 3 seconds for match to be formed by matchmaking loop
+	matched := false
+	for i := 0; i < 30; i++ {
+		time.Sleep(100 * time.Millisecond)
+
+		// Check status across BOTH instances
+		st1, err1 := svc1.GetStatus(ctx, "player_inst1")
+		st2, err2 := svc2.GetStatus(ctx, "player_inst2")
+
+		if err1 == nil && st1 != nil && st1.MatchedGameID != "" &&
+			err2 == nil && st2 != nil && st2.MatchedGameID != "" {
+			if st1.MatchedGameID != st2.MatchedGameID {
+				t.Fatalf("game IDs mismatch between instances: st1=%s, st2=%s", st1.MatchedGameID, st2.MatchedGameID)
+			}
+			matched = true
+			break
+		}
+	}
+
+	if !matched {
+		t.Fatal("expected players with 45 Elo difference to be matched across instances within 3 seconds")
+	}
+}
+

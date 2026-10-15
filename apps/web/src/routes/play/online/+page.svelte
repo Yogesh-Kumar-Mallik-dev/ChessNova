@@ -49,10 +49,11 @@
 	});
 
 	$: tolerance = (() => {
-		if (waitSeconds < 10) return 50;
-		if (waitSeconds < 20) return 100;
-		if (waitSeconds < 30) return 200;
-		return 300;
+		if (waitSeconds < 10) return '50';
+		if (waitSeconds < 20) return '100';
+		if (waitSeconds < 30) return '200';
+		if (waitSeconds < 45) return '500';
+		return 'Any';
 	})();
 
 	$: userRating = (() => {
@@ -236,7 +237,7 @@
 					<span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Wait Time</span>
 				</div>
 				<div>
-					<span class="block text-sky-400 font-mono text-base font-extrabold">±{tolerance}</span>
+					<span class="block text-sky-400 font-mono text-base font-extrabold">{tolerance === 'Any' ? 'Any' : `±${tolerance}`}</span>
 					<span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Tolerance</span>
 				</div>
 				<div>
