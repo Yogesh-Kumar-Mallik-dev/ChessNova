@@ -1,8 +1,11 @@
 package observability
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -127,9 +130,27 @@ func (w *statusWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
+func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, errors.New("http.Hijacker not supported by underlying ResponseWriter")
+}
+
+func (w *statusWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // HTTPLoggingMiddleware creates an HTTP middleware that records metrics and emits structured logs
 func HTTPLoggingMiddleware(logger *Logger, metrics *MetricRegistry, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") || strings.HasPrefix(r.URL.Path, "/ws/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		start := time.Now()
 
 		sw := &statusWriter{
