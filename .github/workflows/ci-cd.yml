@@ -163,7 +163,7 @@ jobs:
       - name: Deploy Frontend Web Assets via Rsync
         env:
           SSH_HOST: ${{ secrets.VPS_HOST || '162.35.173.209' }}
-          SSH_USER: ${{ secrets.VPS_USER || 'yogesh' }}
+          SSH_USER: ${{ secrets.VPS_USER || 'root' }}
           SSH_PORT: ${{ secrets.VPS_PORT || '22' }}
         run: |
           echo "Deploying frontend assets to /var/www/chessnova/html/..."
@@ -171,11 +171,12 @@ jobs:
             -e "ssh -p $SSH_PORT -i ~/.ssh/id_ed25519" \
             apps/web/build/ \
             "${SSH_USER}@${SSH_HOST}:/var/www/chessnova/html/"
+          ssh -p "$SSH_PORT" -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'chown -R www-data:www-data /var/www/chessnova/html 2>/dev/null || true'
 
       - name: Deploy Backend Binary & Restart Service
         env:
           SSH_HOST: ${{ secrets.VPS_HOST || '162.35.173.209' }}
-          SSH_USER: ${{ secrets.VPS_USER || 'yogesh' }}
+          SSH_USER: ${{ secrets.VPS_USER || 'root' }}
           SSH_PORT: ${{ secrets.VPS_PORT || '22' }}
         run: |
           echo "Uploading backend binary..."
@@ -184,11 +185,12 @@ jobs:
             apps/server/bin/server \
             "${SSH_USER}@${SSH_HOST}:/opt/chessnova/bin/server.new"
 
-          echo "Applying binary and restarting chessnova.service..."
+          echo "Applying binary and restarting chessnova services..."
           ssh -p "$SSH_PORT" -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" '
             mv /opt/chessnova/bin/server.new /opt/chessnova/bin/server
             chmod +x /opt/chessnova/bin/server
-            sudo systemctl restart chessnova@8081 chessnova@8082 chessnova@8083 2>/dev/null || sudo systemctl restart chessnova
+            chown -R yogesh:yogesh /opt/chessnova/bin 2>/dev/null || true
+            systemctl restart chessnova@8081 chessnova@8082 chessnova@8083 2>/dev/null || systemctl restart chessnova
             (systemctl is-active --quiet chessnova@8081 || systemctl is-active --quiet chessnova) && echo "chessnova backend restarted successfully."
           '
 
