@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"chess-platform/server/internal/auth"
+	"chess-platform/server/internal/observability"
 	"chess-platform/server/internal/chess"
 	"chess-platform/server/internal/engine"
 	"chess-platform/server/internal/external"
@@ -118,8 +120,10 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) routes() {
-	// Health
+	// Health & Metrics
 	rt.mux.HandleFunc("GET /health", rt.handleHealth)
+	rt.mux.HandleFunc("GET /metrics", observability.DefaultMetrics.PrometheusHandler())
+	rt.mux.HandleFunc("GET /api/v1/metrics", observability.DefaultMetrics.JSONHandler())
 
 	// Auth
 	rt.mux.HandleFunc("POST /api/v1/auth/register", rt.handleRegister)
@@ -204,9 +208,14 @@ func (rt *Router) withAuth(next func(w http.ResponseWriter, r *http.Request, cla
 }
 
 func (rt *Router) handleHealth(w http.ResponseWriter, r *http.Request) {
+	instance := os.Getenv("INSTANCE_ID")
+	if instance == "" {
+		instance = "default"
+	}
 	writeJSON(w, http.StatusOK, map[string]string{
-		"status": "ok",
-		"time":   time.Now().UTC().Format(time.RFC3339),
+		"status":   "ok",
+		"instance": instance,
+		"time":     time.Now().UTC().Format(time.RFC3339),
 	})
 }
 

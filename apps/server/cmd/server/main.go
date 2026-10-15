@@ -17,6 +17,7 @@ import (
 	"chess-platform/server/internal/external"
 	internalHttp "chess-platform/server/internal/http"
 	"chess-platform/server/internal/matchmaking"
+	"chess-platform/server/internal/observability"
 	"chess-platform/server/internal/puzzle"
 	"chess-platform/server/internal/rating"
 	"chess-platform/server/internal/review"
@@ -43,6 +44,10 @@ func main() {
 	mongoDBName := getEnv("MONGODB_DATABASE", "chess")
 	redisURL := getEnv("REDIS_URL", "localhost:6379")
 	serverPort := getEnv("SERVER_PORT", "8080")
+	instanceID := getEnv("INSTANCE_ID", "instance-"+serverPort)
+	observability.DefaultLogger.SetInstanceID(instanceID)
+	observability.DefaultMetrics.SetInstanceID(instanceID)
+
 	corsOrigin := getEnv("CORS_ORIGIN", "http://localhost:5173")
 	jwtAccessSecret := getEnv("JWT_ACCESS_SECRET", "super-secret-access-key-production-strength-12345")
 	jwtRefreshSecret := getEnv("JWT_REFRESH_SECRET", "super-secret-refresh-key-production-strength-67890")
@@ -52,6 +57,11 @@ func main() {
 	smtpUser := getEnv("SMTP_USER", "")
 	smtpPass := getEnv("SMTP_PASS", "")
 	smtpFrom := getEnv("SMTP_FROM", "ChessNova <noreply@chess.yogeshmallik.in>")
+
+	observability.DefaultLogger.Info("Initializing ChessNova instance", map[string]interface{}{
+		"instanceId": instanceID,
+		"port":       serverPort,
+	})
 
 	// 1. Connect MongoDB
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -115,6 +125,7 @@ func main() {
 	authService.SetRedis(rdb)
 	authService.SetMailer(mailer)
 	gameService := game.NewService(gameRepo, ratingRepo)
+	gameService.SetRedis(rdb)
 	mmService := matchmaking.NewService(rdb, gameService)
 	allowedOriginsStr := getEnv("ALLOWED_ORIGINS", corsOrigin)
 	var customOrigins []string
@@ -125,10 +136,15 @@ func main() {
 	}
 	wsCfg := websocket.DefaultHubConfig(customOrigins...)
 	wsHub := websocket.NewHub(gameService, authService, wsCfg)
+	wsHub.SetRedis(rdb, instanceID)
 
 	// Forward matchmaking events to websocket hub
 	mmService.SetOnMatched(func(res matchmaking.MatchResult) {
-		log.Printf("Match found: Game %s (%s vs %s)", res.GameID, res.White.Username, res.Black.Username)
+		observability.DefaultLogger.Info("Match found", map[string]interface{}{
+			"gameId": res.GameID,
+			"white":  res.White.Username,
+			"black":  res.Black.Username,
+		})
 	})
 
 	// 5. Initialize Engine & Review Services
@@ -165,9 +181,11 @@ func main() {
 		corsOrigin,
 	)
 
+	loggedHandler := observability.HTTPLoggingMiddleware(observability.DefaultLogger, observability.DefaultMetrics, router)
+
 	server := &http.Server{
 		Addr:         ":" + serverPort,
-		Handler:      router,
+		Handler:      loggedHandler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

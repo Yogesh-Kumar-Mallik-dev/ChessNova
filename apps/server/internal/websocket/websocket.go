@@ -12,8 +12,10 @@ import (
 	"chess-platform/server/internal/auth"
 	"chess-platform/server/internal/chess"
 	"chess-platform/server/internal/game"
+	"chess-platform/server/internal/observability"
 
 	"github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
 )
 
 // HubConfig configures origin policy and websocket behavior
@@ -190,6 +192,16 @@ type Hub struct {
 	authService *auth.Service
 	config      HubConfig
 	upgrader    websocket.Upgrader
+	rdb         *redis.Client
+	instanceID  string
+}
+
+func (h *Hub) SetRedis(rdb *redis.Client, instanceID string) {
+	h.rdb = rdb
+	h.instanceID = instanceID
+	if rdb != nil {
+		go h.subscribeRedis()
+	}
 }
 
 func NewHub(gameService *game.Service, authService *auth.Service, cfgs ...HubConfig) *Hub {
@@ -254,7 +266,13 @@ func (h *Hub) getOrCreateRoom(gameID string) *GameRoom {
 	return room
 }
 
-func (h *Hub) Broadcast(gameID string, msg ServerMessage) {
+type RedisBroadcastEnvelope struct {
+	GameID         string        `json:"gameId"`
+	Msg            ServerMessage `json:"msg"`
+	SenderInstance string        `json:"senderInstance"`
+}
+
+func (h *Hub) broadcastLocal(gameID string, msg ServerMessage) {
 	h.mu.RLock()
 	room, ok := h.rooms[gameID]
 	h.mu.RUnlock()
@@ -287,6 +305,37 @@ func (h *Hub) Broadcast(gameID string, msg ServerMessage) {
 			}
 		}
 		room.mu.Unlock()
+	}
+}
+
+func (h *Hub) Broadcast(gameID string, msg ServerMessage) {
+	h.broadcastLocal(gameID, msg)
+
+	if h.rdb != nil {
+		env := RedisBroadcastEnvelope{
+			GameID:         gameID,
+			Msg:            msg,
+			SenderInstance: h.instanceID,
+		}
+		if data, err := json.Marshal(env); err == nil {
+			_ = h.rdb.Publish(context.Background(), "chess:broadcast", data).Err()
+		}
+	}
+}
+
+func (h *Hub) subscribeRedis() {
+	if h.rdb == nil {
+		return
+	}
+	pubsub := h.rdb.Subscribe(context.Background(), "chess:broadcast")
+	ch := pubsub.Channel()
+	for msg := range ch {
+		var env RedisBroadcastEnvelope
+		if err := json.Unmarshal([]byte(msg.Payload), &env); err == nil {
+			if env.SenderInstance != h.instanceID {
+				h.broadcastLocal(env.GameID, env.Msg)
+			}
+		}
 	}
 }
 
@@ -372,6 +421,7 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 		Username: username,
 	})
 
+	observability.DefaultMetrics.IncActiveWebSocket()
 	go client.writePump()
 	go client.readPump()
 }
@@ -424,6 +474,7 @@ func (h *Hub) handlePlayerDisconnect(gameID, userID, username string) {
 
 func (c *Client) readPump() {
 	defer func() {
+		observability.DefaultMetrics.DecActiveWebSocket()
 		room := c.hub.getOrCreateRoom(c.gameID)
 		room.mu.Lock()
 		delete(room.clients, c)

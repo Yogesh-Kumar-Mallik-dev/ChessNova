@@ -2,15 +2,18 @@ package game
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"chess-platform/server/internal/chess"
+	"chess-platform/server/internal/observability"
 	"chess-platform/server/internal/rating"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -46,6 +49,7 @@ type Service struct {
 	onGameFinish func(doc *GameDocument)
 	stopChan     chan struct{}
 	stopOnce     sync.Once
+	rdb          *redis.Client
 }
 
 func NewService(gameRepo Repository, ratingRepo rating.Repository) *Service {
@@ -57,6 +61,22 @@ func NewService(gameRepo Repository, ratingRepo rating.Repository) *Service {
 	}
 	go s.startTimeoutWatcher()
 	return s
+}
+
+func (s *Service) SetRedis(rdb *redis.Client) {
+	s.rdb = rdb
+}
+
+func (s *Service) syncToRedis(ag *ActiveGame) {
+	if s.rdb == nil || ag == nil {
+		return
+	}
+	ag.Lock()
+	defer ag.Unlock()
+	data, err := json.Marshal(ag)
+	if err == nil {
+		_ = s.rdb.Set(context.Background(), fmt.Sprintf("active_game:%s", ag.ID), data, 24*time.Hour).Err()
+	}
 }
 
 func (s *Service) Close() {
@@ -75,7 +95,11 @@ func (s *Service) CreateGame(white, black PlayerInfo, tc TimeControl) (*ActiveGa
 
 	s.mu.Lock()
 	s.activeGames[id] = ag
+	count := int64(len(s.activeGames))
 	s.mu.Unlock()
+
+	observability.DefaultMetrics.SetActiveGames(count)
+	s.syncToRedis(ag)
 
 	return ag, nil
 }
@@ -84,10 +108,31 @@ func (s *Service) GetActiveGame(id string) (*ActiveGame, error) {
 	s.mu.RLock()
 	ag, ok := s.activeGames[id]
 	s.mu.RUnlock()
-	if !ok {
-		return nil, ErrGameNotFound
+	if ok {
+		return ag, nil
 	}
-	return ag, nil
+
+	if s.rdb != nil {
+		data, err := s.rdb.Get(context.Background(), fmt.Sprintf("active_game:%s", id)).Result()
+		if err == nil {
+			var loaded ActiveGame
+			if err := json.Unmarshal([]byte(data), &loaded); err == nil {
+				loaded.Engine = chess.NewGame()
+				for _, m := range loaded.Moves {
+					mv, err := chess.ParseUCIMove(m.From + m.To)
+					if err == nil {
+						_, _ = loaded.Engine.MakeMove(mv)
+					}
+				}
+				s.mu.Lock()
+				s.activeGames[loaded.ID] = &loaded
+				s.mu.Unlock()
+				return &loaded, nil
+			}
+		}
+	}
+
+	return nil, ErrGameNotFound
 }
 
 func (s *Service) GetActiveGameForUser(userID string) *ActiveGame {
@@ -230,6 +275,10 @@ func (s *Service) MakeMove(ctx context.Context, gameID, userID string, m chess.M
 		Result:      ag.Engine.Result(),
 		Winner:      winnerStr,
 		FinishedDoc: doc,
+	}
+
+	if !isFinished {
+		s.syncToRedis(ag)
 	}
 
 	return event, nil
@@ -465,6 +514,10 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 
 	_ = s.gameRepo.Save(ctx, doc)
 
+	if s.rdb != nil {
+		_ = s.rdb.Del(ctx, fmt.Sprintf("active_game:%s", ag.ID)).Err()
+	}
+
 	if s.onGameFinish != nil {
 		s.onGameFinish(doc)
 	}
@@ -475,7 +528,9 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 		time.Sleep(5 * time.Minute)
 		s.mu.Lock()
 		delete(s.activeGames, gameID)
+		count := int64(len(s.activeGames))
 		s.mu.Unlock()
+		observability.DefaultMetrics.SetActiveGames(count)
 	}(ag.ID)
 
 	return doc

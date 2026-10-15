@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"chess-platform/server/internal/game"
+	"chess-platform/server/internal/observability"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -80,7 +81,10 @@ func (s *Service) JoinQueue(ctx context.Context, t *Ticket) error {
 		data, _ := json.Marshal(t)
 		key := fmt.Sprintf("mm:ticket:%s", t.UserID)
 		_ = s.rdb.Set(ctx, key, data, 5*time.Minute).Err()
+		_ = s.rdb.SAdd(ctx, "mm:active_users", t.UserID).Err()
 	}
+
+	observability.DefaultMetrics.SetMatchmakingQueueSize(int64(len(s.localQueue)))
 
 	return nil
 }
@@ -99,7 +103,10 @@ func (s *Service) LeaveQueue(ctx context.Context, userID string) error {
 
 	if s.rdb != nil {
 		_ = s.rdb.Del(ctx, fmt.Sprintf("mm:ticket:%s", userID)).Err()
+		_ = s.rdb.SRem(ctx, "mm:active_users", userID).Err()
 	}
+
+	observability.DefaultMetrics.SetMatchmakingQueueSize(int64(len(s.localQueue)))
 
 	return nil
 }
@@ -138,26 +145,50 @@ func (s *Service) tryMatch() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if len(s.localQueue) < 2 {
+	var queue []*Ticket
+	ctx := context.Background()
+
+	if s.rdb != nil {
+		userIDs, err := s.rdb.SMembers(ctx, "mm:active_users").Result()
+		if err == nil && len(userIDs) > 0 {
+			for _, uID := range userIDs {
+				data, err := s.rdb.Get(ctx, fmt.Sprintf("mm:ticket:%s", uID)).Result()
+				if err == nil {
+					var tk Ticket
+					if json.Unmarshal([]byte(data), &tk) == nil && tk.MatchedGameID == "" {
+						queue = append(queue, &tk)
+					}
+				}
+			}
+		}
+	}
+
+	if len(queue) == 0 {
+		queue = s.localQueue
+	}
+
+	observability.DefaultMetrics.SetMatchmakingQueueSize(int64(len(queue)))
+
+	if len(queue) < 2 {
 		return
 	}
 
 	now := time.Now().UTC()
 	matchedIndices := make(map[int]bool)
 
-	for i := 0; i < len(s.localQueue); i++ {
+	for i := 0; i < len(queue); i++ {
 		if matchedIndices[i] {
 			continue
 		}
-		ticketA := s.localQueue[i]
+		ticketA := queue[i]
 		waitA := now.Sub(ticketA.CreatedAt).Seconds()
 		tolA := toleranceForWait(waitA)
 
-		for j := i + 1; j < len(s.localQueue); j++ {
+		for j := i + 1; j < len(queue); j++ {
 			if matchedIndices[j] {
 				continue
 			}
-			ticketB := s.localQueue[j]
+			ticketB := queue[j]
 
 			// Must have same time control
 			if ticketA.TimeControl.InitialSeconds != ticketB.TimeControl.InitialSeconds ||
@@ -181,6 +212,9 @@ func (s *Service) tryMatch() {
 				matchedIndices[i] = true
 				matchedIndices[j] = true
 
+				if s.rdb != nil {
+					_ = s.rdb.SRem(ctx, "mm:active_users", ticketA.UserID, ticketB.UserID).Err()
+				}
 				s.createMatchedGame(ticketA, ticketB)
 				break
 			}
@@ -189,9 +223,13 @@ func (s *Service) tryMatch() {
 
 	// Remove matched tickets from queue
 	if len(matchedIndices) > 0 {
-		remaining := make([]*Ticket, 0, len(s.localQueue)-len(matchedIndices))
-		for idx, t := range s.localQueue {
-			if !matchedIndices[idx] {
+		matchedUserIDs := make(map[string]bool)
+		for idx := range matchedIndices {
+			matchedUserIDs[queue[idx].UserID] = true
+		}
+		remaining := make([]*Ticket, 0, len(s.localQueue))
+		for _, t := range s.localQueue {
+			if !matchedUserIDs[t.UserID] {
 				remaining = append(remaining, t)
 			}
 		}
