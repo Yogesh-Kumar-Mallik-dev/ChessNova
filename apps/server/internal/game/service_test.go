@@ -4,9 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"time"
+
 	"chess-platform/server/internal/chess"
 	"chess-platform/server/internal/rating"
 
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -246,3 +249,70 @@ func TestCloseAllActiveGames(t *testing.T) {
 		t.Errorf("expected 0 active games after CloseAllActiveGames, got %d", countAfter)
 	}
 }
+
+func TestMakeMoveWithRedisDeadlockPrevention(t *testing.T) {
+	gRepo := newMockGameRepo()
+	rRepo := newMockRatingRepo()
+	svc := NewService(gRepo, rRepo)
+	defer svc.Close()
+	ctx := context.Background()
+
+	// Connect to local Redis if available, or verify locked/unlocked execution
+	rdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:6379"})
+	if err := rdb.Ping(ctx).Err(); err == nil {
+		svc.SetRedis(rdb)
+	}
+
+	white := PlayerInfo{UserID: "UserWhite123", Username: "Alice", Rating: 1500}
+	black := PlayerInfo{UserID: "UserBlack456", Username: "Bob", Rating: 1500}
+	tc := TimeControl{InitialSeconds: 300, Increment: 0}
+
+	ag, err := svc.CreateGame(white, black, tc)
+	if err != nil {
+		t.Fatalf("failed to create game: %v", err)
+	}
+
+	// Channel to assert that MakeMove completes within 2 seconds without deadlocking
+	done := make(chan struct{})
+	go func() {
+		// 1. White plays e2-e4 using lowercase userID (tests case-insensitivity)
+		m1, err := chess.ParseUCIMove("e2e4")
+		if err != nil {
+			t.Errorf("failed to parse move: %v", err)
+			return
+		}
+		evt1, err := svc.MakeMove(ctx, ag.ID, "userwhite123", m1)
+		if err != nil {
+			t.Errorf("white move failed: %v", err)
+			return
+		}
+		if evt1.SAN != "e4" || evt1.Turn != "black" {
+			t.Errorf("expected SAN e4 and turn black, got san=%s, turn=%s", evt1.SAN, evt1.Turn)
+		}
+
+		// 2. Black responds with e7-e5 using uppercase userID
+		m2, err := chess.ParseUCIMove("e7e5")
+		if err != nil {
+			t.Errorf("failed to parse move: %v", err)
+			return
+		}
+		evt2, err := svc.MakeMove(ctx, ag.ID, "USERBLACK456", m2)
+		if err != nil {
+			t.Errorf("black move failed: %v", err)
+			return
+		}
+		if evt2.SAN != "e5" || evt2.Turn != "white" {
+			t.Errorf("expected SAN e5 and turn white, got san=%s, turn=%s", evt2.SAN, evt2.Turn)
+		}
+
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Succeeded without deadlock!
+	case <-time.After(2 * time.Second):
+		t.Fatal("DEADLOCK DETECTED: MakeMove failed to complete within 2 seconds!")
+	}
+}
+

@@ -68,16 +68,23 @@ func (s *Service) SetRedis(rdb *redis.Client) {
 	s.rdb = rdb
 }
 
+func (s *Service) syncToRedisLocked(ag *ActiveGame) {
+	if s.rdb == nil || ag == nil {
+		return
+	}
+	data, err := json.Marshal(ag)
+	if err == nil {
+		_ = s.rdb.Set(context.Background(), fmt.Sprintf("active_game:%s", ag.ID), data, 24*time.Hour).Err()
+	}
+}
+
 func (s *Service) syncToRedis(ag *ActiveGame) {
 	if s.rdb == nil || ag == nil {
 		return
 	}
 	ag.Lock()
 	defer ag.Unlock()
-	data, err := json.Marshal(ag)
-	if err == nil {
-		_ = s.rdb.Set(context.Background(), fmt.Sprintf("active_game:%s", ag.ID), data, 24*time.Hour).Err()
-	}
+	s.syncToRedisLocked(ag)
 }
 
 func (s *Service) Close() {
@@ -118,12 +125,16 @@ func (s *Service) GetActiveGame(id string) (*ActiveGame, error) {
 		if err == nil {
 			var loaded ActiveGame
 			if err := json.Unmarshal([]byte(data), &loaded); err == nil {
-				loaded.Engine = chess.NewGame()
-				for _, m := range loaded.Moves {
-					mv, err := chess.ParseUCIMove(m.From + m.To)
+				if len(loaded.Moves) > 0 {
+					lastFen := loaded.Moves[len(loaded.Moves)-1].FEN
+					g, err := chess.NewGameFromFEN(lastFen)
 					if err == nil {
-						_, _ = loaded.Engine.MakeMove(mv)
+						loaded.Engine = g
+					} else {
+						loaded.Engine = chess.NewGame()
 					}
+				} else {
+					loaded.Engine = chess.NewGame()
 				}
 				s.mu.Lock()
 				s.activeGames[loaded.ID] = &loaded
@@ -146,7 +157,7 @@ func (s *Service) GetActiveGameForUser(userID string) *ActiveGame {
 	for _, ag := range s.activeGames {
 		ag.Lock()
 		st := ag.Status
-		isPlayer := (ag.White.UserID == userID || ag.Black.UserID == userID)
+		isPlayer := (strings.EqualFold(ag.White.UserID, userID) || strings.EqualFold(ag.Black.UserID, userID))
 		ag.Unlock()
 		if st == StatusPlaying && isPlayer {
 			return ag
@@ -165,17 +176,19 @@ func (s *Service) JoinGame(gameID string, player PlayerInfo) (*ActiveGame, error
 	defer ag.Unlock()
 
 	// If player is already white or black, return active game
-	if ag.White.UserID == player.UserID || ag.Black.UserID == player.UserID {
+	if strings.EqualFold(ag.White.UserID, player.UserID) || strings.EqualFold(ag.Black.UserID, player.UserID) {
 		return ag, nil
 	}
 
 	// Claim open/guest seat
 	if ag.Black.UserID == "guest-opponent" || ag.Black.UserID == "" {
 		ag.Black = player
+		s.syncToRedisLocked(ag)
 		return ag, nil
 	}
 	if ag.White.UserID == "guest-opponent" || ag.White.UserID == "" {
 		ag.White = player
+		s.syncToRedisLocked(ag)
 		return ag, nil
 	}
 
@@ -197,9 +210,9 @@ func (s *Service) MakeMove(ctx context.Context, gameID, userID string, m chess.M
 
 	// 1. Verify player
 	var playerColor chess.Color
-	if ag.White.UserID == userID {
+	if strings.EqualFold(ag.White.UserID, userID) {
 		playerColor = chess.White
-	} else if ag.Black.UserID == userID {
+	} else if strings.EqualFold(ag.Black.UserID, userID) {
 		playerColor = chess.Black
 	} else {
 		return nil, ErrNotPlayerInGame
@@ -279,10 +292,59 @@ func (s *Service) MakeMove(ctx context.Context, gameID, userID string, m chess.M
 	}
 
 	if !isFinished {
-		s.syncToRedis(ag)
+		s.syncToRedisLocked(ag)
 	}
 
 	return event, nil
+}
+
+func (s *Service) ApplyRemoteMove(gameID, from, to, san, fen, turn string, wMs, bMs int64, status Status) {
+	s.mu.RLock()
+	ag, ok := s.activeGames[gameID]
+	s.mu.RUnlock()
+	if !ok || ag == nil {
+		return
+	}
+
+	ag.Lock()
+	defer ag.Unlock()
+
+	g, err := chess.NewGameFromFEN(fen)
+	if err == nil {
+		ag.Engine = g
+	}
+	ag.Status = status
+	ag.Clock.WhiteTimeMs = wMs
+	ag.Clock.BlackTimeMs = bMs
+	if strings.EqualFold(turn, "white") {
+		ag.Clock.ActiveColor = chess.White
+	} else {
+		ag.Clock.ActiveColor = chess.Black
+	}
+	ag.Clock.LastMoveAt = time.Now().UTC()
+
+	if from != "" && to != "" && san != "" {
+		ag.Moves = append(ag.Moves, PersistedMove{
+			Ply:  len(ag.Moves) + 1,
+			From: from,
+			To:   to,
+			SAN:  san,
+			FEN:  fen,
+		})
+	}
+}
+
+func (s *Service) ApplyRemoteFinish(gameID string, status Status) {
+	s.mu.RLock()
+	ag, ok := s.activeGames[gameID]
+	s.mu.RUnlock()
+	if !ok || ag == nil {
+		return
+	}
+
+	ag.Lock()
+	defer ag.Unlock()
+	ag.Status = status
 }
 
 func (s *Service) Resign(ctx context.Context, gameID, userID string) (*GameDocument, error) {

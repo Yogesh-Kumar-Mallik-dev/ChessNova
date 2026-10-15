@@ -327,12 +327,30 @@ func (h *Hub) subscribeRedis() {
 	if h.rdb == nil {
 		return
 	}
-	pubsub := h.rdb.Subscribe(context.Background(), "chess:broadcast")
+	ctx := context.Background()
+	pubsub := h.rdb.Subscribe(ctx, "chess:broadcast")
+	if _, err := pubsub.Receive(ctx); err != nil {
+		return
+	}
 	ch := pubsub.Channel()
 	for msg := range ch {
 		var env RedisBroadcastEnvelope
 		if err := json.Unmarshal([]byte(msg.Payload), &env); err == nil {
 			if env.SenderInstance != h.instanceID {
+				if h.gameService != nil {
+					switch env.Msg.Type {
+					case "move":
+						from := ""
+						to := ""
+						if env.Msg.Move != nil {
+							from = env.Msg.Move.From
+							to = env.Msg.Move.To
+						}
+						h.gameService.ApplyRemoteMove(env.GameID, from, to, env.Msg.SAN, env.Msg.FEN, env.Msg.Turn, env.Msg.WhiteTime, env.Msg.BlackTime, env.Msg.Status)
+					case "resignation", "game_finished", "draw_accepted":
+						h.gameService.ApplyRemoteFinish(env.GameID, env.Msg.Status)
+					}
+				}
 				h.broadcastLocal(env.GameID, env.Msg)
 			}
 		}
@@ -382,7 +400,7 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 		ag, err := h.gameService.GetActiveGame(gameID)
 		if err == nil {
 			// A player must be an authenticated user whose ID matches either seat
-			client.isPlayer = (userID != "" && (ag.White.UserID == userID || ag.Black.UserID == userID))
+			client.isPlayer = (userID != "" && (strings.EqualFold(ag.White.UserID, userID) || strings.EqualFold(ag.Black.UserID, userID)))
 			wMs, bMs, _ := ag.Clock.CurrentTimes(ag.Status)
 			initMsg := ServerMessage{
 				Type:        "game_started",
@@ -441,7 +459,7 @@ func (h *Hub) handlePlayerDisconnect(gameID, userID, username string) {
 	room.mu.Lock()
 	delete(room.disconnectTimers, userID)
 	for client := range room.clients {
-		if client.userID == userID {
+		if strings.EqualFold(client.userID, userID) {
 			room.mu.Unlock()
 			return // User successfully reconnected before grace period expired
 		}
@@ -483,7 +501,7 @@ func (c *Client) readPump() {
 		hasRemaining := false
 		if c.userID != "" {
 			for remaining := range room.clients {
-				if remaining.userID == c.userID {
+				if strings.EqualFold(remaining.userID, c.userID) {
 					hasRemaining = true
 					break
 				}
@@ -545,7 +563,7 @@ func (c *Client) handleMessage(msg ClientMessage) {
 	// Dynamically check player seat in active game in case seat was claimed after connection
 	if !c.isPlayer && c.hub.gameService != nil && c.userID != "" {
 		if ag, err := c.hub.gameService.GetActiveGame(c.gameID); err == nil {
-			if ag.White.UserID == c.userID || ag.Black.UserID == c.userID {
+			if strings.EqualFold(ag.White.UserID, c.userID) || strings.EqualFold(ag.Black.UserID, c.userID) {
 				c.isPlayer = true
 			}
 		}

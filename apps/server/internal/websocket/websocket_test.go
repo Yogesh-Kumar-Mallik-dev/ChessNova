@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"chess-platform/server/internal/user"
 
 	gorillaWs "github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -365,3 +367,238 @@ func TestMultiplayerResignationFlow(t *testing.T) {
 		t.Fatalf("expected winner to be black, got msg1.winner=%s msg2.winner=%s", msg1.Winner, msg2.Winner)
 	}
 }
+
+func TestMultiplayerContinuousRealTimeMoveTranslation(t *testing.T) {
+	jwtSecret := "super-secure-jwt-secret-at-least-32-chars-long"
+	authService := auth.NewService(nil, jwtSecret, jwtSecret)
+	gameService := game.NewService(nil, nil)
+	cfg := HubConfig{
+		AllowedOrigins:     []string{"http://localhost:5173"},
+		AllowMissingOrigin: true,
+	}
+	hub := NewHub(gameService, authService, cfg)
+
+	uWhite := &user.User{ID: primitive.NewObjectID(), Username: "alice"}
+	uBlack := &user.User{ID: primitive.NewObjectID(), Username: "bob"}
+
+	whiteTokens, _ := authService.GenerateTokenPair(uWhite)
+	blackTokens, _ := authService.GenerateTokenPair(uBlack)
+
+	whitePlayer := game.PlayerInfo{UserID: uWhite.ID.Hex(), Username: uWhite.Username, Rating: 1500}
+	blackPlayer := game.PlayerInfo{UserID: uBlack.ID.Hex(), Username: uBlack.Username, Rating: 1500}
+	tc := game.TimeControl{InitialSeconds: 300, Increment: 0}
+
+	ag, err := gameService.CreateGame(whitePlayer, blackPlayer, tc)
+	if err != nil {
+		t.Fatalf("failed to create game: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hub.HandleWebSocket(w, r, ag.ID)
+	}))
+	defer server.Close()
+
+	baseURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	dialer := gorillaWs.Dialer{}
+	header := http.Header{"Origin": []string{"http://localhost:5173"}}
+
+	whiteConn, _, err := dialer.Dial(baseURL+"?token="+whiteTokens.AccessToken, header)
+	if err != nil {
+		t.Fatalf("white player connection failed: %v", err)
+	}
+	defer whiteConn.Close()
+
+	blackConn, _, err := dialer.Dial(baseURL+"?token="+blackTokens.AccessToken, header)
+	if err != nil {
+		t.Fatalf("black player connection failed: %v", err)
+	}
+	defer blackConn.Close()
+
+	// Drain game_started messages
+	_ = readNextMessage(t, whiteConn)
+	_ = readNextMessage(t, blackConn)
+
+	// Opening moves sequence: 1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5
+	moves := []struct {
+		player string
+		from   string
+		to     string
+		san    string
+		turn   string
+	}{
+		{"white", "e2", "e4", "e4", "black"},
+		{"black", "e7", "e5", "e5", "white"},
+		{"white", "g1", "f3", "Nf3", "black"},
+		{"black", "b8", "c6", "Nc6", "white"},
+		{"white", "f1", "c4", "Bc4", "black"},
+		{"black", "f8", "c5", "Bc5", "white"},
+	}
+
+	for i, m := range moves {
+		var activeConn, opponentConn *gorillaWs.Conn
+		if m.player == "white" {
+			activeConn = whiteConn
+			opponentConn = blackConn
+		} else {
+			activeConn = blackConn
+			opponentConn = whiteConn
+		}
+
+		err = activeConn.WriteJSON(ClientMessage{
+			Type: "move",
+			From: m.from,
+			To:   m.to,
+		})
+		if err != nil {
+			t.Fatalf("step %d (%s %s-%s): write move failed: %v", i+1, m.player, m.from, m.to, err)
+		}
+
+		oppMsg := readNextMessage(t, opponentConn)
+		if oppMsg.Type != "move" || oppMsg.SAN != m.san || oppMsg.Turn != m.turn {
+			t.Fatalf("step %d (%s): opponent expected move SAN=%s turn=%s, got type=%s san=%s turn=%s",
+				i+1, m.player, m.san, m.turn, oppMsg.Type, oppMsg.SAN, oppMsg.Turn)
+		}
+
+		echoMsg := readNextMessage(t, activeConn)
+		if echoMsg.Type != "move" || echoMsg.SAN != m.san || echoMsg.Turn != m.turn {
+			t.Fatalf("step %d (%s): echo expected move SAN=%s turn=%s, got type=%s san=%s turn=%s",
+				i+1, m.player, m.san, m.turn, echoMsg.Type, echoMsg.SAN, echoMsg.Turn)
+		}
+	}
+
+	// Test out-of-turn rejection: Black tries to move when it's White's turn
+	err = blackConn.WriteJSON(ClientMessage{
+		Type: "move",
+		From: "d7",
+		To:   "d6",
+	})
+	if err != nil {
+		t.Fatalf("failed to send out-of-turn move: %v", err)
+	}
+
+	errMsg := readNextMessage(t, blackConn)
+	if errMsg.Type != "error" {
+		t.Fatalf("expected error message on out-of-turn move, got type=%s", errMsg.Type)
+	}
+}
+
+func TestMultiplayerMoveTranslationWithRedisCluster(t *testing.T) {
+	ctx := context.Background()
+	rdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:6379"})
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		t.Skip("Redis is not available; skipping multi-instance cluster test")
+	}
+
+	jwtSecret := "super-secure-jwt-secret-at-least-32-chars-long"
+	authService := auth.NewService(nil, jwtSecret, jwtSecret)
+
+	gameService1 := game.NewService(nil, nil)
+	gameService1.SetRedis(rdb)
+
+	gameService2 := game.NewService(nil, nil)
+	gameService2.SetRedis(rdb)
+
+	cfg := HubConfig{
+		AllowedOrigins:     []string{"http://localhost:5173"},
+		AllowMissingOrigin: true,
+	}
+
+	// Instance 1
+	hub1 := NewHub(gameService1, authService, cfg)
+	hub1.SetRedis(rdb, "instance-1")
+
+	// Instance 2
+	hub2 := NewHub(gameService2, authService, cfg)
+	hub2.SetRedis(rdb, "instance-2")
+
+	// Allow Redis subscription goroutines to settle
+	time.Sleep(100 * time.Millisecond)
+
+	uWhite := &user.User{ID: primitive.NewObjectID(), Username: "alice"}
+	uBlack := &user.User{ID: primitive.NewObjectID(), Username: "bob"}
+
+	whiteTokens, _ := authService.GenerateTokenPair(uWhite)
+	blackTokens, _ := authService.GenerateTokenPair(uBlack)
+
+	whitePlayer := game.PlayerInfo{UserID: uWhite.ID.Hex(), Username: uWhite.Username, Rating: 1500}
+	blackPlayer := game.PlayerInfo{UserID: uBlack.ID.Hex(), Username: uBlack.Username, Rating: 1500}
+	tc := game.TimeControl{InitialSeconds: 300, Increment: 0}
+
+	ag, err := gameService1.CreateGame(whitePlayer, blackPlayer, tc)
+	if err != nil {
+		t.Fatalf("failed to create game on instance 1: %v", err)
+	}
+
+	// Server 1 hosts Hub 1 (Instance 1)
+	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hub1.HandleWebSocket(w, r, ag.ID)
+	}))
+	defer server1.Close()
+
+	// Server 2 hosts Hub 2 (Instance 2)
+	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hub2.HandleWebSocket(w, r, ag.ID)
+	}))
+	defer server2.Close()
+
+	dialer := gorillaWs.Dialer{}
+	header := http.Header{"Origin": []string{"http://localhost:5173"}}
+
+	// White connects to Instance 1
+	base1 := "ws" + strings.TrimPrefix(server1.URL, "http")
+	whiteConn, _, err := dialer.Dial(base1+"?token="+whiteTokens.AccessToken, header)
+	if err != nil {
+		t.Fatalf("white failed to connect to server 1: %v", err)
+	}
+	defer whiteConn.Close()
+
+	// Black connects to Instance 2
+	base2 := "ws" + strings.TrimPrefix(server2.URL, "http")
+	blackConn, _, err := dialer.Dial(base2+"?token="+blackTokens.AccessToken, header)
+	if err != nil {
+		t.Fatalf("black failed to connect to server 2: %v", err)
+	}
+	defer blackConn.Close()
+
+	_ = readNextMessage(t, whiteConn)
+	_ = readNextMessage(t, blackConn)
+
+	// White plays 1. d4 on Instance 1
+	err = whiteConn.WriteJSON(ClientMessage{
+		Type: "move",
+		From: "d2",
+		To:   "d4",
+	})
+	if err != nil {
+		t.Fatalf("white failed to send move: %v", err)
+	}
+
+	// Black on Instance 2 must receive 1. d4 via Redis Pub/Sub broadcast!
+	msgForBlack := readNextMessage(t, blackConn)
+	if msgForBlack.Type != "move" || msgForBlack.SAN != "d4" {
+		t.Fatalf("cross-instance move translation failed: expected SAN d4, got type=%s san=%s", msgForBlack.Type, msgForBlack.SAN)
+	}
+
+	// White receives local echo on Instance 1
+	msgForWhiteEcho := readNextMessage(t, whiteConn)
+	if msgForWhiteEcho.Type != "move" || msgForWhiteEcho.SAN != "d4" {
+		t.Fatalf("white echo failed: expected SAN d4, got type=%s san=%s", msgForWhiteEcho.Type, msgForWhiteEcho.SAN)
+	}
+
+	// Black plays 1... d5 on Instance 2
+	err = blackConn.WriteJSON(ClientMessage{
+		Type: "move",
+		From: "d7",
+		To:   "d5",
+	})
+	if err != nil {
+		t.Fatalf("black failed to send move: %v", err)
+	}
+
+	// White on Instance 1 must receive 1... d5 via Redis Pub/Sub broadcast!
+	msgForWhite := readNextMessage(t, whiteConn)
+	if msgForWhite.Type != "move" || msgForWhite.SAN != "d5" {
+		t.Fatalf("cross-instance move translation failed: expected SAN d5, got type=%s san=%s", msgForWhite.Type, msgForWhite.SAN)
+	}
+}
+

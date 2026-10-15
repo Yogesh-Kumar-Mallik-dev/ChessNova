@@ -317,14 +317,23 @@
 				if (socket) {
 					socket.sendMove(from, to, promotion);
 				}
+				if (!socket || !socket.isConnected()) {
+					api.games.makeMove(gameId, { from, to, promotion }).catch((e) => {
+						console.warn('HTTP fallback move submission failed:', e);
+					});
+				}
 				return;
 			}
 		} catch (e) {
 			console.warn('Optimistic move execution fallback to server:', e);
 		}
 
-		if (socket) {
+		if (socket && socket.isConnected()) {
 			socket.sendMove(from, to, promotion);
+		} else {
+			api.games.makeMove(gameId, { from, to, promotion }).catch((e) => {
+				console.warn('HTTP move submission failed:', e);
+			});
 		}
 	}
 
