@@ -155,43 +155,22 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          # Robust normalization: handles raw multiline, literal \n, base64, and whitespace-flattened keys
+          # Strip per-line indentation (e.g. YAML 4-space indent) and normalize line endings
           python3 -c "
-          import sys, os, base64
+          import sys, os
           raw = sys.stdin.read().strip()
           raw = raw.replace('\r', '')
-          if 'BEGIN' not in raw:
-              try:
-                  decoded = base64.b64decode(raw).decode('utf-8')
-                  if 'BEGIN' in decoded:
-                      raw = decoded
-              except Exception:
-                  pass
           if '\\n' in raw and '\n' not in raw:
               raw = raw.replace('\\n', '\n')
-          if 'BEGIN OPENSSH PRIVATE KEY' in raw and raw.count('\n') < 3:
-              header = '-----BEGIN OPENSSH PRIVATE KEY-----'
-              footer = '-----END OPENSSH PRIVATE KEY-----'
-              inner = raw.replace(header, '').replace(footer, '').strip()
-              raw = header + '\n' + '\n'.join(inner.split()) + '\n' + footer + '\n'
-          elif not raw.endswith('\n'):
-              raw += '\n'
+          lines = [line.strip() for line in raw.splitlines() if line.strip()]
+          raw = '\n'.join(lines) + '\n'
           with open(os.path.expanduser('~/.ssh/id_ed25519'), 'w') as f:
               f.write(raw)
           " <<< "$SSH_PRIVATE_KEY"
 
           chmod 600 ~/.ssh/id_ed25519
-
-          LINES=$(wc -l < ~/.ssh/id_ed25519)
-          CHARS=$(wc -c < ~/.ssh/id_ed25519)
-          HEADER=$(head -n 1 ~/.ssh/id_ed25519)
-          FOOTER=$(tail -n 1 ~/.ssh/id_ed25519)
-          echo "::error file=.github,line=1,title=KeyStats::Lines=${LINES}, Chars=${CHARS}, Header=${HEADER}, Footer=${FOOTER}"
-
-          PUBKEY=$(ssh-keygen -y -f ~/.ssh/id_ed25519 2>&1 || echo "ERROR_READING_KEY")
-          FINGERPRINT=$(ssh-keygen -lf ~/.ssh/id_ed25519 2>&1 || echo "ERROR_FINGERPRINT")
-          echo "::error file=.github,line=1,title=DeployPubKey::${PUBKEY}"
-          echo "::error file=.github,line=2,title=DeployFingerprint::${FINGERPRINT}"
+          echo "SSH key loaded and verified:"
+          ssh-keygen -lf ~/.ssh/id_ed25519
 
       - name: Verify SSH Connection to VPS
         env:
