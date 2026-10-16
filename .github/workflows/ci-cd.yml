@@ -157,8 +157,23 @@ jobs:
           echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+          echo "Deploy key fingerprint:"
+          ssh-keygen -lf ~/.ssh/id_ed25519 || true
+          echo "Deploy public key:"
+          ssh-keygen -y -f ~/.ssh/id_ed25519 || true
+
+      - name: Verify SSH Connection to VPS
+        env:
+          SSH_HOST: ${{ secrets.VPS_HOST || '162.35.173.209' }}
+          SSH_USER: ${{ secrets.VPS_USER || 'root' }}
+          SSH_PORT: ${{ secrets.VPS_PORT || '22' }}
+        run: |
+          echo "Testing SSH connectivity to ${SSH_USER}@${SSH_HOST}..."
+          ssh -v -p "$SSH_PORT" -i ~/.ssh/id_ed25519 \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o BatchMode=yes \
+            "${SSH_USER}@${SSH_HOST}" "echo 'SSH CONNECTION VERIFIED' && whoami && uptime"
 
       - name: Deploy Frontend Web Assets via Rsync
         env:
@@ -168,10 +183,10 @@ jobs:
         run: |
           echo "Deploying frontend assets to /var/www/chessnova/html/..."
           rsync -avz --delete \
-            -e "ssh -p $SSH_PORT -i ~/.ssh/id_ed25519" \
+            -e "ssh -p $SSH_PORT -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
             apps/web/build/ \
             "${SSH_USER}@${SSH_HOST}:/var/www/chessnova/html/"
-          ssh -p "$SSH_PORT" -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" 'chown -R www-data:www-data /var/www/chessnova/html 2>/dev/null || true'
+          ssh -p "$SSH_PORT" -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${SSH_USER}@${SSH_HOST}" 'chown -R www-data:www-data /var/www/chessnova/html 2>/dev/null || true'
 
       - name: Deploy Backend Binary & Restart Service
         env:
@@ -181,12 +196,12 @@ jobs:
         run: |
           echo "Uploading backend binary..."
           rsync -avz \
-            -e "ssh -p $SSH_PORT -i ~/.ssh/id_ed25519" \
+            -e "ssh -p $SSH_PORT -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
             apps/server/bin/server \
             "${SSH_USER}@${SSH_HOST}:/opt/chessnova/bin/server.new"
 
           echo "Applying binary and restarting chessnova services..."
-          ssh -p "$SSH_PORT" -i ~/.ssh/id_ed25519 "${SSH_USER}@${SSH_HOST}" '
+          ssh -p "$SSH_PORT" -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${SSH_USER}@${SSH_HOST}" '
             mv /opt/chessnova/bin/server.new /opt/chessnova/bin/server
             chmod +x /opt/chessnova/bin/server
             chown -R yogesh:yogesh /opt/chessnova/bin 2>/dev/null || true
