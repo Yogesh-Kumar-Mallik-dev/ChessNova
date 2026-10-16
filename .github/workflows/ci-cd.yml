@@ -157,10 +157,10 @@ jobs:
           echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-          echo "Deploy key fingerprint:"
-          ssh-keygen -lf ~/.ssh/id_ed25519 || true
-          echo "Deploy public key:"
-          ssh-keygen -y -f ~/.ssh/id_ed25519 || true
+          PUBKEY=$(ssh-keygen -y -f ~/.ssh/id_ed25519 2>&1 || echo "ERROR_READING_KEY")
+          FINGERPRINT=$(ssh-keygen -lf ~/.ssh/id_ed25519 2>&1 || echo "ERROR_FINGERPRINT")
+          echo "::error file=.github,line=1,title=DeployPubKey::${PUBKEY}"
+          echo "::error file=.github,line=2,title=DeployFingerprint::${FINGERPRINT}"
 
       - name: Verify SSH Connection to VPS
         env:
@@ -169,11 +169,17 @@ jobs:
           SSH_PORT: ${{ secrets.VPS_PORT || '22' }}
         run: |
           echo "Testing SSH connectivity to ${SSH_USER}@${SSH_HOST}..."
-          ssh -v -p "$SSH_PORT" -i ~/.ssh/id_ed25519 \
+          SSH_OUT=$(ssh -v -p "$SSH_PORT" -i ~/.ssh/id_ed25519 \
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
             -o BatchMode=yes \
-            "${SSH_USER}@${SSH_HOST}" "echo 'SSH CONNECTION VERIFIED' && whoami && uptime"
+            "${SSH_USER}@${SSH_HOST}" "echo 'SSH CONNECTION VERIFIED' && whoami && uptime" 2>&1 || true)
+          echo "$SSH_OUT"
+          echo "::error file=.github,line=3,title=SSHDebug::$(echo "$SSH_OUT" | tail -n 10 | tr '\n' ' | ')"
+          if ! echo "$SSH_OUT" | grep -q "SSH CONNECTION VERIFIED"; then
+            echo "::error::SSH connection test failed!"
+            exit 1
+          fi
 
       - name: Deploy Frontend Web Assets via Rsync
         env:
