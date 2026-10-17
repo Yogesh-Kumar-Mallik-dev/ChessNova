@@ -68,10 +68,6 @@ cp /root/.ssh/authorized_keys /home/yogesh/.ssh/authorized_keys
 chown -R yogesh:yogesh /home/yogesh/.ssh
 chmod 600 /home/yogesh/.ssh/authorized_keys
 
-# Set permanent emergency fallback passwords
-echo "root:[REDACTED]" | chpasswd
-echo "yogesh:[REDACTED]" | chpasswd
-
 # Restart SSH service
 systemctl restart ssh || systemctl restart sshd || true
 
