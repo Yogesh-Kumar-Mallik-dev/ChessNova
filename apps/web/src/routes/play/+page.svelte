@@ -124,13 +124,9 @@
 		if (chk.isGameOver()) return;
 
 		isBotThinking = true;
-		const naturalDelay = 450 + Math.random() * 550; // Natural humanized delay
 
 		try {
-			const [res] = await Promise.all([
-				api.chess.botMove(currentFen, botLevel),
-				new Promise((resolve) => setTimeout(resolve, naturalDelay))
-			]);
+			const res = await api.chess.botMove(currentFen, botLevel);
 
 			if (res && res.valid) {
 				const cap = res.isCapture || res.san?.includes('x') || false;
