@@ -58,3 +58,46 @@ func TestGenerateBotMove(t *testing.T) {
 		t.Errorf("expected valid UCI move, got %s", m2)
 	}
 }
+
+func TestStockfishCachingAndConcurrency(t *testing.T) {
+	eng := NewStockfishEngine()
+	defer eng.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	fen := "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+
+	// Initial evaluation
+	eval1, err := eng.EvaluateFen(ctx, fen, 8)
+	if err != nil {
+		t.Fatalf("EvaluateFen 1 failed: %v", err)
+	}
+
+	// Second evaluation should hit cache
+	eval2, err := eng.EvaluateFen(ctx, fen, 8)
+	if err != nil {
+		t.Fatalf("EvaluateFen 2 failed: %v", err)
+	}
+
+	if eval1.BestMove != eval2.BestMove || eval1.ScoreCp != eval2.ScoreCp {
+		t.Errorf("cached evaluation did not match: eval1=%+v, eval2=%+v", eval1, eval2)
+	}
+
+	// Concurrent evaluations
+	done := make(chan bool, 8)
+	for i := 0; i < 8; i++ {
+		go func(idx int) {
+			eval, err := eng.EvaluateFen(ctx, fen, 8)
+			if err != nil || eval == nil {
+				t.Errorf("concurrent eval %d failed: %v", idx, err)
+			}
+			done <- true
+		}(i)
+	}
+
+	for i := 0; i < 8; i++ {
+		<-done
+	}
+}
+
