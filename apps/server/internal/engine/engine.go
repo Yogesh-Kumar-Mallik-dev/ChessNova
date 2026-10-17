@@ -2,10 +2,13 @@ package engine
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,13 +31,16 @@ type Evaluation struct {
 }
 
 type StockfishEngine struct {
-	binaryPath string
-	pool       chan *stockfishWorker
-	maxWorkers int
-	cache      sync.Map
-	cacheKeys  []string
-	cacheMu    sync.Mutex
-	stopChan   chan struct{}
+	binaryPath   string
+	remoteURL    string
+	remoteSecret string
+	httpClient   *http.Client
+	pool         chan *stockfishWorker
+	maxWorkers   int
+	cache        sync.Map
+	cacheKeys    []string
+	cacheMu      sync.Mutex
+	stopChan     chan struct{}
 }
 
 type stockfishWorker struct {
@@ -56,13 +62,24 @@ var (
 
 func NewStockfishEngine() *StockfishEngine {
 	bin := findStockfishBinary()
-	poolSize := 2
+	remoteURL := strings.TrimRight(os.Getenv("STOCKFISH_REMOTE_URL"), "/")
+	remoteSecret := os.Getenv("STOCKFISH_REMOTE_SECRET")
+
+	// If remote is configured, we only need 1 local fallback worker to minimize memory footprint!
+	poolSize := 1
+	if remoteURL == "" {
+		poolSize = 1 // 1 worker per instance prevents CPU starvation on 1 vCPU
+	}
+
 	eng := &StockfishEngine{
-		binaryPath: bin,
-		pool:       make(chan *stockfishWorker, poolSize),
-		maxWorkers: poolSize,
-		cacheKeys:  make([]string, 0, 5000),
-		stopChan:   make(chan struct{}),
+		binaryPath:   bin,
+		remoteURL:    remoteURL,
+		remoteSecret: remoteSecret,
+		httpClient:   &http.Client{Timeout: 15 * time.Second},
+		pool:         make(chan *stockfishWorker, poolSize),
+		maxWorkers:   poolSize,
+		cacheKeys:    make([]string, 0, 5000),
+		stopChan:     make(chan struct{}),
 	}
 
 	if bin != "" {
@@ -75,6 +92,18 @@ func NewStockfishEngine() *StockfishEngine {
 	}
 
 	return eng
+}
+
+func (e *StockfishEngine) RemoteURL() string {
+	return e.remoteURL
+}
+
+func (e *StockfishEngine) RemoteSecret() string {
+	return e.remoteSecret
+}
+
+func (e *StockfishEngine) HTTPClient() *http.Client {
+	return e.httpClient
 }
 
 func newStockfishWorker(binaryPath string) (*stockfishWorker, error) {
@@ -472,6 +501,15 @@ func (e *StockfishEngine) EvaluateFen(ctx context.Context, fen string, depth int
 		}
 	}
 
+	// 2. Query remote showcase Stockfish engine if configured
+	if e.remoteURL != "" {
+		eval, err := e.evaluateRemote(ctx, fen, depth)
+		if err == nil && eval != nil {
+			e.putCache(cacheKey, eval)
+			return eval, nil
+		}
+	}
+
 	if e.binaryPath == "" {
 		eval := fallbackEval(fen)
 		e.putCache(cacheKey, eval)
@@ -587,6 +625,14 @@ func (e *StockfishEngine) GenerateBotMove(ctx context.Context, fen string, level
 		diff = BotLevels[2]
 	}
 
+	// Query remote showcase Stockfish engine if configured
+	if e.remoteURL != "" {
+		move, err := e.botMoveRemote(ctx, fen, level)
+		if err == nil && move != "" {
+			return move, nil
+		}
+	}
+
 	if e.binaryPath == "" {
 		return fallbackBotMove(fen, level), nil
 	}
@@ -615,6 +661,70 @@ func (e *StockfishEngine) GenerateBotMove(ctx context.Context, fen string, level
 	}
 
 	return move, nil
+}
+
+func (e *StockfishEngine) evaluateRemote(ctx context.Context, fen string, depth int) (*Evaluation, error) {
+	payload, _ := json.Marshal(map[string]interface{}{
+		"fen":   fen,
+		"depth": depth,
+	})
+	req, err := http.NewRequestWithContext(ctx, "POST", e.remoteURL+"/evaluate", bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if e.remoteSecret != "" {
+		req.Header.Set("X-Engine-Secret", e.remoteSecret)
+	}
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote engine returned status %d", resp.StatusCode)
+	}
+
+	var eval Evaluation
+	if err := json.NewDecoder(resp.Body).Decode(&eval); err != nil {
+		return nil, err
+	}
+	return &eval, nil
+}
+
+func (e *StockfishEngine) botMoveRemote(ctx context.Context, fen string, level int) (string, error) {
+	payload, _ := json.Marshal(map[string]interface{}{
+		"fen":   fen,
+		"level": level,
+	})
+	req, err := http.NewRequestWithContext(ctx, "POST", e.remoteURL+"/bot-move", bytes.NewReader(payload))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if e.remoteSecret != "" {
+		req.Header.Set("X-Engine-Secret", e.remoteSecret)
+	}
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("remote engine returned status %d", resp.StatusCode)
+	}
+
+	var res struct {
+		Move string `json:"move"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+	return res.Move, nil
 }
 
 func fallbackBotMove(fen string, level int) string {

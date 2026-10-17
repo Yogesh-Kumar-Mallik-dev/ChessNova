@@ -1,9 +1,12 @@
 package review
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
+	"net/http"
 	"strings"
 	"time"
 
@@ -238,6 +241,12 @@ func isPieceSacrifice(pos chess.Position, m chess.Move) bool {
 
 // AnalyzePGN performs production-grade game review directly from a standard PGN string
 func (s *ReviewService) AnalyzePGN(ctx context.Context, pgnStr string) (*ReviewResult, error) {
+	if s.engine != nil && s.engine.RemoteURL() != "" {
+		if res, err := s.analyzeRemote(ctx, pgnStr, nil); err == nil && res != nil {
+			return res, nil
+		}
+	}
+
 	parsedGame, err := chess.ParsePGN(pgnStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse PGN: %w", err)
@@ -609,4 +618,44 @@ func initStatsMap() map[MoveClassification]int {
 		ClassBlunder:    0,
 		ClassForced:     0,
 	}
+}
+
+func (s *ReviewService) analyzeRemote(ctx context.Context, pgnStr string, moves []InputMove) (*ReviewResult, error) {
+	if s.engine == nil || s.engine.RemoteURL() == "" {
+		return nil, fmt.Errorf("remote engine not configured")
+	}
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"pgn":   pgnStr,
+		"moves": moves,
+	})
+	req, err := http.NewRequestWithContext(ctx, "POST", s.engine.RemoteURL()+"/review", bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if sec := s.engine.RemoteSecret(); sec != "" {
+		req.Header.Set("X-Engine-Secret", sec)
+	}
+
+	client := s.engine.HTTPClient()
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote review returned status %d", resp.StatusCode)
+	}
+
+	var res ReviewResult
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+	return &res, nil
 }
