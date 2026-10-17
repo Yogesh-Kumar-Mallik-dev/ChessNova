@@ -151,6 +151,54 @@ func main() {
 	engineService := engine.NewStockfishEngine()
 	reviewService := review.NewReviewService(engineService)
 
+	// Background Game Pre-Evaluation Worker
+	// Automatically analyzes finished multiplayer matches so Game Review is instant (<1ms)
+	preEvalQueue := make(chan string, 100)
+	go func() {
+		for gameID := range preEvalQueue {
+			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+			doc, err := gameRepo.FindByID(ctx, gameID)
+			if err == nil && doc != nil && !doc.IsEvaluated && len(doc.Moves) > 0 {
+				var res *review.ReviewResult
+				var rErr error
+				if strings.TrimSpace(doc.PGN) != "" {
+					res, rErr = reviewService.AnalyzePGN(ctx, doc.PGN)
+				} else {
+					inputMoves := make([]review.InputMove, len(doc.Moves))
+					for i, m := range doc.Moves {
+						inputMoves[i] = review.InputMove{
+							From: m.From,
+							To:   m.To,
+							SAN:  m.SAN,
+							FEN:  m.FEN,
+						}
+					}
+					res, rErr = reviewService.AnalyzeMoves(ctx, inputMoves)
+				}
+				if rErr == nil && res != nil {
+					_ = gameRepo.SaveReview(ctx, gameID, res)
+					observability.DefaultLogger.Info("Background game pre-evaluation completed", map[string]interface{}{
+						"gameId":        gameID,
+						"whiteAccuracy": res.WhiteAccuracy,
+						"blackAccuracy": res.BlackAccuracy,
+					})
+				}
+			}
+			cancel()
+		}
+	}()
+
+	// Register background pre-evaluation hook when any game finishes
+	gameService.AddOnGameFinish(func(doc *game.GameDocument) {
+		if doc != nil && len(doc.Moves) > 0 {
+			select {
+			case preEvalQueue <- doc.ID:
+			default:
+				// Queue full under extreme load, will be evaluated on-demand if requested
+			}
+		}
+	})
+
 	// 6. Initialize Storage & External Platform Services
 	storageService := storage.NewStorageService(storage.Config{
 		Endpoint:         getEnv("S3_ENDPOINT", ""),

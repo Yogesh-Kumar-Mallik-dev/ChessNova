@@ -47,18 +47,20 @@ type Service struct {
 	ratingRepo   rating.Repository
 	activeGames  map[string]*ActiveGame
 	mu           sync.RWMutex
-	onGameFinish func(doc *GameDocument)
-	stopChan     chan struct{}
-	stopOnce     sync.Once
-	rdb          *redis.Client
+	onGameFinish     func(doc *GameDocument)
+	onGameFinishList []func(doc *GameDocument)
+	stopChan         chan struct{}
+	stopOnce         sync.Once
+	rdb              *redis.Client
 }
 
 func NewService(gameRepo Repository, ratingRepo rating.Repository) *Service {
 	s := &Service{
-		gameRepo:    gameRepo,
-		ratingRepo:  ratingRepo,
-		activeGames: make(map[string]*ActiveGame),
-		stopChan:    make(chan struct{}),
+		gameRepo:         gameRepo,
+		ratingRepo:       ratingRepo,
+		activeGames:      make(map[string]*ActiveGame),
+		onGameFinishList: make([]func(doc *GameDocument), 0),
+		stopChan:         make(chan struct{}),
 	}
 	go s.startTimeoutWatcher()
 	return s
@@ -94,7 +96,13 @@ func (s *Service) Close() {
 }
 
 func (s *Service) SetOnGameFinish(cb func(doc *GameDocument)) {
-	s.onGameFinish = cb
+	s.AddOnGameFinish(cb)
+}
+
+func (s *Service) AddOnGameFinish(cb func(doc *GameDocument)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onGameFinishList = append(s.onGameFinishList, cb)
 }
 
 func (s *Service) CreateGame(white, black PlayerInfo, tc TimeControl) (*ActiveGame, error) {
@@ -639,6 +647,13 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 
 	if s.onGameFinish != nil {
 		s.onGameFinish(doc)
+	}
+
+	s.mu.RLock()
+	finishCallbacks := append([]func(doc *GameDocument){}, s.onGameFinishList...)
+	s.mu.RUnlock()
+	for _, cb := range finishCallbacks {
+		cb(doc)
 	}
 
 	// Schedule memory eviction of finished game after a 5-minute grace period

@@ -2,12 +2,14 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"chess-platform/server/internal/engine"
+	"chess-platform/server/internal/game"
 	"chess-platform/server/internal/review"
 )
 
@@ -273,3 +275,91 @@ func TestUnauthorizedProfileUpdate(t *testing.T) {
 		t.Errorf("expected 401 Unauthorized for profile update without token, got %d", w.Code)
 	}
 }
+
+type testGameRepo struct {
+	games map[string]*game.GameDocument
+}
+
+func (m *testGameRepo) Save(ctx context.Context, doc *game.GameDocument) error {
+	m.games[doc.ID] = doc
+	return nil
+}
+
+func (m *testGameRepo) SaveReview(ctx context.Context, id string, rev *review.ReviewResult) error {
+	if g, ok := m.games[id]; ok {
+		g.IsEvaluated = true
+		g.Review = rev
+		return nil
+	}
+	return game.ErrGameNotFound
+}
+
+func (m *testGameRepo) FindByID(ctx context.Context, id string) (*game.GameDocument, error) {
+	if g, ok := m.games[id]; ok {
+		return g, nil
+	}
+	return nil, game.ErrGameNotFound
+}
+
+func (m *testGameRepo) FindUserGames(ctx context.Context, userID string, limit, skip int) ([]game.GameDocument, error) {
+	return nil, nil
+}
+
+func (m *testGameRepo) FindRecentGames(ctx context.Context, limit int) ([]game.GameDocument, error) {
+	return nil, nil
+}
+
+func (m *testGameRepo) EnsureIndexes(ctx context.Context) error {
+	return nil
+}
+
+func TestHandleReviewGameByID_CachedAndEvaluated(t *testing.T) {
+	eng := engine.NewStockfishEngine()
+	reviewSrv := review.NewReviewService(eng)
+	repo := &testGameRepo{
+		games: make(map[string]*game.GameDocument),
+	}
+
+	gameID := "test-game-123"
+	repo.games[gameID] = &game.GameDocument{
+		ID:  gameID,
+		PGN: "1. e4 e5 2. Nf3 Nc6",
+		Moves: []game.PersistedMove{
+			{Ply: 1, From: "e2", To: "e4", SAN: "e4"},
+			{Ply: 2, From: "e7", To: "e5", SAN: "e5"},
+		},
+		IsEvaluated: false,
+	}
+
+	router := NewRouter(nil, nil, nil, repo, nil, nil, nil, eng, reviewSrv, nil, nil, nil, "*")
+
+	// 1. First review request: evaluates, persists to repo, sets IsEvaluated = true
+	req := httptest.NewRequest("POST", "/api/v1/games/"+gameID+"/review", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	saved := repo.games[gameID]
+	if !saved.IsEvaluated || saved.Review == nil {
+		t.Fatalf("expected game to be marked as evaluated with review saved")
+	}
+
+	// 2. Second review request: should return cached review directly
+	saved.Review.WhiteAccuracy = 99.9 // Custom value to verify cached return
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req)
+
+	if w2.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w2.Code)
+	}
+
+	var res review.ReviewResult
+	_ = json.Unmarshal(w2.Body.Bytes(), &res)
+	if res.WhiteAccuracy != 99.9 {
+		t.Fatalf("expected cached review with WhiteAccuracy 99.9, got %f", res.WhiteAccuracy)
+	}
+}
+

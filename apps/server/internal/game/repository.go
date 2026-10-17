@@ -3,6 +3,8 @@ package game
 import (
 	"context"
 
+	"chess-platform/server/internal/review"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -10,6 +12,7 @@ import (
 
 type Repository interface {
 	Save(ctx context.Context, doc *GameDocument) error
+	SaveReview(ctx context.Context, id string, rev *review.ReviewResult) error
 	FindByID(ctx context.Context, id string) (*GameDocument, error)
 	FindUserGames(ctx context.Context, userID string, limit, skip int) ([]GameDocument, error)
 	FindRecentGames(ctx context.Context, limit int) ([]GameDocument, error)
@@ -52,6 +55,18 @@ func (r *MongoRepository) Save(ctx context.Context, doc *GameDocument) error {
 	return err
 }
 
+func (r *MongoRepository) SaveReview(ctx context.Context, id string, rev *review.ReviewResult) error {
+	filter := bson.M{"_id": id}
+	update := bson.M{
+		"$set": bson.M{
+			"isEvaluated": true,
+			"review":      rev,
+		},
+	}
+	_, err := r.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
 func (r *MongoRepository) FindByID(ctx context.Context, id string) (*GameDocument, error) {
 	var doc GameDocument
 	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&doc)
@@ -72,6 +87,7 @@ func (r *MongoRepository) FindUserGames(ctx context.Context, userID string, limi
 		},
 	}
 	opts := options.Find().
+		SetProjection(bson.M{"review": 0}).
 		SetSort(bson.D{{Key: "startedAt", Value: -1}}).
 		SetLimit(int64(limit)).
 		SetSkip(int64(skip))
@@ -94,6 +110,7 @@ func (r *MongoRepository) FindRecentGames(ctx context.Context, limit int) ([]Gam
 		limit = 20
 	}
 	opts := options.Find().
+		SetProjection(bson.M{"review": 0}).
 		SetSort(bson.D{{Key: "startedAt", Value: -1}}).
 		SetLimit(int64(limit))
 

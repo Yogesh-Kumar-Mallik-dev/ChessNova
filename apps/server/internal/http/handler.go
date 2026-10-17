@@ -1801,6 +1801,12 @@ func (rt *Router) handleReviewGameByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If already evaluated (via background pre-evaluation or previous review), return immediately!
+	if gameDoc.IsEvaluated && gameDoc.Review != nil {
+		writeJSON(w, http.StatusOK, gameDoc.Review)
+		return
+	}
+
 	var result *review.ReviewResult
 	if strings.TrimSpace(gameDoc.PGN) != "" {
 		result, err = rt.reviewService.AnalyzePGN(r.Context(), gameDoc.PGN)
@@ -1824,6 +1830,9 @@ func (rt *Router) handleReviewGameByID(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "REVIEW_ERROR", err.Error())
 		return
 	}
+
+	// Permanently persist the evaluated form to MongoDB so it is never re-evaluated
+	_ = rt.gameRepo.SaveReview(r.Context(), gameID, result)
 
 	writeJSON(w, http.StatusOK, result)
 }

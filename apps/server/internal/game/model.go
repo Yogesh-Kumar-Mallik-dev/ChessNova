@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"chess-platform/server/internal/chess"
+	"chess-platform/server/internal/review"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -148,8 +149,10 @@ type GameDocument struct {
 	PGN         string             `bson:"pgn" json:"pgn"`
 	WhiteRatingDiff int            `bson:"whiteRatingDiff" json:"whiteRatingDiff"`
 	BlackRatingDiff int            `bson:"blackRatingDiff" json:"blackRatingDiff"`
-	StartedAt   time.Time          `bson:"startedAt" json:"startedAt"`
-	FinishedAt  *time.Time         `bson:"finishedAt,omitempty" json:"finishedAt,omitempty"`
+	StartedAt   time.Time            `bson:"startedAt" json:"startedAt"`
+	FinishedAt  *time.Time           `bson:"finishedAt,omitempty" json:"finishedAt,omitempty"`
+	IsEvaluated bool                 `bson:"isEvaluated" json:"isEvaluated"`
+	Review      *review.ReviewResult `bson:"review,omitempty" json:"review,omitempty"`
 }
 
 // ActiveGame holds in-memory / live execution state

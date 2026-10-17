@@ -8,6 +8,7 @@ import (
 
 	"chess-platform/server/internal/chess"
 	"chess-platform/server/internal/rating"
+	"chess-platform/server/internal/review"
 
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -31,6 +32,15 @@ func (m *mockGameRepo) FindByID(ctx context.Context, id string) (*GameDocument, 
 		return g, nil
 	}
 	return nil, ErrGameNotFound
+}
+
+func (m *mockGameRepo) SaveReview(ctx context.Context, id string, rev *review.ReviewResult) error {
+	if g, ok := m.games[id]; ok {
+		g.IsEvaluated = true
+		g.Review = rev
+		return nil
+	}
+	return ErrGameNotFound
 }
 
 func (m *mockGameRepo) FindUserGames(ctx context.Context, userID string, limit, skip int) ([]GameDocument, error) {
