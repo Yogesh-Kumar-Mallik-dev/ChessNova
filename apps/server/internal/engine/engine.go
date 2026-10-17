@@ -48,10 +48,10 @@ type stockfishWorker struct {
 }
 
 var (
-	depthRegex = regexp.MustCompile(`depth\s+(\d+)`)
-	cpRegex    = regexp.MustCompile(`score\s+cp\s+(-?\d+)`)
-	mateRegex  = regexp.MustCompile(`score\s+mate\s+(-?\d+)`)
-	pvRegex    = regexp.MustCompile(`pv\s+(.*)`)
+	depthRegex = regexp.MustCompile(`\bdepth\s+(\d+)`)
+	cpRegex    = regexp.MustCompile(`\bscore\s+cp\s+(-?\d+)`)
+	mateRegex  = regexp.MustCompile(`\bscore\s+mate\s+(-?\d+)`)
+	pvRegex    = regexp.MustCompile(`\bpv\s+(.*)`)
 )
 
 func NewStockfishEngine() *StockfishEngine {
