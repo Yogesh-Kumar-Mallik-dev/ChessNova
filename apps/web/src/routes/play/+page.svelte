@@ -198,38 +198,26 @@
 		}
 
 		const { from, to, promotion, isCapture, isPromotion } = event.detail;
-		let nextFen = '';
-		let moveSan = '';
-		let nextTurn: Color = 'white';
-		let cap = isCapture || false;
-		let promo = isPromotion || !!promotion;
 
-		try {
-			const result = await api.chess.move(fen, from, to, promotion);
-			if (result && result.valid) {
-				nextFen = result.newFen;
-				moveSan = result.san;
-				nextTurn = result.turn as Color;
-				if (result.san?.includes('x') || result.isCapture) cap = true;
-				if (result.san?.includes('=') || result.isPromotion) promo = true;
-			}
-		} catch (e) {
-			console.warn('Server move validation failed, using fallback:', e);
+		// 1. Snapshot prior state for instant rollback if server rejects
+		const prevFen = fen;
+		const prevTurn = turn;
+		const prevMoves = [...moves];
+		const prevLastMove = lastMove;
+
+		// 2. Immediate optimistic client-side move execution (0ms visual latency)
+		const localRes = executeMoveClient(prevFen, from, to, promotion);
+		if (!localRes || !localRes.valid) {
+			return;
 		}
 
-		if (!nextFen) {
-			const fallback = executeMoveClient(fen, from, to, promotion);
-			if (fallback && fallback.valid) {
-				nextFen = fallback.newFen;
-				moveSan = fallback.san;
-				nextTurn = fallback.turn;
-				cap = fallback.isCapture;
-				promo = fallback.isPromotion;
-			} else {
-				return;
-			}
-		}
+		const cap = isCapture || localRes.isCapture;
+		const promo = isPromotion || localRes.isPromotion;
+		const moveSan = localRes.san;
+		const nextFen = localRes.newFen;
+		const nextTurn = localRes.turn;
 
+		// 3. Immediately update UI state
 		lastMove = { from, to, san: moveSan, isCapture: cap, isPromotion: promo };
 		moves = [...moves, { from, to, san: moveSan, fen: nextFen }];
 		fen = nextFen;
@@ -239,6 +227,25 @@
 
 		if (gameMode === 'vs_computer' && turn !== playerColor) {
 			triggerBotMoveIfNeeded(nextFen, turn);
+		}
+
+		// 4. Asynchronous authoritative background verification
+		try {
+			const serverRes = await api.chess.move(prevFen, from, to, promotion);
+			if (!serverRes || !serverRes.valid) {
+				console.warn('Server rejected move, rolling back optimistic update');
+				fen = prevFen;
+				turn = prevTurn;
+				moves = prevMoves;
+				lastMove = prevLastMove;
+				soundEffects.playIllegal();
+			} else if (serverRes.newFen && serverRes.newFen !== fen && moves.length === prevMoves.length + 1) {
+				// Reconcile authoritative FEN
+				fen = serverRes.newFen;
+			}
+		} catch (e) {
+			// In offline / local play or network jitter, local state remains fully playable
+			console.warn('Server move sync warning:', e);
 		}
 	}
 

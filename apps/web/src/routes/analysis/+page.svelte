@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { Chess } from 'chess.js';
 	import ChessBoard from '$lib/components/chess/ChessBoard.svelte';
@@ -190,11 +190,90 @@
 			}
 		: null;
 
-	$: currentScoreCp = (() => {
+	let liveEval: {
+		scoreCp: number;
+		isMate: boolean;
+		mateIn?: number;
+		bestMove?: string;
+		depth?: number;
+	} | null = null;
+	let evalDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+	async function fetchLiveEval(targetFen: string) {
+		try {
+			const res = await api.analysis.evaluate(targetFen, 12);
+			if (res && fen === targetFen) {
+				liveEval = {
+					scoreCp: res.scoreCp,
+					isMate: res.isMate,
+					mateIn: res.mateIn,
+					bestMove: res.bestMove,
+					depth: res.depth
+				};
+			}
+		} catch (e) {
+			console.warn('Live evaluation fetch error:', e);
+		}
+	}
+
+	$: {
+		if (!reviewResult && fen) {
+			if (evalDebounceTimer) clearTimeout(evalDebounceTimer);
+			const targetFen = fen;
+			evalDebounceTimer = setTimeout(() => {
+				fetchLiveEval(targetFen);
+			}, 250);
+		}
+	}
+
+	onDestroy(() => {
+		if (evalDebounceTimer) {
+			clearTimeout(evalDebounceTimer);
+			evalDebounceTimer = null;
+		}
+	});
+
+	$: activeScoreCp = (() => {
 		if (reviewResult && currentPly > 0 && currentPly <= reviewResult.evalGraph.length) {
 			return reviewResult.evalGraph[currentPly - 1].scoreCp;
 		}
+		if (liveEval) {
+			return liveEval.scoreCp;
+		}
 		return 0;
+	})();
+
+	$: activeIsMate = (() => {
+		if (reviewResult) {
+			if (currentPly > 0 && currentPly <= reviewResult.evalGraph.length) {
+				const sc = reviewResult.evalGraph[currentPly - 1].scoreCp;
+				return Math.abs(sc) >= 10000;
+			}
+			return false;
+		}
+		return liveEval?.isMate ?? false;
+	})();
+
+	$: activeMateIn = (() => {
+		if (reviewResult) {
+			if (currentPly > 0 && currentPly <= reviewResult.evalGraph.length) {
+				const sc = reviewResult.evalGraph[currentPly - 1].scoreCp;
+				if (sc >= 10000) return 1;
+				if (sc <= -10000) return -1;
+			}
+			return undefined;
+		}
+		return liveEval?.mateIn;
+	})();
+
+	$: liveHintArrow = (() => {
+		if (reviewResult || !liveEval?.bestMove || liveEval.bestMove.length < 4) {
+			return null;
+		}
+		return {
+			from: liveEval.bestMove.slice(0, 2),
+			to: liveEval.bestMove.slice(2, 4)
+		};
 	})();
 
 	function handleMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
@@ -414,7 +493,7 @@
 		<!-- Left: Board with Eval Bar -->
 		<div class="lg:col-span-7 xl:col-span-8 flex justify-center items-center gap-2 sm:gap-3">
 			<div class="hidden sm:flex h-[min(88vw,calc(100dvh-150px),580px)]">
-				<EvalBar scoreCp={currentScoreCp} {orientation} />
+				<EvalBar scoreCp={activeScoreCp} isMate={activeIsMate} mateIn={activeMateIn} {orientation} />
 			</div>
 			<div class="shrink-0 flex justify-center w-full max-w-[min(88vw,calc(100dvh-150px),580px)]">
 				<ChessBoard
@@ -425,6 +504,7 @@
 					mode="analysis"
 					boardSizeClass="w-full"
 					reviewMove={activeReviewMove}
+					hintArrow={liveHintArrow}
 					on:move={handleMove}
 				/>
 			</div>
