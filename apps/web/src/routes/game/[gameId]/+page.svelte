@@ -29,6 +29,7 @@
 	let pendingNavigation: (() => void) | null = null;
 	let allowNavigation = false;
 	let flipBoard = false;
+	let showMobileMoves = false;
 
 	// Determine current user's authenticated seat (check ID, username, and query params)
 	$: myPlayerColor = (() => {
@@ -430,18 +431,18 @@
 
 </script>
 
-<div class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full p-2 sm:px-4 sm:py-2.5 lg:px-6 lg:py-2.5">
-	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center justify-center my-auto">
+<div class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full px-2 py-1 sm:px-4 sm:py-2 lg:px-6 min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-hidden">
+	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center justify-center my-auto min-h-0">
 		
-		<!-- Board Column -->
-		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center">
+		<!-- Board Column (Hero centerpiece) -->
+		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
 			
-			<div class="w-full max-w-[min(92vw,calc(100dvh-170px),570px)] flex flex-col items-center">
+			<div class="w-full max-w-[min(96vw,calc(100dvh-150px),640px)] flex flex-col items-center">
 				<!-- Opponent Disconnection Countdown Banner -->
 				{#if isPlayer && !$gameStore.opponentConnected && $gameStore.status === 'playing'}
-					<div class="w-full mb-2 p-2.5 bg-rose-950/80 border border-rose-500/50 rounded-xl flex items-center justify-between text-xs text-rose-200 animate-pulse shadow-lg">
+					<div class="w-full mb-1.5 p-2 bg-rose-950/80 border border-rose-500/50 rounded-xl flex items-center justify-between text-xs text-rose-200 animate-pulse shadow-lg">
 						<div class="flex items-center gap-2 font-bold">
-							<Icon name="wifi-off" size={15} className="text-rose-400" />
+							<Icon name="wifi-off" size={14} className="text-rose-400" />
 							<span>Opponent disconnected</span>
 						</div>
 						<div class="font-mono text-[11px] font-extrabold bg-rose-900/80 px-2 py-0.5 rounded border border-rose-500/40">
@@ -531,12 +532,72 @@
 
 					<GameClock timeMs={bottomTimeMs} isActive={isBottomTurn} />
 				</div>
+
+				<!-- Mobile Quick Action Bar (Under board, zero scroll required) -->
+				<div class="lg:hidden w-full flex items-center justify-between gap-1.5 mt-2 px-2 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-lg">
+					{#if $gameStore.status === 'playing'}
+						{#if isPlayer}
+							<button
+								class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1 disabled:opacity-50"
+								on:click={handleOfferDraw}
+								disabled={$gameStore.drawOfferBy === myPlayerColor}
+							>
+								<Icon name="handshake" size={13} className="text-slate-400" />
+								<span>{$gameStore.drawOfferBy === myPlayerColor ? 'Offered' : 'Draw'}</span>
+							</button>
+
+							<button
+								class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1"
+								on:click={handleResign}
+							>
+								<Icon name="flag" size={13} className="text-rose-400" />
+								<span>Resign</span>
+							</button>
+						{/if}
+						<button
+							class="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1"
+							on:click={() => (flipBoard = !flipBoard)}
+							title="Flip Board"
+						>
+							<Icon name="rotate-cw" size={13} />
+						</button>
+						<button
+							class="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1"
+							on:click={() => (showMobileMoves = true)}
+						>
+							<Icon name="play" size={12} className="text-sky-400" />
+							<span>{$gameStore.moves.length}</span>
+						</button>
+					{:else}
+						<button
+							class="flex-1 py-1.5 px-2 bg-[#81b64c] hover:bg-[#91c65d] text-white font-extrabold text-[11px] uppercase tracking-wide rounded-lg transition flex items-center justify-center gap-1 shadow-xs"
+							on:click={handleAnalyze}
+						>
+							<Icon name="search" size={13} />
+							<span>Review</span>
+						</button>
+						<button
+							class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-stone-200 font-bold text-[11px] rounded-lg transition flex items-center justify-center gap-1"
+							on:click={handleNewGame}
+						>
+							<Icon name="zap" size={13} />
+							<span>New Match</span>
+						</button>
+						<button
+							class="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1"
+							on:click={() => (showMobileMoves = true)}
+						>
+							<Icon name="play" size={12} className="text-sky-400" />
+							<span>{$gameStore.moves.length}</span>
+						</button>
+					{/if}
+				</div>
 			</div>
 
 		</div>
 
-		<!-- Right Panel: HUD, Move Ledger & Actions -->
-		<div class="lg:col-span-5 xl:col-span-4 w-full flex flex-col h-[420px] lg:h-[min(calc(100dvh-100px),620px)] bg-gradient-to-b from-[#121824] to-[#0c1017] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+		<!-- Right Panel: HUD, Move Ledger & Actions (Desktop) -->
+		<div class="hidden lg:flex lg:col-span-5 xl:col-span-4 w-full flex-col h-[min(calc(100dvh-110px),640px)] bg-gradient-to-b from-[#121824] to-[#0c1017] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
 			
 			<!-- HUD Header -->
 			<div class="p-3 border-b border-slate-800 bg-[#090d15]/80 flex items-center justify-between">
@@ -753,3 +814,19 @@
 	on:cancel={() => (showOfferDrawModal = false)}
 	on:close={() => (showOfferDrawModal = false)}
 />
+
+<!-- Mobile Move History Modal -->
+<Modal
+	isOpen={showMobileMoves}
+	title="Move History ({$gameStore.moves.length} moves)"
+	on:close={() => (showMobileMoves = false)}
+>
+	<div class="max-h-72 overflow-y-auto p-1">
+		<MoveList
+			moves={$gameStore.moves}
+			whiteName={$gameStore.whitePlayer?.username || 'White'}
+			blackName={$gameStore.blackPlayer?.username || 'Black'}
+		/>
+	</div>
+</Modal>
+

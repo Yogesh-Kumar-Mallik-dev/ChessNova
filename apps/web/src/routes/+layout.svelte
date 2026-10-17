@@ -20,7 +20,7 @@
 <div class="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-300 relative overflow-x-hidden">
 	<DesktopTitlebar />
 	<Navbar />
-	<main class="flex-1 flex flex-col">
+	<main class="flex-1 flex flex-col min-h-0">
 		<slot />
 	</main>
 </div>

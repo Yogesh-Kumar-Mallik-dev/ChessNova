@@ -440,78 +440,146 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="flex-1 max-w-7xl mx-auto w-full p-2 sm:px-4 sm:py-3 flex flex-col justify-center select-none">
+<div class="flex-1 max-w-7xl mx-auto w-full px-2 py-1 sm:px-4 sm:py-1.5 lg:px-6 flex flex-col justify-center select-none min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-hidden">
 	<!-- Top Bar -->
-	<div class="mb-3 flex items-center justify-between gap-3 flex-wrap">
-		<div class="flex items-center gap-3">
-			<div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-md">
-				<Icon name="search" size={17} />
+	<div class="mb-1.5 flex items-center justify-between gap-2 flex-wrap shrink-0">
+		<div class="flex items-center gap-2.5">
+			<div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-md">
+				<Icon name="search" size={15} />
 			</div>
 			<div>
-				<h1 class="text-base sm:text-lg font-black text-white tracking-tight">Game Analysis & Review</h1>
-				<p class="text-[11px] text-slate-400 hidden sm:block">Move-by-move evaluations, advantage curve, and key moments</p>
+				<h1 class="text-sm sm:text-base font-black text-white tracking-tight">Game Analysis & Review</h1>
+				<p class="text-[10px] sm:text-[11px] text-slate-400 hidden sm:block">Move-by-move evaluations, advantage curve, and key moments</p>
 			</div>
 		</div>
 
 		<!-- Action Buttons & Advanced Toggle -->
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-1.5">
 			<!-- Advanced Mode Toggle -->
 			<button
-				class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer active:translate-y-px {showAdvanced
+				class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition border cursor-pointer active:translate-y-px {showAdvanced
 					? 'bg-slate-800 border-slate-600 text-slate-100 shadow-xs'
 					: 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'}"
 				on:click={toggleAdvanced}
 				title="Toggle advanced FEN, PGN, and position tools"
 			>
-				<Icon name="settings" size={13} className={showAdvanced ? 'text-emerald-400' : 'text-slate-400'} />
-				<span>Advanced Tools</span>
+				<Icon name="settings" size={12} className={showAdvanced ? 'text-emerald-400' : 'text-slate-400'} />
+				<span class="text-[11px]">Advanced</span>
 				<span class="w-1.5 h-1.5 rounded-full {showAdvanced ? 'bg-emerald-400' : 'bg-slate-600'}"></span>
 			</button>
 
 			<button
-				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 transition shadow-xs active:translate-y-px"
+				class="inline-flex items-center gap-1 px-2 py-1 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 transition shadow-xs active:translate-y-px"
 				on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 				title="Flip Board"
 			>
-				<Icon name="rotate-cw" size={13} className="text-slate-400" />
-				<span class="hidden sm:inline">Flip</span>
+				<Icon name="rotate-cw" size={12} className="text-slate-400" />
+				<span class="text-[11px] hidden sm:inline">Flip</span>
 			</button>
 
 			<button
-				class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 transition shadow-xs active:translate-y-px"
+				class="inline-flex items-center gap-1 px-2 py-1 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 transition shadow-xs active:translate-y-px"
 				on:click={resetToStart}
 				title="Reset to Starting Position"
 			>
-				<Icon name="rotate-ccw" size={13} className="text-slate-400" />
-				<span class="hidden sm:inline">Reset</span>
+				<Icon name="rotate-ccw" size={12} className="text-slate-400" />
+				<span class="text-[11px] hidden sm:inline">Reset</span>
 			</button>
 		</div>
 	</div>
 
 	<!-- Main Board & Side Panel Grid -->
-	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-5 items-center justify-center my-auto">
-		<!-- Left: Board with Eval Bar -->
-		<div class="lg:col-span-7 xl:col-span-8 flex justify-center items-center gap-2 sm:gap-3">
-			<div class="hidden sm:flex h-[min(88vw,calc(100dvh-150px),580px)]">
-				<EvalBar scoreCp={activeScoreCp} isMate={activeIsMate} mateIn={activeMateIn} {orientation} />
-			</div>
-			<div class="shrink-0 flex justify-center w-full max-w-[min(88vw,calc(100dvh-150px),580px)]">
-				<ChessBoard
-					{fen}
-					{orientation}
-					{turn}
-					{lastMove}
-					mode="analysis"
-					boardSizeClass="w-full"
-					reviewMove={activeReviewMove}
-					hintArrow={liveHintArrow}
-					on:move={handleMove}
-				/>
+	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-5 items-center justify-center my-auto min-h-0">
+		<!-- Left: Board with Eval Bar & Universal Stepper Bar -->
+		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
+			<div class="w-full max-w-[min(96vw,calc(100dvh-170px),640px)] flex flex-col items-center">
+				<div class="flex items-center justify-center gap-1.5 sm:gap-2.5 w-full">
+					<!-- Slim Eval Bar (visible on all screens including mobile!) -->
+					<div class="flex h-[min(88vw,calc(100dvh-210px),590px)] shrink-0">
+						<EvalBar scoreCp={activeScoreCp} isMate={activeIsMate} mateIn={activeMateIn} {orientation} />
+					</div>
+
+					<div class="flex-1 min-w-0 flex justify-center">
+						<ChessBoard
+							{fen}
+							{orientation}
+							{turn}
+							{lastMove}
+							mode="analysis"
+							boardSizeClass="w-full"
+							reviewMove={activeReviewMove}
+							hintArrow={liveHintArrow}
+							on:move={handleMove}
+						/>
+					</div>
+				</div>
+
+				<!-- Universal Stepper & Action Controls (DIRECTLY UNDER THE BOARD ON ALL SCREENS) -->
+				<div class="w-full mt-2 flex items-center justify-between gap-1.5 p-1.5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-lg">
+					<div class="flex items-center gap-1">
+						<button
+							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
+							on:click={() => goToPly(0)}
+							disabled={currentPly <= 0}
+							title="Start of Game (Home)"
+						>
+							<Icon name="chevrons-left" size={15} />
+						</button>
+
+						<button
+							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
+							on:click={() => goToPly(currentPly - 1)}
+							disabled={currentPly <= 0}
+							title="Previous Move (Left Arrow)"
+						>
+							<Icon name="chevron-left" size={15} />
+						</button>
+
+						<button
+							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
+							on:click={() => goToPly(currentPly + 1)}
+							disabled={currentPly >= moves.length}
+							title="Next Move (Right Arrow / Space)"
+						>
+							<Icon name="chevron-right" size={15} />
+						</button>
+
+						<button
+							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
+							on:click={() => goToPly(moves.length)}
+							disabled={currentPly >= moves.length}
+							title="Latest Move (End)"
+						>
+							<Icon name="chevrons-right" size={15} />
+						</button>
+					</div>
+
+					<!-- Move Position Indicator / Eval Badge -->
+					<div class="flex items-center gap-2 font-mono text-xs">
+						<span class="text-slate-300 font-bold px-2 py-0.5 rounded bg-slate-950/80 border border-slate-800">
+							{currentPly === 0 ? 'Start' : `${Math.ceil(currentPly / 2)}${currentPly % 2 === 1 ? '.' : '...'} ${moves[currentPly - 1]?.san || ''}`}
+						</span>
+						<span class="text-slate-500 text-[11px] hidden sm:inline">
+							({currentPly}/{moves.length})
+						</span>
+					</div>
+
+					<div class="flex items-center gap-1">
+						<button
+							class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs font-medium flex items-center gap-1"
+							on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
+							title="Flip Board"
+						>
+							<Icon name="rotate-cw" size={13} />
+							<span class="hidden sm:inline">Flip</span>
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 
 		<!-- Right: Analysis Panel -->
-		<div class="lg:col-span-5 xl:col-span-4 h-[440px] lg:h-[min(calc(100dvh-150px),620px)] flex flex-col">
+		<div class="lg:col-span-5 xl:col-span-4 h-[440px] lg:h-[min(calc(100dvh-110px),640px)] flex flex-col">
 			<!-- Panel Tab Navigation -->
 			<div class="flex items-center p-1 bg-slate-950/80 border border-slate-800 rounded-xl mb-2.5 shrink-0 overflow-x-auto">
 				<button

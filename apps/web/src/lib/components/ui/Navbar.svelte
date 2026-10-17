@@ -25,7 +25,7 @@
 	];
 </script>
 
-<header class="h-16 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 select-none">
+<header class="h-14 sm:h-16 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-40 select-none">
 	<div class="flex items-center gap-6 lg:gap-8">
 		<!-- Brand Logo -->
 		<a href="/" class="flex items-center gap-2.5 text-white font-bold text-lg sm:text-xl tracking-tight group">
