@@ -37,6 +37,8 @@ export interface GameState {
 	promotionPending: { from: string; to: string } | null;
 	drawOfferBy: string | null;
 	moves: GameMoveRecord[];
+	whiteDiff?: number | null;
+	blackDiff?: number | null;
 	opponentConnected: boolean;
 	opponentDisconnectTime: number | null;
 }

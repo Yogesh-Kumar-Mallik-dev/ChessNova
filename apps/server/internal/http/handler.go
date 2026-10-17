@@ -452,13 +452,17 @@ func (rt *Router) handleGetMe(w http.ResponseWriter, r *http.Request, claims *au
 	}
 
 	ratingsList := make(map[string]int)
-	for _, cat := range []rating.Category{rating.Bullet, rating.Blitz, rating.Rapid, rating.Classical} {
+	for _, cat := range []rating.Category{rating.Bullet, rating.Blitz, rating.Rapid, rating.Classical, rating.Puzzles} {
 		ur, _ := rt.ratingRepo.GetRating(r.Context(), u.ID, cat)
 		if ur != nil {
 			ratingsList[string(cat)] = ur.Rating
 		} else {
 			ratingsList[string(cat)] = rating.DefaultRating
 		}
+	}
+	// Alias puzzle for frontend compatibility
+	if pz, ok := ratingsList["puzzles"]; ok {
+		ratingsList["puzzle"] = pz
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -476,11 +480,14 @@ func (rt *Router) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ratingsList := make(map[string]interface{})
-	for _, cat := range []rating.Category{rating.Bullet, rating.Blitz, rating.Rapid, rating.Classical} {
+	for _, cat := range []rating.Category{rating.Bullet, rating.Blitz, rating.Rapid, rating.Classical, rating.Puzzles} {
 		ur, _ := rt.ratingRepo.GetRating(r.Context(), u.ID, cat)
 		if ur != nil {
 			ratingsList[string(cat)] = ur
 		}
+	}
+	if pz, ok := ratingsList["puzzles"]; ok {
+		ratingsList["puzzle"] = pz
 	}
 
 	// Fetch recent games
@@ -1194,7 +1201,10 @@ func (rt *Router) handleJoinGame(w http.ResponseWriter, r *http.Request, claims 
 func (rt *Router) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	catStr := r.URL.Query().Get("category")
 	cat := rating.Category(catStr)
-	if cat != rating.Bullet && cat != rating.Blitz && cat != rating.Rapid && cat != rating.Classical {
+	if catStr == "puzzle" {
+		cat = rating.Puzzles
+	}
+	if cat != rating.Bullet && cat != rating.Blitz && cat != rating.Rapid && cat != rating.Classical && cat != rating.Puzzles {
 		cat = rating.Blitz
 	}
 

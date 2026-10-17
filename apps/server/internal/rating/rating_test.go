@@ -94,3 +94,64 @@ func TestDetermineCategory(t *testing.T) {
 		}
 	}
 }
+
+func TestCalculateElo_AllCategoriesAndScenarios(t *testing.T) {
+	categories := []Category{Bullet, Blitz, Rapid, Classical, Puzzles}
+	for _, cat := range categories {
+		if string(cat) == "" {
+			t.Errorf("empty category found")
+		}
+	}
+
+	// 1. Higher rated vs lower rated: Underdog wins (+delta should be large)
+	newA, newB, diffA, diffB := CalculateElo(1200, 1600, 1.0, DefaultKFactor)
+	if diffA <= 16 {
+		t.Errorf("underdog win should award significant Elo (>16), got %d", diffA)
+	}
+	if diffB >= -16 {
+		t.Errorf("favorite loss should deduct significant Elo (<-16), got %d", diffB)
+	}
+	if newA != 1200+diffA || newB != 1600+diffB {
+		t.Errorf("mismatch in rating updates: newA=%d, newB=%d", newA, newB)
+	}
+
+	// 2. Draw between equal ratings
+	newA, newB, diffA, diffB = CalculateElo(1500, 1500, 0.5, DefaultKFactor)
+	if diffA != 0 || diffB != 0 {
+		t.Errorf("draw between equal ratings should produce 0 diff, got diffA=%d, diffB=%d", diffA, diffB)
+	}
+	if newA != 1500 || newB != 1500 {
+		t.Errorf("draw between equal ratings should preserve ratings, got newA=%d, newB=%d", newA, newB)
+	}
+
+	// 3. Draw between favorite and underdog: underdog gains slightly, favorite loses slightly
+	newA, newB, diffA, diffB = CalculateElo(1200, 1600, 0.5, DefaultKFactor)
+	if diffA <= 0 {
+		t.Errorf("underdog drawing against much higher rated opponent should gain rating, got %d", diffA)
+	}
+	if diffB >= 0 {
+		t.Errorf("favorite drawing against much lower rated opponent should lose rating, got %d", diffB)
+	}
+
+	// 4. Puzzle solve calculation (single player score against puzzle rating)
+	playerRating := 1000
+	puzzleRating := 1200
+	// Solving correctly
+	newPlayer, _, gain, _ := CalculateElo(playerRating, puzzleRating, 1.0, DefaultKFactor)
+	if gain <= 16 {
+		t.Errorf("solving higher rated puzzle should award >16 rating, got %d", gain)
+	}
+	if newPlayer != playerRating+gain {
+		t.Errorf("new rating %d != %d + %d", newPlayer, playerRating, gain)
+	}
+
+	// Failing puzzle
+	newPlayerFail, _, loss, _ := CalculateElo(playerRating, puzzleRating, 0.0, DefaultKFactor)
+	if loss >= 0 {
+		t.Errorf("failing puzzle should decrease rating, got %d", loss)
+	}
+	if newPlayerFail != playerRating+loss {
+		t.Errorf("new rating %d != %d + %d", newPlayerFail, playerRating, loss)
+	}
+}
+

@@ -1,6 +1,15 @@
 import { gameStore } from '$lib/stores/game';
+import { authStore } from '$lib/stores/auth';
 import { soundEffects } from '$lib/audio/sounds';
 import { sendDesktopNotification } from '$lib/utils/desktop';
+
+function getCategory(initialSeconds: number): string {
+	const mins = initialSeconds / 60;
+	if (mins < 3) return 'bullet';
+	if (mins < 10) return 'blitz';
+	if (mins < 30) return 'rapid';
+	return 'classical';
+}
 
 function toSquareNotation(val: any): string {
 	if (typeof val === 'string' && val.length === 2 && val[0] >= 'a' && val[0] <= 'h' && val[1] >= '1' && val[1] <= '8') {
@@ -205,16 +214,42 @@ export class GameSocket {
 
 			case 'resignation':
 			case 'game_finished':
+			case 'draw_accepted':
 				soundEffects.playGameEnd();
 				sendDesktopNotification('Game Over', `Match finished: ${data.outcome || data.result || 'Game ended'}.`);
-				gameStore.update((s) => ({
-					...s,
-					status: data.status,
-					outcome: data.outcome,
-					result: data.result,
-					winner: data.winner || s.winner,
-					drawOfferBy: null
-				}));
+				gameStore.update((s) => {
+					const wDiff = data.whiteDiff !== undefined ? data.whiteDiff : s.whiteDiff;
+					const bDiff = data.blackDiff !== undefined ? data.blackDiff : s.blackDiff;
+
+					// Sync authStore ratings immediately if the current player participated
+					if (s.timeControl?.initial) {
+						const cat = getCategory(s.timeControl.initial);
+						let authState: any = null;
+						const unsub = authStore.subscribe((val) => (authState = val));
+						unsub();
+						if (authState?.user) {
+							const uid = authState.user.id;
+							const uname = authState.user.username;
+							const isWhite = (s.whitePlayer?.userId && s.whitePlayer.userId === uid) || (uname && s.whitePlayer?.username?.toLowerCase() === uname.toLowerCase());
+							const isBlack = (s.blackPlayer?.userId && s.blackPlayer.userId === uid) || (uname && s.blackPlayer?.username?.toLowerCase() === uname.toLowerCase());
+							const diff = isWhite ? wDiff : isBlack ? bDiff : null;
+							if (diff !== null && diff !== undefined && authState.ratings?.[cat] !== undefined) {
+								authStore.updateRating(cat, Math.max(100, authState.ratings[cat] + diff));
+							}
+						}
+					}
+
+					return {
+						...s,
+						status: data.status || 'finished',
+						outcome: data.outcome || s.outcome,
+						result: data.result || s.result,
+						winner: data.winner || s.winner,
+						whiteDiff: wDiff,
+						blackDiff: bDiff,
+						drawOfferBy: null
+					};
+				});
 				break;
 
 			case 'draw_offer':
@@ -222,18 +257,6 @@ export class GameSocket {
 				gameStore.update((s) => ({
 					...s,
 					drawOfferBy: data.offeredBy
-				}));
-				break;
-
-			case 'draw_accepted':
-				soundEffects.playGameEnd();
-				sendDesktopNotification('Draw Accepted', 'The game concluded in a draw.');
-				gameStore.update((s) => ({
-					...s,
-					status: data.status,
-					outcome: data.outcome,
-					result: data.result,
-					drawOfferBy: null
 				}));
 				break;
 

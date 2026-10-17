@@ -677,6 +677,7 @@
 		outcome={$gameStore.outcome || ''}
 		winner={$gameStore.winner || ''}
 		playerColor={myPlayerColor || 'white'}
+		ratingDiff={myPlayerColor === 'white' ? $gameStore.whiteDiff : myPlayerColor === 'black' ? $gameStore.blackDiff : null}
 		on:newGame={handleNewGame}
 		on:analyze={handleAnalyze}
 		on:close={() => (showResultModal = false)}

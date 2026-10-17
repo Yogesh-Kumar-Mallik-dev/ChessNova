@@ -236,6 +236,9 @@
 							userRating = check.newRating;
 							ratingDiff = check.diff;
 							solvedCount++;
+							if ($authStore.user) {
+								authStore.updateRating('puzzles', check.newRating);
+							}
 						}
 					} else {
 						if (hasAssistance || isRetrying) {
@@ -245,6 +248,9 @@
 							userRating = check.newRating;
 							ratingDiff = check.diff;
 							solvedCount++;
+							if ($authStore.user) {
+								authStore.updateRating('puzzles', check.newRating);
+							}
 						}
 					}
 					statusType = 'success';
@@ -274,6 +280,9 @@
 				if (!isRetrying && !hasAssistance) {
 					userRating = check.newRating;
 					ratingDiff = check.diff;
+					if ($authStore.user) {
+						authStore.updateRating('puzzles', check.newRating);
+					}
 				}
 				isRetrying = true;
 			}
@@ -284,8 +293,9 @@
 	}
 
 	onMount(() => {
-		if ($authStore.ratings?.puzzles) {
-			userRating = Math.max(100, $authStore.ratings.puzzles);
+		const pr = $authStore.ratings?.puzzles ?? $authStore.ratings?.puzzle;
+		if (pr) {
+			userRating = Math.max(100, pr);
 		}
 		loadRandomPuzzle();
 	});

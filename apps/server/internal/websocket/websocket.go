@@ -166,6 +166,8 @@ type ServerMessage struct {
 	White       *game.PlayerInfo  `json:"white,omitempty"`
 	Black       *game.PlayerInfo  `json:"black,omitempty"`
 	TimeControl *game.TimeControl `json:"timeControl,omitempty"`
+	WhiteDiff   *int              `json:"whiteDiff,omitempty"`
+	BlackDiff   *int              `json:"blackDiff,omitempty"`
 }
 
 type Client struct {
@@ -235,6 +237,8 @@ func NewHub(gameService *game.Service, authService *auth.Service, cfgs ...HubCon
 			} else if doc.Result == "0-1" {
 				winner = "black"
 			}
+			wDiff := doc.WhiteRatingDiff
+			bDiff := doc.BlackRatingDiff
 			h.Broadcast(doc.ID, ServerMessage{
 				Type:      "game_finished",
 				GameID:    doc.ID,
@@ -243,6 +247,8 @@ func NewHub(gameService *game.Service, authService *auth.Service, cfgs ...HubCon
 				Result:    doc.Result,
 				Winner:    winner,
 				FEN:       doc.FinalFEN,
+				WhiteDiff: &wDiff,
+				BlackDiff: &bDiff,
 			})
 		})
 	}

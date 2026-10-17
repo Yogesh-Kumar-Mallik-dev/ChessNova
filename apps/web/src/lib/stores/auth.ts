@@ -93,6 +93,14 @@ function createAuthStore() {
 				user: state.user ? { ...state.user, ...fields } : null
 			}));
 		},
+		updateRating: (category: string, newRating: number) => {
+			update((state) => {
+				const ratings = { ...state.ratings, [category]: newRating };
+				if (category === 'puzzles') ratings['puzzle'] = newRating;
+				if (category === 'puzzle') ratings['puzzles'] = newRating;
+				return { ...state, ratings };
+			});
+		},
 		logout: () => {
 			if (typeof window !== 'undefined') {
 				localStorage.removeItem('access_token');

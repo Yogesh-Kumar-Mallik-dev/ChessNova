@@ -32,8 +32,8 @@ func TestPuzzleToPublic(t *testing.T) {
 }
 
 func TestCuratedLichessPuzzlesIntegrity(t *testing.T) {
-	if len(CuratedLichessPuzzles) < 100 {
-		t.Fatalf("expected at least 100 curated lichess puzzles, got %d", len(CuratedLichessPuzzles))
+	if len(CuratedLichessPuzzles) < 500 {
+		t.Fatalf("expected at least 500 curated lichess puzzles, got %d", len(CuratedLichessPuzzles))
 	}
 
 	for i, p := range CuratedLichessPuzzles {

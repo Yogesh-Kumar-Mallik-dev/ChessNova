@@ -6,6 +6,7 @@
 	export let outcome: string;
 	export let winner: string;
 	export let playerColor: string;
+	export let ratingDiff: number | null = null;
 
 	const dispatch = createEventDispatcher<{
 		newGame: void;
@@ -72,9 +73,22 @@
 			{subtitle}
 		</p>
 
-		<!-- Score pill -->
-		<div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-950/80 border border-slate-800 text-[11px] font-mono font-bold text-slate-300 mb-5">
-			<span>{result}</span>
+		<!-- Score pill & Rating Diff -->
+		<div class="inline-flex items-center gap-2 mb-5">
+			<div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-950/80 border border-slate-800 text-[11px] font-mono font-bold text-slate-300">
+				<span>{result}</span>
+			</div>
+			{#if ratingDiff !== null && ratingDiff !== undefined}
+				<div
+					class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-extrabold border {ratingDiff > 0
+						? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+						: ratingDiff < 0
+							? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+							: 'bg-slate-800 border-slate-700 text-slate-400'}"
+				>
+					<span>{ratingDiff > 0 ? `+${ratingDiff}` : `${ratingDiff}`}</span>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Action Buttons -->
