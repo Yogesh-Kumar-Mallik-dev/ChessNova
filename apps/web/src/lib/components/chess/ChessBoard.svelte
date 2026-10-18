@@ -49,7 +49,7 @@
 	import { themeStore, type BoardTheme } from '$lib/stores/preferences';
 
 	export let theme: BoardTheme = $themeStore;
-	export let boardSizeClass: string = 'max-w-[min(90vw,calc(100dvh-180px),580px)]';
+	export let boardSizeClass: string = 'max-w-[min(100%,calc(100dvh-200px),600px)]';
 
 	onMount(() => {
 		const unsub = themeStore.subscribe((val) => {
@@ -436,14 +436,14 @@
 	$: effectiveDisableGameOverModal = disableGameOverModal || mode !== 'game';
 </script>
 
-<div class="relative w-full aspect-square {boardSizeClass} rounded-2xl overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.85)] border-4 border-slate-800 ring-1 ring-slate-700/60 select-none {mode === 'game' && isCheckmate ? 'ring-2 ring-amber-400/80 animate-[boardImpact_450ms_ease-out]' : ''}">
+<div class="relative w-full aspect-square {boardSizeClass} rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border-2 sm:border-4 border-border ring-1 ring-border/50 select-none {mode === 'game' && isCheckmate ? 'ring-2 ring-amber-400/80 animate-[boardImpact_450ms_ease-out]' : ''}">
 	{#if showSoundToggle}
 		<button
-			class="absolute top-2 right-2 z-30 p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 transition shadow-md"
+			class="absolute top-2 right-2 z-30 p-1.5 sm:p-2 rounded-lg bg-card/90 hover:bg-muted border border-border text-foreground transition shadow-md backdrop-blur-xs"
 			on:click={toggleAudio}
 			title={soundMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
 		>
-			<Icon name={soundMuted ? 'volume-x' : 'volume-2'} size={15} />
+			<Icon name={soundMuted ? 'volume-x' : 'volume-2'} size={14} />
 		</button>
 	{/if}
 

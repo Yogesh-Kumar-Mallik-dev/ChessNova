@@ -34,15 +34,15 @@
 </script>
 
 <div
-	class="relative w-5 sm:w-6 h-full bg-[#1c1d22] rounded-md overflow-hidden border border-border flex flex-col justify-end shadow-xs select-none"
+	class="relative w-4 xs:w-5 sm:w-6 h-full bg-neutral-900 rounded-md overflow-hidden border border-border flex flex-col justify-end shadow-xs select-none"
 	title="Advantage: {formattedScore}"
 >
 	<!-- Black Portion (Top if White orientation) -->
-	<div class="absolute inset-0 bg-[#1c1d22]"></div>
+	<div class="absolute inset-0 bg-neutral-900"></div>
 
 	<!-- White Portion (Bottom if White orientation) -->
 	<div
-		class="w-full bg-[#f4f4f6] transition-all duration-300 ease-out"
+		class="w-full bg-neutral-100 transition-all duration-300 ease-out"
 		style="height: {bottomPercent}%;"
 	></div>
 
@@ -52,7 +52,7 @@
 		style={bottomPercent > 50 ? 'bottom: 6px;' : 'top: 6px;'}
 	>
 		<span
-			class="px-1 py-0.5 rounded text-[10px] font-mono font-bold leading-none {bottomPercent > 50 ? 'text-[#1c1d22]' : 'text-[#f4f4f6]'}"
+			class="px-1 py-0.5 rounded text-[9px] sm:text-[10px] font-mono font-bold leading-none {bottomPercent > 50 ? 'text-neutral-900 bg-neutral-100/90' : 'text-neutral-100 bg-neutral-900/90'}"
 		>
 			{formattedScore}
 		</span>

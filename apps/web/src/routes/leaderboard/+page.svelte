@@ -88,11 +88,11 @@
 				<table class="w-full text-left text-sm">
 					<thead class="bg-secondary/40 border-b border-border text-[11px] text-muted-foreground uppercase font-bold tracking-wider">
 						<tr>
-							<th class="py-3 px-4 w-16 text-center">Rank</th>
+							<th class="py-3 px-4 w-12 sm:w-16 text-center">Rank</th>
 							<th class="py-3 px-4">Player</th>
 							<th class="py-3 px-4 text-right">Rating</th>
-							<th class="py-3 px-4 text-center">Games</th>
-							<th class="py-3 px-4 text-right">Record</th>
+							<th class="py-3 px-4 text-center hidden sm:table-cell">Games</th>
+							<th class="py-3 px-4 text-right hidden sm:table-cell">Record</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-border/60">
@@ -127,10 +127,10 @@
 								<td class="py-3.5 px-4 text-right font-mono font-extrabold text-foreground tabular-nums">
 									{entry.rating}
 								</td>
-								<td class="py-3.5 px-4 text-center font-mono text-muted-foreground text-xs tabular-nums">
+								<td class="py-3.5 px-4 text-center font-mono text-muted-foreground text-xs tabular-nums hidden sm:table-cell">
 									{entry.games}
 								</td>
-								<td class="py-3.5 px-4 text-right font-mono text-xs tabular-nums">
+								<td class="py-3.5 px-4 text-right font-mono text-xs tabular-nums hidden sm:table-cell">
 									<span class="text-emerald-500 font-semibold">{entry.wins}W</span>
 									<span class="text-muted-foreground/60 mx-1">•</span>
 									<span class="text-destructive font-semibold">{entry.losses}L</span>

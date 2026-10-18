@@ -12,12 +12,14 @@
 	import { Chess } from 'chess.js';
 	import { authStore } from '$lib/stores/auth';
 	import UserBadge from '$lib/components/ui/UserBadge.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import { saveLocalGame, stageGameForReview } from '$lib/stores/localGames';
 	import { generateBotMove } from '$lib/engine/localEngine';
 
 	// Game Modes
 	type GameMode = 'pass_and_play' | 'vs_computer';
 	let gameMode: GameMode = 'vs_computer';
+	let showMobileMoves = false;
 
 	interface BotPersona {
 		level: number;
@@ -346,7 +348,7 @@
 	}
 </script>
 
-<div class="flex-1 max-w-7xl mx-auto w-full px-2 py-1 sm:px-4 sm:py-1.5 lg:px-6 flex flex-col justify-center min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-hidden">
+<div class="flex-1 max-w-7xl mx-auto w-full px-2 py-1.5 sm:px-4 sm:py-2 lg:px-6 flex flex-col justify-center min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto lg:overflow-hidden">
 	<!-- Slim Header & Mode Toolbar -->
 	<div class="mb-1.5 flex flex-wrap items-center justify-between gap-2 bg-card border border-border rounded-xl px-2.5 py-1.5 shrink-0 shadow-xs">
 		<div class="flex items-center gap-2">
@@ -366,7 +368,7 @@
 				</button>
 			</div>
 
-			<!-- Bot Selector Chips -->
+			<!-- Bot Selector Chips (Desktop) & Select (Mobile) -->
 			{#if gameMode === 'vs_computer'}
 				<div class="hidden sm:flex items-center gap-1 bg-secondary/60 p-0.5 rounded-lg border border-border">
 					{#each botPersonas as b}
@@ -383,6 +385,19 @@
 							<span class="text-[9px] font-mono opacity-80 tabular-nums">({b.elo})</span>
 						</button>
 					{/each}
+				</div>
+
+				<!-- Compact Mobile Bot Dropdown -->
+				<div class="sm:hidden flex items-center">
+					<select
+						class="bg-secondary text-foreground text-xs font-semibold py-1 px-2 rounded-lg border border-border focus:outline-none focus:ring-1 focus:ring-ring"
+						value={botLevel}
+						on:change={(e) => setBotLevel(Number(e.currentTarget.value))}
+					>
+						{#each botPersonas as b}
+							<option value={b.level}>{b.name} ({b.elo} Elo)</option>
+						{/each}
+					</select>
 				</div>
 			{/if}
 		</div>
@@ -428,7 +443,7 @@
 	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center justify-center my-auto min-h-0">
 		<!-- Chess Board Column (Hero centerpiece) -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
-			<div class="w-full max-w-[min(96vw,calc(100dvh-150px),640px)] flex flex-col items-center">
+			<div class="w-full max-w-[min(100%,calc(100dvh-200px),580px)] flex flex-col items-center">
 				
 				<!-- Opponent Indicator Bar -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-xs select-none mb-1">
@@ -500,23 +515,49 @@
 						{/if}
 					</div>
 
-					<!-- Mobile Quick Action Buttons -->
+					<!-- Turn Indicator -->
 					<div class="flex items-center gap-1.5">
-						{#if isGameOver}
-							<Button
-								variant="primary"
-								size="sm"
-								className="text-xs uppercase tracking-wider"
-								on:click={handleAnalyze}
-							>
-								<Icon name="search" size={12} />
-								<span>Review</span>
-							</Button>
-						{/if}
 						<span class="text-[11px] font-mono {turn === playerColor ? 'text-foreground font-bold' : 'text-muted-foreground'}">
 							{turn === playerColor ? 'Your turn' : 'Waiting...'}
 						</span>
 					</div>
+				</div>
+
+				<!-- Mobile Action Bar (< lg) -->
+				<div class="lg:hidden w-full flex items-center justify-between gap-1.5 mt-2 px-2 py-1.5 bg-card border border-border rounded-xl shadow-xs">
+					<button
+						class="flex-1 py-1 px-2 bg-secondary hover:bg-muted text-foreground font-semibold text-xs rounded-lg transition border border-border flex items-center justify-center gap-1.5 cursor-pointer"
+						on:click={() => (showMobileMoves = true)}
+					>
+						<Icon name="play" size={12} className="text-muted-foreground" />
+						<span>Moves ({moves.length})</span>
+					</button>
+
+					<button
+						class="py-1 px-2.5 bg-secondary hover:bg-muted text-foreground font-semibold text-xs rounded-lg transition border border-border flex items-center justify-center gap-1 cursor-pointer"
+						on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
+						title="Flip Board"
+					>
+						<Icon name="rotate-cw" size={13} />
+					</button>
+
+					<button
+						class="py-1 px-2.5 bg-secondary hover:bg-muted text-foreground font-semibold text-xs rounded-lg transition border border-border flex items-center justify-center gap-1 cursor-pointer"
+						on:click={resetLocalGame}
+						title="New Match"
+					>
+						<Icon name="rotate-ccw" size={13} />
+					</button>
+
+					{#if isGameOver}
+						<button
+							class="flex-1 py-1 px-2 bg-foreground text-background font-bold text-xs uppercase tracking-wider rounded-lg transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+							on:click={handleAnalyze}
+						>
+							<Icon name="search" size={12} />
+							<span>Review</span>
+						</button>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -591,3 +632,35 @@
 		</div>
 	</div>
 </div>
+
+<!-- Mobile Move History Modal -->
+<Modal
+	isOpen={showMobileMoves}
+	title="Move History ({moves.length} moves)"
+	on:close={() => (showMobileMoves = false)}
+>
+	<div class="flex flex-col gap-3">
+		{#if gameMode === 'vs_computer'}
+			<div class="flex items-center gap-2.5 p-2.5 rounded-lg bg-secondary/50 border border-border">
+				<div class="w-8 h-8 rounded-lg bg-secondary border border-border flex items-center justify-center text-foreground shrink-0">
+					<Icon name={activeBot.icon} size={16} />
+				</div>
+				<div class="min-w-0 flex-1">
+					<div class="flex items-center gap-1.5">
+						<span class="text-xs font-bold text-foreground truncate">{activeBot.name}</span>
+						<span class="text-[10px] font-mono px-1 py-0.2 rounded bg-card border border-border text-foreground font-semibold">{activeBot.elo}</span>
+					</div>
+					<p class="text-[11px] text-muted-foreground truncate">"{activeBot.quote}"</p>
+				</div>
+			</div>
+		{/if}
+
+		<div class="h-64 overflow-hidden rounded-lg border border-border bg-card">
+			<MoveList
+				{moves}
+				whiteName={playerColor === 'white' ? 'You' : activeBot.name}
+				blackName={playerColor === 'black' ? 'You' : activeBot.name}
+			/>
+		</div>
+	</div>
+</Modal>

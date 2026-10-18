@@ -303,7 +303,7 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="flex-1 max-w-7xl mx-auto w-full px-2 py-1 sm:px-4 sm:py-1.5 lg:px-6 flex flex-col justify-center min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-hidden">
+<div class="flex-1 max-w-7xl mx-auto w-full px-2 py-1.5 sm:px-4 sm:py-2 lg:px-6 flex flex-col justify-center min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto lg:overflow-hidden">
 	<!-- Slim Unified Header & Filter Toolbar -->
 	<div class="mb-1.5 flex flex-wrap items-center justify-between gap-2 bg-card border border-border rounded-xl px-2.5 py-1.5 shrink-0 shadow-xs">
 		<!-- Left: Mode Switcher -->
@@ -342,6 +342,22 @@
 
 		<!-- Middle: Filters (When in practice mode) -->
 		{#if puzzleMode === 'practice'}
+			<!-- Mobile Category Select Dropdown -->
+			<div class="sm:hidden flex items-center">
+				<select
+					class="bg-secondary text-foreground text-xs font-semibold py-1 px-2 rounded-lg border border-border focus:outline-none focus:ring-1 focus:ring-ring capitalize"
+					value={selectedCategory}
+					on:change={(e) => {
+						selectedCategory = e.currentTarget.value;
+						loadPuzzle('practice');
+					}}
+				>
+					{#each ['all', 'mate', 'fork', 'pin', 'capture'] as cat}
+						<option value={cat}>{cat}</option>
+					{/each}
+				</select>
+			</div>
+
 			<div class="hidden sm:flex items-center gap-2">
 				<!-- Category Filter -->
 				<div class="flex items-center gap-0.5 bg-secondary/60 p-0.5 rounded-lg border border-border">
@@ -417,7 +433,7 @@
 	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center justify-center my-auto min-h-0">
 		<!-- Left: Hero Puzzle Board Column -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
-			<div class="w-full max-w-[min(96vw,calc(100dvh-170px),640px)] flex flex-col items-center">
+			<div class="w-full max-w-[min(100%,calc(100dvh-200px),580px)] flex flex-col items-center">
 				
 				<!-- Turn Banner -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-xs font-semibold select-none mb-1">

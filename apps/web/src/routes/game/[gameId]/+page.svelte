@@ -432,13 +432,13 @@
 
 </script>
 
-<div class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full px-2 py-1 sm:px-4 sm:py-2 lg:px-6 min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-hidden">
+<div class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full px-2 py-1.5 sm:px-4 sm:py-2 lg:px-6 min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto lg:overflow-hidden">
 	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center justify-center my-auto min-h-0">
 		
 		<!-- Board Column (Hero centerpiece) -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
 			
-			<div class="w-full max-w-[min(96vw,calc(100dvh-150px),640px)] flex flex-col items-center">
+			<div class="w-full max-w-[min(100%,calc(100dvh-200px),580px)] flex flex-col items-center">
 				<!-- Opponent Disconnection Countdown Banner -->
 				{#if isPlayer && !$gameStore.opponentConnected && $gameStore.status === 'playing'}
 					<div class="w-full mb-1.5 p-2 bg-destructive/10 border border-destructive/30 rounded-xl flex items-center justify-between text-xs text-destructive animate-pulse shadow-sm">

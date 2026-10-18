@@ -19,17 +19,17 @@
 	}
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-	<div class="bg-gradient-to-b from-[#161f30] to-[#0c121e] border border-sky-500/30 p-5 rounded-2xl shadow-[0_0_35px_rgba(56,189,248,0.25)] flex flex-col items-center">
-		<h3 class="text-xs font-mono font-bold uppercase tracking-widest text-sky-400 mb-4 flex items-center gap-2">
-			<span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping"></span>
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 animate-in fade-in duration-200">
+	<div class="bg-card border border-border p-4 sm:p-5 rounded-2xl shadow-2xl flex flex-col items-center max-w-[94vw] sm:max-w-md w-full">
+		<h3 class="text-xs font-mono font-bold uppercase tracking-wider text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+			<span class="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse"></span>
 			Promote Pawn
 		</h3>
 		
-		<div class="flex items-center gap-3">
+		<div class="grid grid-cols-4 gap-2 sm:gap-3 w-full max-w-xs">
 			{#each promoOptions as opt}
 				<button
-					class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700/80 hover:border-sky-400/80 rounded-xl p-2.5 transition-all duration-200 flex flex-col items-center justify-center hover:scale-105 active:scale-95 shadow-lg group hover:shadow-[0_0_15px_rgba(56,189,248,0.3)]"
+					class="aspect-square bg-secondary hover:bg-muted border border-border hover:border-foreground/40 rounded-xl p-2 sm:p-2.5 transition-all duration-150 flex flex-col items-center justify-center hover:scale-105 active:scale-95 shadow-xs group"
 					on:click={() => dispatch('select', opt.type)}
 					title={opt.label}
 				>

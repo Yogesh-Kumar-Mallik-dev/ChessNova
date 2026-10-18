@@ -69,7 +69,7 @@
 	})();
 </script>
 
-<div class="flex items-center gap-1.5 h-6 overflow-hidden">
+<div class="flex items-center gap-1 sm:gap-1.5 h-6 overflow-hidden max-w-[80px] xs:max-w-[130px] sm:max-w-none shrink">
 	<div class="flex items-center -space-x-1.5">
 		{#each capturedByUs as pt}
 			{@const svgKey = opponentColor === 'white' ? pt.toUpperCase() : pt.toLowerCase()}
