@@ -13,6 +13,7 @@
 	import CapturedPieces from '$lib/components/game/CapturedPieces.svelte';
 	import GameResult from '$lib/components/game/GameResult.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import UserBadge from '$lib/components/ui/UserBadge.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { INITIAL_FEN, type Color, type PieceType } from '$lib/chess/engine';
@@ -440,12 +441,12 @@
 			<div class="w-full max-w-[min(96vw,calc(100dvh-150px),640px)] flex flex-col items-center">
 				<!-- Opponent Disconnection Countdown Banner -->
 				{#if isPlayer && !$gameStore.opponentConnected && $gameStore.status === 'playing'}
-					<div class="w-full mb-1.5 p-2 bg-rose-950/80 border border-rose-500/50 rounded-xl flex items-center justify-between text-xs text-rose-200 animate-pulse shadow-lg">
+					<div class="w-full mb-1.5 p-2 bg-destructive/10 border border-destructive/30 rounded-xl flex items-center justify-between text-xs text-destructive animate-pulse shadow-sm">
 						<div class="flex items-center gap-2 font-bold">
-							<Icon name="wifi-off" size={14} className="text-rose-400" />
+							<Icon name="wifi-off" size={14} />
 							<span>Opponent disconnected</span>
 						</div>
-						<div class="font-mono text-[11px] font-extrabold bg-rose-900/80 px-2 py-0.5 rounded border border-rose-500/40">
+						<div class="font-mono text-[11px] font-bold bg-destructive/20 px-2 py-0.5 rounded border border-destructive/40">
 							Claiming win in {opponentCountdown}s
 						</div>
 					</div>
@@ -464,12 +465,12 @@
 								target="_blank"
 							/>
 						{:else}
-							<div class="flex items-center gap-2 text-white font-bold leading-tight">
-								<div class="w-7 h-7 rounded-lg bg-slate-800/90 border border-slate-700/80 flex items-center justify-center text-xs font-mono font-bold text-slate-300 shadow-sm">
+							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
+								<div class="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-muted-foreground shadow-xs">
 									<Icon name="user" size={13} />
 								</div>
 								<span class="truncate max-w-[140px] sm:max-w-none">{topPlayer?.username || 'Opponent'}</span>
-								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border">
 									{topPlayer?.rating || 400}
 								</span>
 							</div>
@@ -515,12 +516,12 @@
 								target="_blank"
 							/>
 						{:else}
-							<div class="flex items-center gap-2 text-white font-bold leading-tight">
-								<div class="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/40 flex items-center justify-center text-xs font-mono font-bold text-sky-400 shadow-sm">
+							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
+								<div class="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-foreground shadow-xs">
 									<Icon name="crown" size={13} />
 								</div>
 								<span class="truncate max-w-[140px] sm:max-w-none">{bottomPlayer?.username || (isPlayer ? 'You' : 'White')}</span>
-								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30">
+								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground border border-border">
 									{bottomPlayer?.rating || 400}
 								</span>
 							</div>
@@ -533,62 +534,62 @@
 					<GameClock timeMs={bottomTimeMs} isActive={isBottomTurn} />
 				</div>
 
-				<!-- Mobile Quick Action Bar (Under board, zero scroll required) -->
-				<div class="lg:hidden w-full flex items-center justify-between gap-1.5 mt-2 px-2 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-lg">
+				<!-- Mobile Quick Action Bar -->
+				<div class="lg:hidden w-full flex items-center justify-between gap-1.5 mt-2 px-2 py-1.5 bg-card border border-border rounded-xl shadow-md">
 					{#if $gameStore.status === 'playing'}
 						{#if isPlayer}
 							<button
-								class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1 disabled:opacity-50"
+								class="flex-1 py-1.5 px-2 bg-secondary hover:bg-muted text-foreground font-semibold text-[11px] rounded-lg transition border border-border flex items-center justify-center gap-1 disabled:opacity-50"
 								on:click={handleOfferDraw}
 								disabled={$gameStore.drawOfferBy === myPlayerColor}
 							>
-								<Icon name="handshake" size={13} className="text-slate-400" />
+								<Icon name="handshake" size={13} className="text-muted-foreground" />
 								<span>{$gameStore.drawOfferBy === myPlayerColor ? 'Offered' : 'Draw'}</span>
 							</button>
 
 							<button
-								class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1"
+								class="flex-1 py-1.5 px-2 bg-secondary hover:bg-destructive/10 hover:text-destructive text-foreground font-semibold text-[11px] rounded-lg transition border border-border flex items-center justify-center gap-1"
 								on:click={handleResign}
 							>
-								<Icon name="flag" size={13} className="text-rose-400" />
+								<Icon name="flag" size={13} className="text-destructive" />
 								<span>Resign</span>
 							</button>
 						{/if}
 						<button
-							class="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1"
+							class="py-1.5 px-2.5 bg-secondary hover:bg-muted text-foreground font-semibold text-[11px] rounded-lg transition border border-border flex items-center justify-center gap-1"
 							on:click={() => (flipBoard = !flipBoard)}
 							title="Flip Board"
 						>
 							<Icon name="rotate-cw" size={13} />
 						</button>
 						<button
-							class="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1"
+							class="py-1.5 px-2.5 bg-secondary hover:bg-muted text-foreground font-semibold text-[11px] rounded-lg transition border border-border flex items-center justify-center gap-1"
 							on:click={() => (showMobileMoves = true)}
 						>
-							<Icon name="play" size={12} className="text-sky-400" />
-							<span>{$gameStore.moves.length}</span>
+							<Icon name="play" size={12} className="text-muted-foreground" />
+							<span class="tabular-nums font-mono">{$gameStore.moves.length}</span>
 						</button>
 					{:else}
 						<button
-							class="flex-1 py-1.5 px-2 bg-[#81b64c] hover:bg-[#91c65d] text-white font-extrabold text-[11px] uppercase tracking-wide rounded-lg transition flex items-center justify-center gap-1 shadow-xs"
+							class="flex-1 py-1.5 px-2 bg-foreground text-background font-bold text-[11px] uppercase tracking-wider rounded-lg transition flex items-center justify-center gap-1 shadow-xs"
 							on:click={handleAnalyze}
 						>
 							<Icon name="search" size={13} />
 							<span>Review</span>
 						</button>
 						<button
-							class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-stone-200 font-bold text-[11px] rounded-lg transition flex items-center justify-center gap-1"
+							class="flex-1 py-1.5 px-2 bg-secondary hover:bg-muted text-foreground font-semibold text-[11px] rounded-lg transition flex items-center justify-center gap-1 border border-border"
 							on:click={handleNewGame}
 						>
 							<Icon name="zap" size={13} />
 							<span>New Match</span>
 						</button>
 						<button
-							class="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition border border-slate-700/60 flex items-center justify-center gap-1"
+							class="py-1.5 px-2.5 bg-secondary hover:bg-muted text-foreground font-semibold text-[11px] rounded-lg transition border border-border flex items-center justify-center gap-1"
 							on:click={() => (showMobileMoves = true)}
 						>
-							<Icon name="play" size={12} className="text-sky-400" />
-							<span>{$gameStore.moves.length}</span>
+							<Icon name="play" size={12} className="text-muted-foreground" />
+							<span class="tabular-nums font-mono">{$gameStore.moves.length}</span>
 						</button>
 					{/if}
 				</div>
@@ -597,67 +598,73 @@
 		</div>
 
 		<!-- Right Panel: HUD, Move Ledger & Actions (Desktop) -->
-		<div class="hidden lg:flex lg:col-span-5 xl:col-span-4 w-full flex-col h-[min(calc(100dvh-110px),640px)] bg-gradient-to-b from-[#121824] to-[#0c1017] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+		<div class="hidden lg:flex lg:col-span-5 xl:col-span-4 w-full flex-col h-[min(calc(100dvh-110px),640px)] bg-card border border-border rounded-xl overflow-hidden shadow-lg">
 			
 			<!-- HUD Header -->
-			<div class="p-3 border-b border-slate-800 bg-[#090d15]/80 flex items-center justify-between">
+			<div class="p-3 border-b border-border bg-secondary/40 flex items-center justify-between">
 				<div class="flex items-center gap-2.5 text-xs font-bold">
-					<span class="w-2 h-2 rounded-full {$gameStore.connectionStatus === 'connected' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-500 animate-ping'}"></span>
-					<span class="font-mono text-slate-300">
+					<span class="w-2 h-2 rounded-full {$gameStore.connectionStatus === 'connected' ? 'bg-foreground' : 'bg-destructive animate-ping'}"></span>
+					<span class="font-mono text-foreground tabular-nums">
 						{$gameStore.timeControl ? `${$gameStore.timeControl.initial / 60}+${$gameStore.timeControl.increment}` : '5+0'}
 					</span>
-					<span class="text-slate-600">•</span>
-					<span class="uppercase tracking-wider text-[10px] font-mono font-extrabold {$gameStore.status === 'playing' ? 'text-sky-400' : 'text-slate-400'}">
+					<span class="text-muted-foreground">•</span>
+					<span class="uppercase tracking-wider text-[10px] font-mono font-extrabold {$gameStore.status === 'playing' ? 'text-foreground' : 'text-muted-foreground'}">
 						{$gameStore.status}
 					</span>
 				</div>
 
 				<button
-					class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1 text-xs font-medium"
+					class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition flex items-center gap-1 text-xs font-medium"
 					on:click={() => (flipBoard = !flipBoard)}
 					title="Flip Board View"
 				>
-					<Icon name="rotate-cw" size={14} />
+					<Icon name="rotate-cw" size={13} />
 					<span class="text-[11px] font-mono">Flip</span>
 				</button>
 			</div>
 
 			<!-- Challenge Invite Link Banner -->
 			{#if $gameStore.blackPlayer?.userId === 'guest-opponent' && $gameStore.status === 'playing'}
-				<div class="p-3 bg-sky-950/40 border-b border-sky-600/30 flex items-center justify-between text-xs animate-in fade-in duration-150">
-					<div class="flex items-center gap-2 text-sky-300 font-semibold">
+				<div class="p-3 bg-secondary/60 border-b border-border flex items-center justify-between text-xs animate-in fade-in duration-150">
+					<div class="flex items-center gap-2 text-foreground font-semibold">
 						<Icon name="sparkles" size={15} />
 						<span>Share Link to Play</span>
 					</div>
-					<button
-						class="px-3 py-1 bg-[#81b64c] hover:bg-[#72a441] active:bg-[#639037] text-white font-bold rounded-lg text-xs transition shadow-xs active:translate-y-px"
+					<Button
+						variant="primary"
+						size="sm"
+						className="text-xs"
 						on:click={copyInviteLink}
 					>
 						{copiedInvite ? 'Copied Link!' : 'Copy Link'}
-					</button>
+					</Button>
 				</div>
 			{/if}
 
 			<!-- Draw Offer Banner -->
 			{#if isPlayer && $gameStore.drawOfferBy && $gameStore.drawOfferBy !== myPlayerColor}
-				<div class="p-3 bg-amber-950/50 border-b border-amber-600/40 flex items-center justify-between text-xs animate-in fade-in duration-150">
-					<div class="flex items-center gap-2 text-amber-300 font-semibold">
+				<div class="p-3 bg-secondary/80 border-b border-border flex items-center justify-between text-xs animate-in fade-in duration-150">
+					<div class="flex items-center gap-2 text-foreground font-semibold">
 						<Icon name="handshake" size={16} />
 						<span>Opponent offers draw</span>
 					</div>
 					<div class="flex gap-1.5">
-						<button
-							class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow-sm"
+						<Button
+							variant="primary"
+							size="sm"
+							className="text-xs"
 							on:click={handleAcceptDraw}
 						>
 							Accept
-						</button>
-						<button
-							class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs transition"
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							className="text-xs"
 							on:click={handleDeclineDraw}
 						>
 							Decline
-						</button>
+						</Button>
 					</div>
 				</div>
 			{/if}
@@ -672,55 +679,65 @@
 			</div>
 
 			<!-- Action Controls -->
-			<div class="p-3.5 border-t border-slate-800 bg-[#090d15]/80 flex gap-2">
+			<div class="p-3.5 border-t border-border bg-secondary/20 flex gap-2">
 				{#if $gameStore.status === 'playing'}
 					{#if isPlayer}
-						<button
-							class="flex-1 py-2.5 bg-slate-800/80 hover:bg-slate-750 text-slate-300 font-bold text-xs rounded-xl transition border border-slate-700/70 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+						<Button
+							variant="secondary"
+							size="default"
+							className="flex-1 text-xs"
 							on:click={handleOfferDraw}
 							disabled={$gameStore.drawOfferBy === myPlayerColor}
 						>
-							<Icon name="handshake" size={14} className="text-slate-400" />
+							<Icon name="handshake" size={14} className="text-muted-foreground" />
 							<span>{$gameStore.drawOfferBy === myPlayerColor ? 'Draw Offered' : 'Offer Draw'}</span>
-						</button>
+						</Button>
 
-						<button
-							class="flex-1 py-2.5 bg-slate-800/80 hover:bg-rose-950/60 hover:text-rose-300 hover:border-rose-700/60 text-slate-300 font-bold text-xs rounded-xl transition border border-slate-700/70 flex items-center justify-center gap-1.5"
+						<Button
+							variant="outline"
+							size="default"
+							className="flex-1 text-xs hover:text-destructive hover:border-destructive/40"
 							on:click={handleResign}
 						>
-							<Icon name="flag" size={14} className="text-rose-400" />
+							<Icon name="flag" size={14} className="text-destructive" />
 							<span>Resign</span>
-						</button>
+						</Button>
 					{:else}
-						<div class="flex-1 py-2.5 bg-slate-800/60 text-slate-400 text-center text-xs font-semibold rounded-xl border border-slate-800 flex items-center justify-center gap-2">
-							<Icon name="user" size={14} className="text-sky-400" />
+						<div class="flex-1 py-2.5 bg-secondary text-muted-foreground text-center text-xs font-medium rounded-lg border border-border flex items-center justify-center gap-2">
+							<Icon name="user" size={14} />
 							<span>Spectating Match</span>
 						</div>
 					{/if}
 				{:else}
 					<div class="flex flex-col gap-2 w-full">
-						<button
-							class="w-full py-2.5 bg-[#81b64c] hover:bg-[#91c65d] active:bg-[#73a443] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl border-b-4 border-[#5d8336] active:border-b-0 active:translate-y-1 transition shadow-md flex items-center justify-center gap-2"
+						<Button
+							variant="primary"
+							size="default"
+							className="w-full text-xs font-bold uppercase tracking-wider"
 							on:click={handleAnalyze}
 						>
-							<Icon name="search" size={15} />
+							<Icon name="search" size={14} />
 							<span>Game Review</span>
-						</button>
+						</Button>
 
 						<div class="grid grid-cols-2 gap-2 w-full">
-							<button
-								class="py-2 px-3 bg-[#383633] hover:bg-[#484643] active:bg-[#2e2d2a] text-stone-200 font-bold text-xs rounded-xl border-b-4 border-[#292825] active:border-b-0 active:translate-y-1 transition flex items-center justify-center gap-1.5"
+							<Button
+								variant="secondary"
+								size="sm"
+								className="text-xs"
 								on:click={() => (showResultModal = true)}
 							>
 								<span>View Result</span>
-							</button>
-							<button
-								class="py-2 px-3 bg-[#383633] hover:bg-[#484643] active:bg-[#2e2d2a] text-stone-200 font-bold text-xs rounded-xl border-b-4 border-[#292825] active:border-b-0 active:translate-y-1 transition flex items-center justify-center gap-1.5"
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								className="text-xs"
 								on:click={handleNewGame}
 							>
 								<Icon name="zap" size={13} />
 								<span>New Match</span>
-							</button>
+							</Button>
 						</div>
 					</div>
 				{/if}

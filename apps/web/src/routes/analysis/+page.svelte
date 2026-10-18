@@ -7,6 +7,7 @@
 	import MoveList from '$lib/components/game/MoveList.svelte';
 	import GameReview from '$lib/components/chess/GameReview.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import { api } from '$lib/api/client';
 	import { INITIAL_FEN, executeMoveClient, type Color, type PieceType } from '$lib/chess/engine';
 	import type { GameReviewResult } from '$lib/chess/review';
@@ -463,12 +464,12 @@
 	<!-- Top Bar -->
 	<div class="mb-1.5 flex items-center justify-between gap-2 flex-wrap shrink-0">
 		<div class="flex items-center gap-2.5">
-			<div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-md">
+			<div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary border border-border flex items-center justify-center text-foreground shadow-xs">
 				<Icon name="search" size={15} />
 			</div>
 			<div>
-				<h1 class="text-sm sm:text-base font-black text-white tracking-tight">Game Analysis & Review</h1>
-				<p class="text-[10px] sm:text-[11px] text-slate-400 hidden sm:block">Move-by-move evaluations, advantage curve, and key moments</p>
+				<h1 class="text-sm sm:text-base font-black text-foreground tracking-tight">Game Analysis & Review</h1>
+				<p class="text-[10px] sm:text-[11px] text-muted-foreground hidden sm:block">Move-by-move evaluations, advantage curve, and key moments</p>
 			</div>
 		</div>
 
@@ -476,11 +477,11 @@
 		<div class="flex items-center gap-1.5">
 			<!-- Engine Settings & Source Badge -->
 			<button
-				class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition border cursor-pointer active:translate-y-px bg-slate-900/80 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-850"
+				class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition border cursor-pointer active:translate-y-px bg-card border-border text-foreground hover:bg-muted"
 				on:click={() => (showEngineModal = true)}
 				title="Stockfish Engine Settings & Local Cache"
 			>
-				<Icon name="zap" size={12} className={$engineStore.source === 'cloud' ? 'text-sky-400' : 'text-emerald-400'} />
+				<Icon name="zap" size={12} className="text-foreground" />
 				<span class="text-[11px] hidden sm:inline">
 					{$engineStore.source === 'tauri'
 						? 'Desktop Native'
@@ -488,39 +489,37 @@
 							? 'Local WASM'
 							: 'Cloud Engine'}
 				</span>
-				<span
-					class="w-1.5 h-1.5 rounded-full {$engineStore.source === 'cloud' ? 'bg-sky-400' : 'bg-emerald-400'}"
-				></span>
+				<span class="w-1.5 h-1.5 rounded-full bg-foreground"></span>
 			</button>
 
 			<!-- Advanced Mode Toggle -->
 			<button
 				class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition border cursor-pointer active:translate-y-px {showAdvanced
-					? 'bg-slate-800 border-slate-600 text-slate-100 shadow-xs'
-					: 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'}"
+					? 'bg-foreground text-background font-bold shadow-xs'
+					: 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted'}"
 				on:click={toggleAdvanced}
 				title="Toggle advanced FEN, PGN, and position tools"
 			>
-				<Icon name="settings" size={12} className={showAdvanced ? 'text-emerald-400' : 'text-slate-400'} />
+				<Icon name="settings" size={12} />
 				<span class="text-[11px]">Advanced</span>
-				<span class="w-1.5 h-1.5 rounded-full {showAdvanced ? 'bg-emerald-400' : 'bg-slate-600'}"></span>
+				<span class="w-1.5 h-1.5 rounded-full {showAdvanced ? 'bg-background' : 'bg-muted-foreground'}"></span>
 			</button>
 
 			<button
-				class="inline-flex items-center gap-1 px-2 py-1 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 transition shadow-xs active:translate-y-px"
+				class="inline-flex items-center gap-1 px-2 py-1 bg-secondary hover:bg-muted border border-border rounded-xl text-xs font-semibold text-foreground transition shadow-xs active:translate-y-px"
 				on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 				title="Flip Board"
 			>
-				<Icon name="rotate-cw" size={12} className="text-slate-400" />
+				<Icon name="rotate-cw" size={12} className="text-muted-foreground" />
 				<span class="text-[11px] hidden sm:inline">Flip</span>
 			</button>
 
 			<button
-				class="inline-flex items-center gap-1 px-2 py-1 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 transition shadow-xs active:translate-y-px"
+				class="inline-flex items-center gap-1 px-2 py-1 bg-secondary hover:bg-muted border border-border rounded-xl text-xs font-semibold text-foreground transition shadow-xs active:translate-y-px"
 				on:click={resetToStart}
 				title="Reset to Starting Position"
 			>
-				<Icon name="rotate-ccw" size={12} className="text-slate-400" />
+				<Icon name="rotate-ccw" size={12} className="text-muted-foreground" />
 				<span class="text-[11px] hidden sm:inline">Reset</span>
 			</button>
 		</div>
@@ -532,7 +531,7 @@
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
 			<div class="w-full max-w-[min(96vw,calc(100dvh-170px),640px)] flex flex-col items-center">
 				<div class="flex items-center justify-center gap-1.5 sm:gap-2.5 w-full">
-					<!-- Slim Eval Bar (visible on all screens including mobile!) -->
+					<!-- Slim Eval Bar -->
 					<div class="flex h-[min(88vw,calc(100dvh-210px),590px)] shrink-0">
 						<EvalBar scoreCp={activeScoreCp} isMate={activeIsMate} mateIn={activeMateIn} {orientation} />
 					</div>
@@ -552,11 +551,11 @@
 					</div>
 				</div>
 
-				<!-- Universal Stepper & Action Controls (DIRECTLY UNDER THE BOARD ON ALL SCREENS) -->
-				<div class="w-full mt-2 flex items-center justify-between gap-1.5 p-1.5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-lg">
+				<!-- Universal Stepper & Action Controls -->
+				<div class="w-full mt-2 flex items-center justify-between gap-1.5 p-1.5 bg-card border border-border rounded-xl shadow-md">
 					<div class="flex items-center gap-1">
 						<button
-							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
+							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
 							on:click={() => goToPly(0)}
 							disabled={currentPly <= 0}
 							title="Start of Game (Home)"
@@ -565,7 +564,7 @@
 						</button>
 
 						<button
-							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
+							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
 							on:click={() => goToPly(currentPly - 1)}
 							disabled={currentPly <= 0}
 							title="Previous Move (Left Arrow)"
@@ -574,7 +573,7 @@
 						</button>
 
 						<button
-							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
+							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
 							on:click={() => goToPly(currentPly + 1)}
 							disabled={currentPly >= moves.length}
 							title="Next Move (Right Arrow / Space)"
@@ -583,7 +582,7 @@
 						</button>
 
 						<button
-							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
+							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
 							on:click={() => goToPly(moves.length)}
 							disabled={currentPly >= moves.length}
 							title="Latest Move (End)"
@@ -594,17 +593,17 @@
 
 					<!-- Move Position Indicator / Eval Badge -->
 					<div class="flex items-center gap-2 font-mono text-xs">
-						<span class="text-slate-300 font-bold px-2 py-0.5 rounded bg-slate-950/80 border border-slate-800">
+						<span class="text-foreground font-bold px-2 py-0.5 rounded bg-secondary border border-border tabular-nums">
 							{currentPly === 0 ? 'Start' : `${Math.ceil(currentPly / 2)}${currentPly % 2 === 1 ? '.' : '...'} ${moves[currentPly - 1]?.san || ''}`}
 						</span>
-						<span class="text-slate-500 text-[11px] hidden sm:inline">
+						<span class="text-muted-foreground text-[11px] hidden sm:inline tabular-nums">
 							({currentPly}/{moves.length})
 						</span>
 					</div>
 
 					<div class="flex items-center gap-1">
 						<button
-							class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs font-medium flex items-center gap-1"
+							class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground transition text-xs font-medium flex items-center gap-1"
 							on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 							title="Flip Board"
 						>
@@ -619,48 +618,48 @@
 		<!-- Right: Analysis Panel -->
 		<div class="lg:col-span-5 xl:col-span-4 h-[440px] lg:h-[min(calc(100dvh-110px),640px)] flex flex-col">
 			<!-- Panel Tab Navigation -->
-			<div class="flex items-center p-1 bg-slate-950/80 border border-slate-800 rounded-xl mb-2.5 shrink-0 overflow-x-auto">
+			<div class="flex items-center p-1 bg-card border border-border rounded-xl mb-2.5 shrink-0 overflow-x-auto">
 				<button
 					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'review'
-						? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
-						: 'text-slate-400 hover:text-slate-200'}"
+						? 'bg-foreground text-background font-bold shadow-xs'
+						: 'text-muted-foreground hover:text-foreground'}"
 					on:click={() => (rightPanelTab = 'review')}
 				>
-					<Icon name="search" size={13} className={rightPanelTab === 'review' ? 'text-emerald-400' : ''} />
+					<Icon name="search" size={13} />
 					<span>Review</span>
 				</button>
 
 				<button
 					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'moves'
-						? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
-						: 'text-slate-400 hover:text-slate-200'}"
+						? 'bg-foreground text-background font-bold shadow-xs'
+						: 'text-muted-foreground hover:text-foreground'}"
 					on:click={() => (rightPanelTab = 'moves')}
 				>
-					<Icon name="play" size={13} className={rightPanelTab === 'moves' ? 'text-emerald-400' : ''} />
+					<Icon name="play" size={13} />
 					<span>Moves ({moves.length})</span>
 				</button>
 
 				<button
 					class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'history'
-						? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
-						: 'text-slate-400 hover:text-slate-200'}"
+						? 'bg-foreground text-background font-bold shadow-xs'
+						: 'text-muted-foreground hover:text-foreground'}"
 					on:click={() => {
 						refreshLocalGames();
 						rightPanelTab = 'history';
 					}}
 				>
-					<Icon name="clock" size={13} className={rightPanelTab === 'history' ? 'text-emerald-400' : ''} />
+					<Icon name="clock" size={13} />
 					<span>Saved</span>
 				</button>
 
 				{#if showAdvanced}
 					<button
 						class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 whitespace-nowrap {rightPanelTab === 'advanced'
-							? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
-							: 'text-slate-400 hover:text-slate-200'}"
+							? 'bg-foreground text-background font-bold shadow-xs'
+							: 'text-muted-foreground hover:text-foreground'}"
 						on:click={() => (rightPanelTab = 'advanced')}
 					>
-						<Icon name="settings" size={13} className={rightPanelTab === 'advanced' ? 'text-emerald-400' : ''} />
+						<Icon name="settings" size={13} />
 						<span>Advanced</span>
 					</button>
 				{/if}
@@ -669,7 +668,7 @@
 			<!-- Main Panel Content -->
 			<div class="flex-1 overflow-hidden">
 				{#if rightPanelTab === 'review'}
-					<!-- 1. Review Tab (Clean, consumer-friendly review) -->
+					<!-- 1. Review Tab -->
 					<GameReview
 						bind:reviewResult
 						pgn={currentPgn}
@@ -680,16 +679,16 @@
 						on:selectPly={(e) => goToPly(e.detail)}
 					/>
 				{:else if rightPanelTab === 'moves'}
-					<!-- 2. Moves Tab (Clean move notation list & stepper for normal players) -->
-					<div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-col h-full overflow-hidden backdrop-blur-xl">
-						<div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+					<!-- 2. Moves Tab -->
+					<div class="bg-card border border-border rounded-xl p-4 shadow-lg flex flex-col h-full overflow-hidden">
+						<div class="flex items-center justify-between pb-3 border-b border-border shrink-0">
 							<div>
-								<h3 class="text-xs font-bold text-white uppercase tracking-wider">Move Ledger</h3>
-								<p class="text-[11px] text-slate-400">Step through moves using click or keyboard arrows</p>
+								<h3 class="text-xs font-bold text-foreground uppercase tracking-wider">Move Ledger</h3>
+								<p class="text-[11px] text-muted-foreground">Step through moves using click or keyboard arrows</p>
 							</div>
 							{#if moves.length > 0}
 								<button
-									class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-bold rounded-lg transition border border-slate-700/60"
+									class="px-2 py-1 bg-secondary hover:bg-muted text-foreground text-[11px] font-bold rounded-lg transition border border-border"
 									on:click={resetToStart}
 								>
 									Clear
@@ -708,9 +707,9 @@
 						</div>
 
 						<!-- Step Controls -->
-						<div class="grid grid-cols-4 gap-2 pt-2 border-t border-slate-800 shrink-0">
+						<div class="grid grid-cols-4 gap-2 pt-2 border-t border-border shrink-0">
 							<button
-								class="py-2 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
+								class="py-2 flex items-center justify-center bg-secondary hover:bg-muted text-foreground rounded-lg transition"
 								on:click={() => goToPly(0)}
 								disabled={currentPly <= 0}
 								title="Start of Game"
@@ -718,7 +717,7 @@
 								<Icon name="chevrons-left" size={16} />
 							</button>
 							<button
-								class="py-2 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
+								class="py-2 flex items-center justify-center bg-secondary hover:bg-muted text-foreground rounded-lg transition"
 								on:click={() => goToPly(currentPly - 1)}
 								disabled={currentPly <= 0}
 								title="Previous Move"
@@ -726,7 +725,7 @@
 								<Icon name="chevron-left" size={16} />
 							</button>
 							<button
-								class="py-2 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
+								class="py-2 flex items-center justify-center bg-secondary hover:bg-muted text-foreground rounded-lg transition"
 								on:click={() => goToPly(currentPly + 1)}
 								disabled={currentPly >= moves.length}
 								title="Next Move"
@@ -734,7 +733,7 @@
 								<Icon name="chevron-right" size={16} />
 							</button>
 							<button
-								class="py-2 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
+								class="py-2 flex items-center justify-center bg-secondary hover:bg-muted text-foreground rounded-lg transition"
 								on:click={() => goToPly(moves.length)}
 								disabled={currentPly >= moves.length}
 								title="Latest Move"
@@ -745,15 +744,15 @@
 					</div>
 				{:else if rightPanelTab === 'history'}
 					<!-- 3. Saved Past Games Tab -->
-					<div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-col h-full overflow-hidden backdrop-blur-xl">
-						<div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+					<div class="bg-card border border-border rounded-xl p-4 shadow-lg flex flex-col h-full overflow-hidden">
+						<div class="flex items-center justify-between pb-3 border-b border-border shrink-0">
 							<div>
-								<h3 class="text-xs font-bold text-white uppercase tracking-wider">Saved Matches</h3>
-								<p class="text-[11px] text-slate-400">Match history automatically preserved for review</p>
+								<h3 class="text-xs font-bold text-foreground uppercase tracking-wider">Saved Matches</h3>
+								<p class="text-[11px] text-muted-foreground">Match history automatically preserved for review</p>
 							</div>
 							{#if localGamesList.length > 0}
 								<button
-									class="px-2 py-1 bg-slate-800 hover:bg-rose-900/60 hover:text-rose-200 text-slate-400 text-[11px] font-bold rounded-lg transition border border-slate-700"
+									class="px-2 py-1 bg-secondary hover:bg-destructive/10 hover:text-destructive text-muted-foreground text-[11px] font-bold rounded-lg transition border border-border"
 									on:click={handleClearAllSavedGames}
 								>
 									Clear All
@@ -764,11 +763,11 @@
 						<div class="flex-1 overflow-y-auto py-2 flex flex-col gap-2">
 							{#if localGamesList.length === 0}
 								<div class="flex flex-col items-center justify-center h-full text-center py-12 px-4 gap-2">
-									<div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-500">
+									<div class="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-muted-foreground border border-border">
 										<Icon name="clock" size={20} />
 									</div>
-									<span class="text-xs font-bold text-slate-300">No Saved Games</span>
-									<p class="text-[11px] text-slate-500 max-w-[200px]">
+									<span class="text-xs font-bold text-foreground">No Saved Games</span>
+									<p class="text-[11px] text-muted-foreground max-w-[200px]">
 										Play online or against bots to build your review archive.
 									</p>
 								</div>
@@ -778,42 +777,44 @@
 									{@const lost = rec.result === '0-1'}
 									{@const draw = rec.result === '1/2-1/2'}
 									{@const resClass = draw
-										? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+										? 'text-amber-500 bg-amber-500/10 border-amber-500/20'
 										: won
-											? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+											? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
 											: lost
-												? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
-												: 'text-slate-300 bg-slate-800 border-slate-700'}
+												? 'text-destructive bg-destructive/10 border-destructive/20'
+												: 'text-foreground bg-secondary border-border'}
 
-									<div class="p-3 bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-xl transition flex items-center justify-between gap-3 group">
+									<div class="p-3 bg-secondary/30 border border-border hover:border-foreground/30 rounded-xl transition flex items-center justify-between gap-3 group">
 										<div class="min-w-0 flex-1">
 											<div class="flex items-center gap-2 mb-1">
 												<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border {resClass}">
 													{rec.result}
 												</span>
-												<span class="text-[11px] font-bold text-white truncate">
+												<span class="text-[11px] font-bold text-foreground truncate">
 													{rec.white} vs {rec.black}
 												</span>
 											</div>
-											<div class="flex items-center gap-2 text-[10px] text-slate-400">
+											<div class="flex items-center gap-2 text-[10px] text-muted-foreground">
 												<span>{rec.event}</span>
 												<span>•</span>
-												<span>{rec.movesCount} plies</span>
+												<span class="tabular-nums">{rec.movesCount} plies</span>
 											</div>
 										</div>
 
 										<div class="flex items-center gap-1.5 shrink-0">
-											<button
-												class="px-3 py-1.5 bg-[#81b64c] hover:bg-[#72a441] active:bg-[#639037] text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 active:translate-y-px"
+											<Button
+												variant="primary"
+												size="sm"
+												className="text-xs"
 												on:click={() => handleLoadSavedGame(rec)}
 												title="Review this game"
 											>
 												<Icon name="search" size={12} />
 												<span>Review</span>
-											</button>
+											</Button>
 
 											<button
-												class="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition"
+												class="p-1.5 text-muted-foreground hover:text-destructive hover:bg-secondary rounded-lg transition"
 												on:click={() => handleDeleteSavedGame(rec.id)}
 												title="Delete game"
 											>
@@ -826,27 +827,27 @@
 						</div>
 					</div>
 				{:else if showAdvanced}
-					<!-- 4. Advanced Tab (Hidden behind Advanced Toggle for power users) -->
-					<div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 h-full backdrop-blur-xl overflow-y-auto">
+					<!-- 4. Advanced Tab -->
+					<div class="bg-card border border-border rounded-xl p-4 shadow-lg flex flex-col gap-4 h-full overflow-y-auto">
 						<div>
 							<div class="flex items-center justify-between mb-1">
-								<h3 class="text-xs font-bold text-white uppercase tracking-wider">Advanced Workbench</h3>
-								<span class="text-[10px] font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">Power Mode</span>
+								<h3 class="text-xs font-bold text-foreground uppercase tracking-wider">Advanced Workbench</h3>
+								<span class="text-[10px] font-mono font-bold text-foreground bg-secondary px-2 py-0.5 rounded-full border border-border">Power Mode</span>
 							</div>
-							<p class="text-[11px] text-slate-400">Inspect FEN strings, import custom PGNs, and configure positions.</p>
+							<p class="text-[11px] text-muted-foreground">Inspect FEN strings, import custom PGNs, and configure positions.</p>
 						</div>
 
 						<!-- Position FEN Inspector & Loader -->
-						<div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+						<div class="bg-secondary/40 border border-border rounded-xl p-3 flex flex-col gap-2">
 							<div class="flex items-center justify-between">
-								<label for="fen-input" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+								<label for="fen-input" class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
 									Current Position FEN
 								</label>
 								<button
-									class="text-[10px] text-sky-400 hover:text-sky-300 font-mono font-semibold flex items-center gap-1"
+									class="text-[10px] text-foreground hover:text-foreground/80 font-mono font-semibold flex items-center gap-1"
 									on:click={copyFenText}
 								>
-									<Icon name={copiedFen ? 'check' : 'download'} size={11} className={copiedFen ? 'text-emerald-400' : ''} />
+									<Icon name={copiedFen ? 'check' : 'download'} size={11} />
 									<span>{copiedFen ? 'Copied' : 'Copy FEN'}</span>
 								</button>
 							</div>
@@ -855,36 +856,38 @@
 								id="fen-input"
 								type="text"
 								bind:value={customFenInput}
-								class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500 transition placeholder:text-slate-600"
+								class="w-full px-3 py-1.5 bg-card border border-border rounded-lg text-xs text-foreground font-mono focus:outline-none focus:border-foreground transition placeholder:text-muted-foreground"
 								placeholder="Paste FEN..."
 							/>
 
 							<div class="flex items-center justify-between gap-2 pt-1">
-								<span class="text-[10px] text-slate-500">Edit string to jump to custom position</span>
-								<button
-									class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition"
+								<span class="text-[10px] text-muted-foreground">Edit string to jump to custom position</span>
+								<Button
+									variant="primary"
+									size="sm"
+									className="text-xs"
 									on:click={loadCustomFen}
 								>
 									Load FEN
-								</button>
+								</Button>
 							</div>
 						</div>
 
 						<!-- PGN Tools -->
-						<div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+						<div class="bg-secondary/40 border border-border rounded-xl p-3 flex flex-col gap-2">
 							<div class="flex items-center justify-between">
-								<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Game PGN Record</span>
+								<span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Game PGN Record</span>
 								<div class="flex items-center gap-2">
 									{#if currentPgn}
 										<button
-											class="text-[10px] text-slate-300 hover:text-white font-mono flex items-center gap-1"
+											class="text-[10px] text-muted-foreground hover:text-foreground font-mono flex items-center gap-1"
 											on:click={copyPgnText}
 										>
-											<Icon name={copiedPgn ? 'check' : 'download'} size={11} className={copiedPgn ? 'text-emerald-400' : ''} />
+											<Icon name={copiedPgn ? 'check' : 'download'} size={11} />
 											<span>{copiedPgn ? 'Copied' : 'Copy PGN'}</span>
 										</button>
 										<button
-											class="text-[10px] text-slate-300 hover:text-white font-mono flex items-center gap-1"
+											class="text-[10px] text-muted-foreground hover:text-foreground font-mono flex items-center gap-1"
 											on:click={downloadPgnFile}
 										>
 											<Icon name="download" size={11} />
@@ -895,13 +898,15 @@
 							</div>
 
 							<div class="flex gap-2">
-								<button
-									class="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg transition flex items-center justify-center gap-1.5 border border-slate-700/60"
+								<Button
+									variant="secondary"
+									size="sm"
+									className="flex-1 text-xs"
 									on:click={() => (showPgnModal = true)}
 								>
-									<Icon name="download" size={13} className="text-sky-400" />
+									<Icon name="download" size={13} />
 									<span>Import Raw PGN</span>
-								</button>
+								</Button>
 							</div>
 						</div>
 					</div>
@@ -914,40 +919,44 @@
 <!-- Import PGN Modal -->
 {#if showPgnModal}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
-		<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-2xl flex flex-col gap-3 backdrop-blur-xl">
-			<div class="flex items-center justify-between border-b border-slate-800 pb-2">
+		<div class="bg-card border border-border rounded-2xl p-5 max-w-md w-full shadow-2xl flex flex-col gap-3">
+			<div class="flex items-center justify-between border-b border-border pb-2">
 				<div class="flex items-center gap-2">
-					<Icon name="download" size={16} className="text-sky-400" />
-					<h3 class="text-sm font-bold text-white">Import Game PGN</h3>
+					<Icon name="download" size={16} />
+					<h3 class="text-sm font-bold text-foreground">Import Game PGN</h3>
 				</div>
-				<button class="text-slate-400 hover:text-white" on:click={() => (showPgnModal = false)}>
+				<button class="text-muted-foreground hover:text-foreground" on:click={() => (showPgnModal = false)}>
 					<Icon name="x" size={16} />
 				</button>
 			</div>
 
-			<p class="text-xs text-slate-400">
+			<p class="text-xs text-muted-foreground">
 				Paste any standard chess game PGN below to generate a complete Game Review with move classifications and accuracy analysis.
 			</p>
 
 			<textarea
 				bind:value={customPgnInput}
-				class="w-full h-36 bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-xs text-white font-mono focus:outline-none focus:border-sky-500 transition"
+				class="w-full h-36 bg-secondary/50 border border-border rounded-xl p-3 text-xs text-foreground font-mono focus:outline-none focus:border-foreground transition placeholder:text-muted-foreground"
 				placeholder="1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6..."
 			></textarea>
 
 			<div class="flex items-center justify-end gap-2 pt-2">
-				<button
-					class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition"
+				<Button
+					variant="outline"
+					size="sm"
+					className="text-xs"
 					on:click={() => (showPgnModal = false)}
 				>
 					Cancel
-				</button>
-				<button
-					class="px-4 py-2 bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white font-extrabold text-xs uppercase tracking-wide rounded-xl shadow-md transition"
+				</Button>
+				<Button
+					variant="primary"
+					size="sm"
+					className="text-xs font-bold uppercase tracking-wider"
 					on:click={() => loadPgnContent(customPgnInput)}
 				>
 					Analyze Game
-				</button>
+				</Button>
 			</div>
 		</div>
 	</div>

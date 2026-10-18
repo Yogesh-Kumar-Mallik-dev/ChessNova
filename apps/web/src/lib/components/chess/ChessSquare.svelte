@@ -25,7 +25,7 @@
 	export let reviewClassification: MoveClassification | null = null;
 	export let showRankCoord = false;
 	export let showFileCoord = false;
-	export let theme: 'emerald' | 'wood' | 'ocean' | 'slate' | 'charcoal' | 'coral' | 'cyber' = 'emerald';
+	export let theme: 'monochrome' | 'emerald' | 'wood' | 'ocean' | 'slate' | 'charcoal' | 'coral' | 'cyber' = 'monochrome';
 
 	const dispatch = createEventDispatcher<{
 		click: string;
@@ -52,41 +52,45 @@
 
 	$: squareColorClass = (() => {
 		switch (theme) {
+			case 'monochrome':
+				return isLight ? 'bg-[#f4f4f6]' : 'bg-[#2b2c34]';
+			case 'charcoal':
+				return isLight ? 'bg-[#e4e4e7]' : 'bg-[#27272a]';
+			case 'slate':
+				return isLight ? 'bg-[#dcdde1]' : 'bg-[#404552]';
 			case 'wood':
-				return isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]';
+				return isLight ? 'bg-[#eedbc5]' : 'bg-[#9b7653]';
 			case 'ocean':
 				return isLight ? 'bg-[#dbeafe]' : 'bg-[#467499]';
-			case 'slate':
-				return isLight ? 'bg-[#cdd6e0]' : 'bg-[#475569]';
-			case 'charcoal':
-				return isLight ? 'bg-[#cbd5e1]' : 'bg-[#262626]';
 			case 'coral':
 				return isLight ? 'bg-[#f5e6e8]' : 'bg-[#b36675]';
 			case 'cyber':
 				return isLight ? 'bg-[#cdd6e0]' : 'bg-[#2b3648]';
 			case 'emerald':
 			default:
-				return isLight ? 'bg-[#eeeed2]' : 'bg-[#769656]';
+				return isLight ? 'bg-[#eeeed2]' : 'bg-[#69884a]';
 		}
 	})();
 
 	$: coordColorClass = (() => {
 		switch (theme) {
+			case 'monochrome':
+				return isLight ? 'text-[#2b2c34]' : 'text-[#f4f4f6]';
+			case 'charcoal':
+				return isLight ? 'text-[#27272a]' : 'text-[#e4e4e7]';
+			case 'slate':
+				return isLight ? 'text-[#404552]' : 'text-[#dcdde1]';
 			case 'wood':
-				return isLight ? 'text-[#b58863]' : 'text-[#f0d9b5]';
+				return isLight ? 'text-[#9b7653]' : 'text-[#eedbc5]';
 			case 'ocean':
 				return isLight ? 'text-[#467499]' : 'text-[#dbeafe]';
-			case 'slate':
-				return isLight ? 'text-[#475569]' : 'text-[#cdd6e0]';
-			case 'charcoal':
-				return isLight ? 'text-[#262626]' : 'text-[#cbd5e1]';
 			case 'coral':
 				return isLight ? 'text-[#b36675]' : 'text-[#f5e6e8]';
 			case 'cyber':
 				return isLight ? 'text-slate-600' : 'text-slate-300';
 			case 'emerald':
 			default:
-				return isLight ? 'text-[#769656]' : 'text-[#eeeed2]';
+				return isLight ? 'text-[#69884a]' : 'text-[#eeeed2]';
 		}
 	})();
 </script>
@@ -99,23 +103,23 @@
 	on:dragover={handleDragOver}
 	on:drop={handleDrop}
 >
-	<!-- Selected square highlight (warm gold aura) -->
+	<!-- Selected square highlight: clean amber aura -->
 	{#if isSelected}
-		<div class="absolute inset-0 bg-amber-400/40 border-2 border-amber-300/80 z-0"></div>
+		<div class="absolute inset-0 bg-amber-400/35 border-2 border-amber-300/80 z-0"></div>
 	{/if}
 
-	<!-- Tactical Hint Square highlight (luminous cyan pulsating halo) -->
+	<!-- Tactical Hint Square highlight -->
 	{#if isHintSquare}
-		<div class="absolute inset-0 bg-cyan-400/35 border-2 border-cyan-300/90 shadow-[inset_0_0_15px_rgba(34,211,238,0.5)] animate-pulse z-0 pointer-events-none"></div>
+		<div class="absolute inset-0 bg-amber-400/30 border-2 border-amber-400/80 z-0 pointer-events-none"></div>
 	{/if}
 
-	<!-- Last move highlights: origin square warm gold, target square luminous sky-blue -->
+	<!-- Last move highlights: non-glaring amber tones -->
 	{#if isLastMoveFrom}
-		<div class="absolute inset-0 bg-amber-400/25 z-0"></div>
+		<div class="absolute inset-0 bg-amber-400/20 z-0"></div>
 	{:else if isLastMoveTo}
-		<div class="absolute inset-0 bg-sky-400/35 border border-sky-400/40 z-0"></div>
+		<div class="absolute inset-0 bg-amber-400/30 border border-amber-400/40 z-0"></div>
 	{:else if isLastMove}
-		<div class="absolute inset-0 bg-sky-400/30 z-0"></div>
+		<div class="absolute inset-0 bg-amber-400/25 z-0"></div>
 	{/if}
 
 	<!-- CHECK / CHECKMATE SQUARE HIGHLIGHT: Circular radial glow -->

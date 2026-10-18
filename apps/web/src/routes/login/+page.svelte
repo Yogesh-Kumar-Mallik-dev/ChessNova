@@ -6,7 +6,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import BorderBeam from '$lib/components/magicui/BorderBeam.svelte';
 
 	let username = '';
 	let password = '';
@@ -29,26 +28,25 @@
 </script>
 
 <div class="flex-1 flex items-center justify-center p-4">
-	<Card className="relative max-w-sm w-full p-6 sm:p-8 shadow-2xl border-slate-800 overflow-hidden">
-		<BorderBeam size={160} duration={10} colorFrom="#38bdf8" colorTo="#818cf8" />
+	<Card className="max-w-sm w-full p-6 sm:p-8 shadow-xl border-border">
 		<div class="flex flex-col items-center text-center mb-6">
-			<div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-500/20 to-indigo-600/30 border border-sky-500/30 flex items-center justify-center p-1.5 text-white shadow-lg shadow-sky-500/20 mb-3 overflow-hidden">
-				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain drop-shadow" />
+			<div class="w-12 h-12 rounded-xl bg-secondary border border-border flex items-center justify-center p-2 mb-3 shadow-xs">
+				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain" />
 			</div>
-			<h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">Welcome Back</h1>
-			<p class="text-xs text-slate-400 mt-1">Sign in to continue your games</p>
+			<h1 class="text-xl sm:text-2xl font-black text-foreground tracking-tight">Welcome Back</h1>
+			<p class="text-xs text-muted-foreground mt-1">Sign in to resume your games</p>
 		</div>
 
 		{#if error}
-			<div class="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300 flex items-center gap-2">
-				<Icon name="x" size={14} className="shrink-0 text-rose-400" />
+			<div class="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-xs text-destructive flex items-center gap-2">
+				<Icon name="x" size={14} className="shrink-0" />
 				<span>{error}</span>
 			</div>
 		{/if}
 
 		<form on:submit|preventDefault={handleSubmit} class="flex flex-col gap-4">
 			<div>
-				<label for="username" class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+				<label for="username" class="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
 					Username
 				</label>
 				<Input
@@ -62,7 +60,7 @@
 
 			<div>
 				<div class="flex items-center justify-between mb-1.5">
-					<label for="password" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+					<label for="password" class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 						Password
 					</label>
 				</div>
@@ -77,7 +75,7 @@
 
 			<Button variant="primary" size="lg" type="submit" disabled={loading} className="w-full mt-2">
 				{#if loading}
-					<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+					<div class="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin"></div>
 					<span>Signing In...</span>
 				{:else}
 					<span>Log In</span>
@@ -85,9 +83,9 @@
 			</Button>
 		</form>
 
-		<div class="mt-6 text-center text-xs text-slate-400">
+		<div class="mt-6 text-center text-xs text-muted-foreground">
 			Don't have an account?
-			<a href="/register" class="text-sky-400 font-semibold hover:underline ml-1">
+			<a href="/register" class="text-foreground font-semibold hover:underline ml-1">
 				Create one free
 			</a>
 		</div>

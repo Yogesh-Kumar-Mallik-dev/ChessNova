@@ -79,7 +79,7 @@
 		{/each}
 	</div>
 	{#if materialAdvantage > 0}
-		<span class="text-[11px] font-mono font-extrabold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.2 rounded ml-1.5 shadow-sm">
+		<span class="text-[11px] font-mono font-bold text-foreground bg-secondary border border-border px-1.5 py-0.5 rounded ml-1.5">
 			+{materialAdvantage}
 		</span>
 	{/if}

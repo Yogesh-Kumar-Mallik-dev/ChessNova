@@ -49,19 +49,19 @@
 
 {#if inDesktop}
 	<aside
-		class="h-8.5 bg-slate-950/95 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between select-none z-50 sticky top-0 px-2.5 text-xs text-slate-300 transition-colors"
+		class="h-8.5 bg-card border-b border-border flex items-center justify-between select-none z-50 sticky top-0 px-2.5 text-xs text-foreground transition-colors"
 		data-tauri-drag-region
 		on:dblclick={handleToggleMaximize}
 		aria-label="Desktop Window Titlebar"
 	>
 		<!-- Left: Branding & Draggable Title -->
 		<div class="flex items-center gap-2 pointer-events-none" data-tauri-drag-region>
-			<div class="w-5 h-5 rounded-md bg-gradient-to-tr from-sky-500/20 to-indigo-600/30 border border-sky-500/30 flex items-center justify-center p-0.5 shadow-xs overflow-hidden">
-				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain" />
+			<div class="w-5 h-5 rounded border border-border bg-foreground text-background flex items-center justify-center p-0.5 shadow-xs overflow-hidden">
+				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain invert dark:invert-0" />
 			</div>
-			<div class="flex items-center gap-1.5 font-bold tracking-tight text-white text-[11px]">
-				<span>Chess<span class="text-sky-400">Nova</span></span>
-				<span class="px-1.5 py-0.2 text-[9px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-full uppercase tracking-wider">
+			<div class="flex items-center gap-1.5 font-bold tracking-tight text-foreground text-[11px]">
+				<span>ChessNova</span>
+				<span class="px-1.5 py-0.2 text-[9px] font-medium bg-secondary text-muted-foreground border border-border rounded uppercase tracking-wider">
 					Desktop
 				</span>
 			</div>

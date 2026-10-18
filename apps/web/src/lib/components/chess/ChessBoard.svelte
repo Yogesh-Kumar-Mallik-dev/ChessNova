@@ -510,14 +510,14 @@
 		{/each}
 	</div>
 
-	<!-- Tactical Hint Arrow Overlay (Luminous cyan tactical vector arrow) -->
+	<!-- Tactical Hint Arrow Overlay (Clean gold vector arrow) -->
 	{#if hintArrow && hintArrow.from && hintArrow.to}
 		{@const hp1 = squareToPercent(hintArrow.from, orientation === 'white')}
 		{@const hp2 = squareToPercent(hintArrow.to, orientation === 'white')}
 		<svg class="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
 			<defs>
 				<marker id="hint-target-arrow" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
-					<polygon points="0 0, 6 3, 0 6" fill="#06b6d4" />
+					<polygon points="0 0, 6 3, 0 6" fill="#f59e0b" />
 				</marker>
 			</defs>
 			<line
@@ -525,8 +525,8 @@
 				y1="{hp1.y}%"
 				x2="{hp2.x}%"
 				y2="{hp2.y}%"
-				stroke="#06b6d4"
-				stroke-width="6"
+				stroke="#f59e0b"
+				stroke-width="5"
 				stroke-linecap="round"
 				marker-end="url(#hint-target-arrow)"
 				opacity="0.9"
@@ -534,7 +534,7 @@
 		</svg>
 	{/if}
 
-	<!-- Best Move Arrow Overlay -->
+	<!-- Best Move Arrow Overlay (Clean emerald vector arrow) -->
 	{#if reviewMove && reviewMove.bestMoveUci && reviewMove.bestMoveUci.length >= 4 && reviewMove.bestMoveUci !== `${reviewMove.from}${reviewMove.to}`}
 		{@const bFrom = reviewMove.bestMoveUci.slice(0, 2)}
 		{@const bTo = reviewMove.bestMoveUci.slice(2, 4)}
@@ -543,7 +543,7 @@
 		<svg class="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
 			<defs>
 				<marker id="review-best-arrow" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
-					<polygon points="0 0, 6 3, 0 6" fill="#38bdf8" />
+					<polygon points="0 0, 6 3, 0 6" fill="#10b981" />
 				</marker>
 			</defs>
 			<line
@@ -551,68 +551,68 @@
 				y1="{p1.y}%"
 				x2="{p2.x}%"
 				y2="{p2.y}%"
-				stroke="#38bdf8"
-				stroke-width="6"
+				stroke="#10b981"
+				stroke-width="5"
 				stroke-linecap="round"
 				marker-end="url(#review-best-arrow)"
-				opacity="0.88"
+				opacity="0.9"
 			/>
 		</svg>
 	{/if}
 
 	<!-- Game Over Modal -->
 	{#if isGameOver && !effectiveDisableGameOverModal && showGameOverModal}
-		<div class="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in duration-200">
-			<div class="relative bg-slate-900/95 border border-slate-800 rounded-2xl p-6 shadow-2xl max-w-[320px] sm:max-w-[340px] w-full flex flex-col items-center text-center">
+		<div class="absolute inset-0 z-50 bg-black/75 flex items-center justify-center p-3 animate-in fade-in duration-150">
+			<div class="relative bg-card border border-border rounded-xl p-6 shadow-2xl max-w-[320px] sm:max-w-[340px] w-full flex flex-col items-center text-center">
 				<!-- Close 'X' button to dismiss modal and view the board freely -->
 				<button
-					class="absolute top-3 right-3 w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center transition"
+					class="absolute top-3 right-3 w-7 h-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary flex items-center justify-center transition"
 					on:click={() => (showGameOverModal = false)}
 					title="Close and view board"
 				>
-					<Icon name="x" size={16} />
+					<Icon name="x" size={15} />
 				</button>
 
 				<!-- Winner Crown or Draw Emblem -->
-				<div class="w-12 h-12 rounded-xl flex items-center justify-center mb-3 {isDraw ? 'bg-slate-800 text-slate-300' : 'bg-amber-400/15 text-amber-400 ring-1 ring-amber-400/30'}">
+				<div class="w-12 h-12 rounded-xl flex items-center justify-center mb-3 {isDraw ? 'bg-secondary text-foreground' : 'bg-amber-400/15 text-amber-400 border border-amber-400/30'}">
 					{#if isDraw}
 						<Icon name="handshake" size={24} />
 					{:else}
-						<Icon name="crown" size={26} className="text-amber-400" />
+						<Icon name="crown" size={24} className="text-amber-400" />
 					{/if}
 				</div>
 
 				<!-- Result Title -->
-				<h3 class="text-xl font-black text-white tracking-tight">
+				<h3 class="text-xl font-bold text-foreground tracking-tight">
 					{modalTitle}
 				</h3>
 
 				<!-- Subtitle -->
-				<p class="text-xs text-slate-400 font-medium mt-1 mb-5">
+				<p class="text-xs text-muted-foreground font-normal mt-1 mb-5">
 					{modalSubtitle}
 				</p>
 
 				<!-- Actions -->
-				<div class="flex flex-col gap-2.5 w-full">
+				<div class="flex flex-col gap-2 w-full">
 					<a
 						href="/analysis?fen={encodeURIComponent(fen)}"
-						class="w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white font-extrabold text-xs uppercase tracking-wide rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-sky-500/20"
+						class="w-full py-2.5 px-4 bg-foreground hover:opacity-90 active:scale-[0.99] text-background font-semibold text-xs rounded-lg transition-all flex items-center justify-center gap-2 shadow-xs"
 						on:click={() => dispatch('analyze')}
 					>
-						<Icon name="search" size={15} />
+						<Icon name="search" size={14} />
 						<span>Game Review</span>
 					</a>
 
 					<div class="grid grid-cols-2 gap-2 w-full">
 						<button
-							class="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700/60 transition-all flex items-center justify-center gap-1.5"
+							class="py-2 px-3 bg-secondary hover:bg-accent text-foreground font-medium text-xs rounded-lg border border-border transition flex items-center justify-center gap-1.5 cursor-pointer"
 							on:click={() => dispatch('rematch')}
 						>
 							<Icon name="rotate-ccw" size={13} />
 							<span>Rematch</span>
 						</button>
 						<button
-							class="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700/60 transition-all flex items-center justify-center gap-1.5"
+							class="py-2 px-3 bg-secondary hover:bg-accent text-foreground font-medium text-xs rounded-lg border border-border transition flex items-center justify-center gap-1.5 cursor-pointer"
 							on:click={() => dispatch('newGame')}
 						>
 							<Icon name="zap" size={13} />
@@ -626,25 +626,25 @@
 
 	<!-- Minimized Bottom Status Bar -->
 	{#if isGameOver && !effectiveDisableGameOverModal && !showGameOverModal}
-		<div class="absolute bottom-3 inset-x-3 z-40 bg-slate-900/95 border border-slate-800 shadow-2xl rounded-xl py-2 px-3 flex items-center justify-between text-xs backdrop-blur-md animate-in fade-in">
+		<div class="absolute bottom-3 inset-x-3 z-40 bg-card border border-border shadow-xl rounded-lg py-2 px-3 flex items-center justify-between text-xs animate-in fade-in duration-150">
 			<div class="flex items-center gap-2 truncate pr-2">
 				{#if !isDraw}
-					<div class="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 text-amber-400">
+					<div class="w-5 h-5 rounded-md bg-amber-400/15 border border-amber-400/30 flex items-center justify-center shrink-0 text-amber-400">
 						<Icon name="crown" size={12} />
 					</div>
 				{/if}
-				<span class="font-bold text-white capitalize truncate">{modalTitle}</span>
-				<span class="text-slate-400 font-normal shrink-0">{modalSubtitle}</span>
+				<span class="font-semibold text-foreground capitalize truncate">{modalTitle}</span>
+				<span class="text-muted-foreground font-normal shrink-0">{modalSubtitle}</span>
 			</div>
 			<div class="flex items-center gap-2 shrink-0">
 				<a
 					href="/analysis?fen={encodeURIComponent(fen)}"
-					class="px-2.5 py-1 bg-sky-500 hover:bg-sky-400 text-white font-bold text-[11px] rounded-lg shadow transition"
+					class="px-2.5 py-1 bg-foreground text-background font-semibold text-[11px] rounded shadow-xs hover:opacity-90 transition"
 				>
 					Review
 				</a>
 				<button
-					class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] rounded-lg transition"
+					class="px-2.5 py-1 bg-secondary hover:bg-accent text-foreground font-medium text-[11px] rounded border border-border transition cursor-pointer"
 					on:click={() => (showGameOverModal = true)}
 				>
 					Dialog

@@ -25,15 +25,15 @@
 	];
 </script>
 
-<header class="h-14 sm:h-16 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-40 select-none">
+<header class="h-14 sm:h-16 bg-card/95 border-b border-border px-3 sm:px-6 flex items-center justify-between sticky top-0 z-40 select-none shadow-2xs backdrop-blur-xs">
 	<div class="flex items-center gap-6 lg:gap-8">
 		<!-- Brand Logo -->
-		<a href="/" class="flex items-center gap-2.5 text-white font-bold text-lg sm:text-xl tracking-tight group">
-			<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500/20 to-indigo-600/30 border border-sky-500/30 flex items-center justify-center p-1 shadow-md shadow-sky-500/20 group-hover:scale-105 transition-transform overflow-hidden">
-				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain drop-shadow" />
+		<a href="/" class="flex items-center gap-2.5 text-foreground font-bold text-base sm:text-lg tracking-tight group">
+			<div class="w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center p-1.5 shadow-xs group-hover:opacity-90 transition-opacity overflow-hidden">
+				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain invert dark:invert-0" />
 			</div>
-			<span class="font-extrabold text-white">
-				Chess<span class="text-sky-400">Nova</span>
+			<span class="font-extrabold tracking-tight">
+				ChessNova
 			</span>
 		</a>
 
@@ -43,11 +43,11 @@
 				{@const active = currentPath === item.href || (item.href !== '/' && currentPath.startsWith(item.href) && item.href !== '/play')}
 				<a
 					href={item.href}
-					class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 {active
-						? 'bg-slate-800 text-white shadow-sm'
-						: 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'}"
+					class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {active
+						? 'bg-secondary text-foreground font-semibold shadow-2xs'
+						: 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'}"
 				>
-					<Icon name={item.icon} size={14} className={active ? 'text-sky-400' : 'text-slate-500'} />
+					<Icon name={item.icon} size={14} className={active ? 'text-foreground' : 'text-muted-foreground'} />
 					<span>{item.label}</span>
 				</a>
 			{/each}
@@ -55,36 +55,36 @@
 	</div>
 
 	<!-- Actions & Auth Status -->
-	<div class="flex items-center gap-2.5 sm:gap-3">
+	<div class="flex items-center gap-2 sm:gap-2.5">
 		<QuickSettings />
 
 		{#if $authStore.loading}
-			<div class="w-8 h-8 rounded-full bg-slate-800/60 animate-pulse"></div>
+			<div class="w-8 h-8 rounded-lg bg-secondary animate-pulse"></div>
 		{:else if $authStore.user}
-			<div class="flex items-center gap-2 sm:gap-3">
+			<div class="flex items-center gap-2 sm:gap-2.5">
 				<UserBadge
 					username={$authStore.user.username}
 					avatar={$authStore.user.avatar}
 					rating={$authStore.ratings?.blitz || 400}
 					ratingCategory="blitz"
-					size="md"
+					size="sm"
 					href="/profile/{$authStore.user.username}"
 				/>
 
 				<Button
 					variant="ghost"
 					size="icon"
-					className="text-slate-400 hover:text-rose-400 hover:bg-slate-850"
+					className="text-muted-foreground hover:text-foreground hover:bg-secondary h-8 w-8"
 					on:click={handleLogout}
 					title="Sign Out"
 				>
-					<Icon name="log-out" size={15} />
+					<Icon name="log-out" size={14} />
 				</Button>
 			</div>
 		{:else}
 			<div class="hidden sm:flex items-center gap-2">
 				<a href="/login">
-					<Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
+					<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
 						Log In
 					</Button>
 				</a>
@@ -98,7 +98,7 @@
 
 		<!-- Mobile Menu Toggle Button -->
 		<button
-			class="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-850 transition"
+			class="md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition"
 			on:click={() => (mobileMenuOpen = !mobileMenuOpen)}
 			aria-label="Toggle navigation menu"
 		>
@@ -109,30 +109,30 @@
 
 <!-- Mobile Navigation Drawer -->
 {#if mobileMenuOpen}
-	<div class="md:hidden fixed inset-x-0 top-16 z-30 bg-slate-950/95 border-b border-slate-800/80 backdrop-blur-2xl p-4 shadow-2xl animate-fade-in flex flex-col gap-2">
+	<div class="md:hidden fixed inset-x-0 top-14 sm:top-16 z-30 bg-card border-b border-border p-3 shadow-xl flex flex-col gap-1 animate-in fade-in duration-150">
 		{#each navItems as item}
 			{@const active = currentPath === item.href}
 			<a
 				href={item.href}
-				class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition {active
-					? 'bg-slate-800 text-white border border-slate-700/80'
-					: 'text-slate-300 hover:bg-slate-900'}"
+				class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors {active
+					? 'bg-secondary text-foreground font-semibold'
+					: 'text-muted-foreground hover:bg-secondary hover:text-foreground'}"
 				on:click={() => (mobileMenuOpen = false)}
 			>
-				<Icon name={item.icon} size={18} className={active ? 'text-emerald-400' : 'text-slate-400'} />
+				<Icon name={item.icon} size={16} className={active ? 'text-foreground' : 'text-muted-foreground'} />
 				<span>{item.label}</span>
 			</a>
 		{/each}
 
 		{#if $authStore.user}
-			<div class="pt-3 mt-2 border-t border-slate-800 flex items-center justify-between gap-3">
+			<div class="pt-2 mt-1 border-t border-border flex items-center justify-between gap-2">
 				<div class="flex-1" on:click={() => (mobileMenuOpen = false)} role="presentation">
 					<UserBadge
 						username={$authStore.user.username}
 						avatar={$authStore.user.avatar}
 						rating={$authStore.ratings?.blitz || 400}
 						ratingCategory="blitz"
-						size="md"
+						size="sm"
 						href="/profile/{$authStore.user.username}"
 						className="w-full justify-between"
 					/>
@@ -140,23 +140,23 @@
 				<Button
 					variant="ghost"
 					size="sm"
-					className="text-slate-400 hover:text-rose-400 hover:bg-slate-900 shrink-0"
+					className="text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 h-8"
 					on:click={() => {
 						mobileMenuOpen = false;
 						handleLogout();
 					}}
 					title="Sign Out"
 				>
-					<Icon name="log-out" size={15} />
+					<Icon name="log-out" size={14} />
 				</Button>
 			</div>
 		{:else}
-			<div class="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-slate-800">
+			<div class="grid grid-cols-2 gap-2 pt-2 mt-1 border-t border-border">
 				<a href="/login" class="w-full" on:click={() => (mobileMenuOpen = false)}>
-					<Button variant="outline" className="w-full">Log In</Button>
+					<Button variant="outline" size="sm" className="w-full">Log In</Button>
 				</a>
 				<a href="/register" class="w-full" on:click={() => (mobileMenuOpen = false)}>
-					<Button variant="primary" className="w-full">Play Free</Button>
+					<Button variant="primary" size="sm" className="w-full">Play Free</Button>
 				</a>
 			</div>
 		{/if}

@@ -57,15 +57,15 @@
 	function getTitleBadgeClass(t: string): string {
 		const upper = t.toUpperCase();
 		if (upper === 'BOT' || upper === 'AI') {
-			return 'bg-purple-500/15 border-purple-500/30 text-purple-300';
+			return 'bg-secondary text-muted-foreground border-border';
 		}
 		if (upper === 'GM' || upper === 'WGM') {
-			return 'bg-amber-500/20 border-amber-500/40 text-amber-300 font-black';
+			return 'bg-foreground text-background font-black border-transparent shadow-xs';
 		}
 		if (upper === 'IM' || upper === 'FM' || upper === 'CM') {
-			return 'bg-sky-500/15 border-sky-500/30 text-sky-300';
+			return 'bg-secondary text-foreground font-bold border-border';
 		}
-		return 'bg-amber-500/15 border-amber-500/30 text-amber-400';
+		return 'bg-secondary text-foreground font-semibold border-border';
 	}
 </script>
 
@@ -75,7 +75,7 @@
 		target={target || undefined}
 		rel={computedRel}
 		class={cn(
-			'group inline-flex items-center rounded-xl bg-slate-900/80 hover:bg-slate-850/90 border border-slate-800 hover:border-sky-500/40 shadow-xs hover:shadow-[0_0_14px_rgba(14,165,233,0.12)] transition-all duration-150 active:scale-[0.98] select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60',
+			'group inline-flex items-center rounded-lg bg-secondary/60 hover:bg-secondary border border-border hover:border-foreground/20 shadow-xs transition-colors select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
 			s.container,
 			className
 		)}
@@ -85,7 +85,7 @@
 		{#if showAvatar}
 			<div class="relative shrink-0">
 				<div class={cn(
-					'overflow-hidden flex items-center justify-center font-bold shadow-inner ring-1 ring-slate-700/60 group-hover:ring-sky-400/50 bg-gradient-to-br from-slate-800 to-slate-950 transition-all',
+					'overflow-hidden flex items-center justify-center font-bold border border-border bg-card transition-colors',
 					s.avatar
 				)}>
 					{#if avatar && !imgError}
@@ -96,7 +96,7 @@
 							on:error={() => (imgError = true)}
 						/>
 					{:else}
-						<span class="text-sky-400 group-hover:text-white transition-colors">
+						<span class="text-foreground/80 group-hover:text-foreground transition-colors font-mono">
 							{username ? username[0].toUpperCase() : '?'}
 						</span>
 					{/if}
@@ -104,7 +104,7 @@
 
 				{#if showStatus && isOnline}
 					<span
-						class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-slate-950 shadow-[0_0_6px_rgba(52,211,153,0.85)]"
+						class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-card"
 						title="Online"
 					></span>
 				{/if}
@@ -114,7 +114,7 @@
 		<!-- Optional Title Badge (e.g. GM, IM, BOT) -->
 		{#if title}
 			<span class={cn(
-				'px-1.5 py-0.5 rounded border font-extrabold text-[10px] tracking-wide shrink-0 transition-transform group-hover:scale-105',
+				'px-1.5 py-0.5 rounded border text-[10px] tracking-wide shrink-0',
 				getTitleBadgeClass(title)
 			)}>
 				{title}
@@ -122,17 +122,17 @@
 		{/if}
 
 		<!-- Username -->
-		<span class="font-bold text-slate-200 group-hover:text-white transition-colors truncate max-w-[120px] sm:max-w-[160px]">
+		<span class="font-semibold text-foreground truncate max-w-[120px] sm:max-w-[160px]">
 			{username}
 		</span>
 
 		<!-- Rating Pill -->
 		{#if showRating && rating !== null && rating !== undefined}
 			<div class={cn(
-				'shrink-0 flex items-center gap-1 rounded-md bg-slate-950/80 border border-slate-850 text-sky-400 font-mono font-extrabold group-hover:border-slate-700 transition-colors',
+				'shrink-0 flex items-center gap-1 rounded border border-border bg-card text-foreground/80 font-mono font-medium',
 				s.ratingPill
 			)}>
-				<Icon name={categoryIcons[ratingCategory] || 'flame'} size={s.icon} className="text-slate-500 group-hover:text-sky-400 transition-colors" />
+				<Icon name={categoryIcons[ratingCategory] || 'flame'} size={s.icon} className="text-muted-foreground group-hover:text-foreground transition-colors" />
 				<span>{rating}</span>
 			</div>
 		{/if}
@@ -140,7 +140,7 @@
 {:else}
 	<div
 		class={cn(
-			'inline-flex items-center rounded-xl bg-slate-900/80 border border-slate-800 shadow-xs select-none',
+			'inline-flex items-center rounded-lg bg-secondary/50 border border-border shadow-xs select-none',
 			s.container,
 			className
 		)}
@@ -149,7 +149,7 @@
 		{#if showAvatar}
 			<div class="relative shrink-0">
 				<div class={cn(
-					'overflow-hidden flex items-center justify-center font-bold shadow-inner ring-1 ring-slate-700/60 bg-gradient-to-br from-slate-800 to-slate-950',
+					'overflow-hidden flex items-center justify-center font-bold border border-border bg-card',
 					s.avatar
 				)}>
 					{#if avatar && !imgError}
@@ -160,14 +160,14 @@
 							on:error={() => (imgError = true)}
 						/>
 					{:else}
-						<span class="text-sky-400">
+						<span class="text-foreground/80 font-mono">
 							{username ? username[0].toUpperCase() : '?'}
 						</span>
 					{/if}
 				</div>
 
 				{#if showStatus && isOnline}
-					<span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-slate-950 shadow-[0_0_6px_rgba(52,211,153,0.85)]"></span>
+					<span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-card"></span>
 				{/if}
 			</div>
 		{/if}
@@ -175,7 +175,7 @@
 		<!-- Title Badge -->
 		{#if title}
 			<span class={cn(
-				'px-1.5 py-0.5 rounded border font-extrabold text-[10px] tracking-wide shrink-0',
+				'px-1.5 py-0.5 rounded border text-[10px] tracking-wide shrink-0',
 				getTitleBadgeClass(title)
 			)}>
 				{title}
@@ -183,17 +183,17 @@
 		{/if}
 
 		<!-- Username -->
-		<span class="font-bold text-slate-200 truncate max-w-[120px] sm:max-w-[160px]">
+		<span class="font-semibold text-foreground truncate max-w-[120px] sm:max-w-[160px]">
 			{username}
 		</span>
 
 		<!-- Rating Pill -->
 		{#if showRating && rating !== null && rating !== undefined}
 			<div class={cn(
-				'shrink-0 flex items-center gap-1 rounded-md bg-slate-950/80 border border-slate-850 text-sky-400 font-mono font-extrabold',
+				'shrink-0 flex items-center gap-1 rounded border border-border bg-card text-foreground/80 font-mono font-medium',
 				s.ratingPill
 			)}>
-				<Icon name={categoryIcons[ratingCategory] || 'flame'} size={s.icon} className="text-slate-500" />
+				<Icon name={categoryIcons[ratingCategory] || 'flame'} size={s.icon} className="text-muted-foreground" />
 				<span>{rating}</span>
 			</div>
 		{/if}

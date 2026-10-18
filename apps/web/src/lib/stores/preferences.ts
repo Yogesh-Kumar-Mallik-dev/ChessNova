@@ -1,14 +1,14 @@
 import { writable } from 'svelte/store';
 import { soundEffects } from '$lib/audio/sounds';
 
-export type BoardTheme = 'emerald' | 'wood' | 'ocean' | 'slate' | 'charcoal' | 'coral' | 'cyber';
-export type AppTheme = 'dark-slate' | 'chess-dark' | 'oled-black' | 'emerald-studio';
+export type BoardTheme = 'monochrome' | 'slate' | 'charcoal' | 'wood' | 'emerald' | 'ocean' | 'coral' | 'cyber';
+export type AppTheme = 'dark' | 'light' | 'oled' | 'dark-slate' | 'chess-dark' | 'oled-black' | 'emerald-studio';
 
 function createBoardThemeStore() {
 	const initial: BoardTheme =
 		typeof window !== 'undefined'
-			? ((localStorage.getItem('chess_board_theme') as BoardTheme) || 'emerald')
-			: 'emerald';
+			? ((localStorage.getItem('chess_board_theme') as BoardTheme) || 'monochrome')
+			: 'monochrome';
 
 	const { subscribe, set } = writable<BoardTheme>(initial);
 
@@ -27,8 +27,8 @@ function createBoardThemeStore() {
 function createAppThemeStore() {
 	const initial: AppTheme =
 		typeof window !== 'undefined'
-			? ((localStorage.getItem('chess_app_theme') as AppTheme) || 'dark-slate')
-			: 'dark-slate';
+			? ((localStorage.getItem('chess_app_theme') as AppTheme) || 'dark')
+			: 'dark';
 
 	const { subscribe, set } = writable<AppTheme>(initial);
 

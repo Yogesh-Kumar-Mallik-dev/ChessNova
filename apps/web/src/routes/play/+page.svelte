@@ -38,8 +38,8 @@
 			desc: 'Novice Club Learner',
 			quote: "I'm still learning piece movements. Let's have a fun match!",
 			icon: 'user',
-			accentColor: 'text-emerald-400',
-			badgeBg: 'bg-emerald-500/15 border-emerald-500/30'
+			accentColor: 'text-foreground',
+			badgeBg: 'bg-secondary border-border'
 		},
 		{
 			level: 2,
@@ -48,8 +48,8 @@
 			desc: 'Casual Club Enthusiast',
 			quote: 'I love open games and aggressive quick development!',
 			icon: 'zap',
-			accentColor: 'text-sky-400',
-			badgeBg: 'bg-sky-500/15 border-sky-500/30'
+			accentColor: 'text-foreground',
+			badgeBg: 'bg-secondary border-border'
 		},
 		{
 			level: 3,
@@ -58,8 +58,8 @@
 			desc: 'Solid Tactical Defender',
 			quote: 'Patient pawn structure and solid counter-play win games.',
 			icon: 'shield',
-			accentColor: 'text-indigo-400',
-			badgeBg: 'bg-indigo-500/15 border-indigo-500/30'
+			accentColor: 'text-foreground',
+			badgeBg: 'bg-secondary border-border'
 		},
 		{
 			level: 4,
@@ -68,8 +68,8 @@
 			desc: 'Positional Tactician',
 			quote: 'Watch your unprotected pieces—I capitalize on any slip.',
 			icon: 'flame',
-			accentColor: 'text-amber-400',
-			badgeBg: 'bg-amber-500/15 border-amber-500/30'
+			accentColor: 'text-foreground',
+			badgeBg: 'bg-secondary border-border'
 		},
 		{
 			level: 5,
@@ -78,8 +78,8 @@
 			desc: 'Grandmaster Calculation',
 			quote: 'Deep strategic calculation with ruthless endgame execution.',
 			icon: 'crown',
-			accentColor: 'text-purple-400',
-			badgeBg: 'bg-purple-500/15 border-purple-500/30'
+			accentColor: 'text-foreground',
+			badgeBg: 'bg-secondary border-border'
 		}
 	];
 
@@ -348,39 +348,39 @@
 
 <div class="flex-1 max-w-7xl mx-auto w-full px-2 py-1 sm:px-4 sm:py-1.5 lg:px-6 flex flex-col justify-center min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-hidden">
 	<!-- Slim Header & Mode Toolbar -->
-	<div class="mb-1.5 flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-slate-800/80 rounded-xl px-2.5 py-1.5 backdrop-blur-md shrink-0 shadow-md">
+	<div class="mb-1.5 flex flex-wrap items-center justify-between gap-2 bg-card border border-border rounded-xl px-2.5 py-1.5 shrink-0 shadow-xs">
 		<div class="flex items-center gap-2">
 			<!-- Mode Switcher -->
-			<div class="inline-flex p-0.5 rounded-lg bg-slate-950 border border-slate-800 text-xs">
+			<div class="inline-flex p-0.5 rounded-lg bg-secondary border border-border text-xs">
 				<button
-					class="px-2.5 py-1 rounded font-semibold transition cursor-pointer {gameMode === 'vs_computer' ? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs' : 'text-slate-400 hover:text-white'}"
+					class="px-2.5 py-1 rounded font-semibold transition cursor-pointer {gameMode === 'vs_computer' ? 'bg-foreground text-background font-bold shadow-xs' : 'text-muted-foreground hover:text-foreground'}"
 					on:click={() => setGameMode('vs_computer')}
 				>
 					Play Bot
 				</button>
 				<button
-					class="px-2.5 py-1 rounded font-semibold transition cursor-pointer {gameMode === 'pass_and_play' ? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs' : 'text-slate-400 hover:text-white'}"
+					class="px-2.5 py-1 rounded font-semibold transition cursor-pointer {gameMode === 'pass_and_play' ? 'bg-foreground text-background font-bold shadow-xs' : 'text-muted-foreground hover:text-foreground'}"
 					on:click={() => setGameMode('pass_and_play')}
 				>
 					Pass & Play
 				</button>
 			</div>
 
-			<!-- Bot Selector Chips (compact) -->
+			<!-- Bot Selector Chips -->
 			{#if gameMode === 'vs_computer'}
-				<div class="hidden sm:flex items-center gap-1 bg-slate-950/70 p-0.5 rounded-lg border border-slate-800">
+				<div class="hidden sm:flex items-center gap-1 bg-secondary/60 p-0.5 rounded-lg border border-border">
 					{#each botPersonas as b}
 						{@const isSelected = b.level === botLevel}
 						<button
 							class="px-2 py-0.5 rounded text-[11px] font-semibold transition flex items-center gap-1 {isSelected
-								? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold'
-								: 'text-slate-400 hover:text-slate-200'}"
+								? 'bg-foreground text-background font-bold shadow-xs'
+								: 'text-muted-foreground hover:text-foreground'}"
 							on:click={() => setBotLevel(b.level)}
 							title={`${b.name} (${b.elo} Elo) - ${b.desc}`}
 						>
-							<Icon name={b.icon} size={11} className={isSelected ? 'text-sky-400' : 'text-slate-500'} />
+							<Icon name={b.icon} size={11} className={isSelected ? 'text-background' : 'text-muted-foreground'} />
 							<span>{b.name}</span>
-							<span class="text-[9px] font-mono opacity-70">({b.elo})</span>
+							<span class="text-[9px] font-mono opacity-80 tabular-nums">({b.elo})</span>
 						</button>
 					{/each}
 				</div>
@@ -390,15 +390,15 @@
 		<!-- Right: Color choice & quick controls -->
 		<div class="flex items-center gap-1.5">
 			{#if gameMode === 'vs_computer'}
-				<div class="inline-flex p-0.5 rounded-lg bg-slate-950 border border-slate-800 text-xs">
+				<div class="inline-flex p-0.5 rounded-lg bg-secondary border border-border text-xs">
 					<button
-						class="px-2 py-0.5 rounded text-[11px] font-semibold transition {playerColor === 'white' ? 'bg-white text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}"
+						class="px-2 py-0.5 rounded text-[11px] font-semibold transition {playerColor === 'white' ? 'bg-foreground text-background font-bold' : 'text-muted-foreground hover:text-foreground'}"
 						on:click={() => setPlayerColor('white')}
 					>
 						White
 					</button>
 					<button
-						class="px-2 py-0.5 rounded text-[11px] font-semibold transition {playerColor === 'black' ? 'bg-slate-800 text-white font-bold' : 'text-slate-400 hover:text-white'}"
+						class="px-2 py-0.5 rounded text-[11px] font-semibold transition {playerColor === 'black' ? 'bg-foreground text-background font-bold' : 'text-muted-foreground hover:text-foreground'}"
 						on:click={() => setPlayerColor('black')}
 					>
 						Black
@@ -407,7 +407,7 @@
 			{/if}
 
 			<button
-				class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700/60 flex items-center justify-center"
+				class="p-1.5 bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition border border-border flex items-center justify-center"
 				on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 				title="Flip Board"
 			>
@@ -415,7 +415,7 @@
 			</button>
 
 			<button
-				class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700/60 flex items-center justify-center"
+				class="p-1.5 bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition border border-border flex items-center justify-center"
 				on:click={resetLocalGame}
 				title="Reset Match"
 			>
@@ -443,8 +443,8 @@
 								interactive={false}
 							/>
 						{:else}
-							<div class="flex items-center gap-2 text-white font-bold leading-tight">
-								<div class="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
+							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
+								<div class="w-6 h-6 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground">
 									<Icon name="user" size={13} />
 								</div>
 								<span>Opponent</span>
@@ -453,12 +453,12 @@
 					</div>
 
 					{#if isBotThinking}
-						<div class="flex items-center gap-1.5 text-[11px] font-mono text-sky-400 animate-pulse font-bold">
-							<span class="w-2 h-2 rounded-full bg-sky-400"></span>
+						<div class="flex items-center gap-1.5 text-[11px] font-mono text-foreground animate-pulse font-bold">
+							<span class="w-2 h-2 rounded-full bg-foreground"></span>
 							<span>Thinking...</span>
 						</div>
 					{:else}
-						<span class="text-[11px] text-slate-400 font-mono">
+						<span class="text-[11px] text-muted-foreground font-mono">
 							{turn === (gameMode === 'vs_computer' && playerColor === 'white' ? 'black' : 'white') ? 'Their turn' : 'Waiting'}
 						</span>
 					{/if}
@@ -491,8 +491,8 @@
 								target="_blank"
 							/>
 						{:else}
-							<div class="flex items-center gap-2 text-white font-bold leading-tight">
-								<div class="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
+							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
+								<div class="w-6 h-6 rounded-lg bg-secondary border border-border text-foreground flex items-center justify-center">
 									<Icon name="crown" size={13} />
 								</div>
 								<span>You</span>
@@ -503,15 +503,17 @@
 					<!-- Mobile Quick Action Buttons -->
 					<div class="flex items-center gap-1.5">
 						{#if isGameOver}
-							<button
-								class="px-2.5 py-1 bg-[#81b64c] hover:bg-[#91c65d] text-white font-extrabold text-[11px] uppercase tracking-wide rounded-lg transition flex items-center gap-1"
+							<Button
+								variant="primary"
+								size="sm"
+								className="text-xs uppercase tracking-wider"
 								on:click={handleAnalyze}
 							>
 								<Icon name="search" size={12} />
 								<span>Review</span>
-							</button>
+							</Button>
 						{/if}
-						<span class="text-[11px] font-mono {turn === playerColor ? 'text-emerald-400 font-bold' : 'text-slate-500'}">
+						<span class="text-[11px] font-mono {turn === playerColor ? 'text-foreground font-bold' : 'text-muted-foreground'}">
 							{turn === playerColor ? 'Your turn' : 'Waiting...'}
 						</span>
 					</div>
@@ -520,40 +522,40 @@
 		</div>
 
 		<!-- Sidebar: Bot Personality Card & Move List (Desktop) -->
-		<div class="hidden lg:flex lg:col-span-5 xl:col-span-4 h-[min(calc(100dvh-110px),640px)] bg-slate-900/90 border border-slate-800 rounded-2xl flex-col overflow-hidden shadow-2xl backdrop-blur-xl">
+		<div class="hidden lg:flex lg:col-span-5 xl:col-span-4 h-[min(calc(100dvh-110px),640px)] bg-card border border-border rounded-xl flex-col overflow-hidden shadow-lg">
 			{#if gameMode === 'vs_computer'}
 				<!-- Bot Card Header -->
-				<div class="p-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between">
+				<div class="p-4 border-b border-border bg-secondary/30 flex items-center justify-between">
 					<div class="flex items-center gap-3">
-						<div class="w-10 h-10 rounded-xl flex items-center justify-center {activeBot.badgeBg} {activeBot.accentColor} shadow-md">
+						<div class="w-10 h-10 rounded-lg flex items-center justify-center bg-secondary border border-border text-foreground shadow-xs">
 							<Icon name={activeBot.icon} size={20} />
 						</div>
 						<div>
 							<div class="flex items-center gap-2">
-								<h3 class="text-sm font-black text-white">{activeBot.name}</h3>
-								<span class="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+								<h3 class="text-sm font-black text-foreground">{activeBot.name}</h3>
+								<span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-secondary text-foreground border border-border tabular-nums">
 									{activeBot.elo} Elo
 								</span>
 							</div>
-							<p class="text-[11px] text-slate-400">{activeBot.desc}</p>
+							<p class="text-[11px] text-muted-foreground">{activeBot.desc}</p>
 						</div>
 					</div>
 				</div>
 
-				<div class="p-3 bg-slate-950/40 border-b border-slate-800/80 text-xs italic text-slate-400 flex items-center gap-2">
-					<Icon name="sparkles" size={13} className="text-slate-500 shrink-0" />
+				<div class="p-3 bg-secondary/15 border-b border-border text-xs italic text-muted-foreground flex items-center gap-2">
+					<Icon name="sparkles" size={13} className="text-muted-foreground shrink-0" />
 					<span class="truncate">"{activeBot.quote}"</span>
 				</div>
 			{/if}
 
 			<!-- Move Ledger Header -->
-			<div class="p-3 border-b border-slate-800 bg-slate-950/60 text-xs font-bold text-white flex justify-between items-center">
+			<div class="p-3 border-b border-border bg-secondary/40 text-xs font-bold text-foreground flex justify-between items-center">
 				<div class="flex items-center gap-2">
-					<span class="tracking-wide uppercase text-[10px] text-slate-400">Move History ({moves.length})</span>
+					<span class="tracking-wide uppercase text-[10px] text-muted-foreground">Move History ({moves.length})</span>
 				</div>
-				<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700/60">
-					<span class="w-2 h-2 rounded-full {turn === 'white' ? 'bg-white' : 'bg-slate-900 border border-slate-600'}"></span>
-					<span class="text-[10px] font-mono font-bold text-slate-200 uppercase">{turn} to play</span>
+				<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary border border-border">
+					<span class="w-2 h-2 rounded-full {turn === 'white' ? 'bg-foreground' : 'bg-muted border border-border'}"></span>
+					<span class="text-[10px] font-mono font-bold text-foreground uppercase">{turn} to play</span>
 				</div>
 			</div>
 
@@ -565,11 +567,11 @@
 				/>
 			</div>
 
-			<div class="p-3 border-t border-slate-800 bg-slate-950/80 flex items-center gap-2">
+			<div class="p-3 border-t border-border bg-secondary/20 flex items-center gap-2">
 				<Button
 					variant="outline"
 					size="sm"
-					className="flex-1 text-slate-300"
+					className="flex-1"
 					on:click={resetLocalGame}
 				>
 					<Icon name="rotate-ccw" size={13} />

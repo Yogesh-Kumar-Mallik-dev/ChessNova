@@ -11,80 +11,80 @@
 	> = {
 		brilliant: {
 			label: 'Brilliant',
-			bg: 'bg-[#1baca6]',
-			text: 'text-white',
+			bg: 'bg-foreground',
+			text: 'text-background',
 			symbol: '!!',
-			border: 'border-[#179590]'
+			border: 'border-foreground'
 		},
 		great: {
 			label: 'Great Move',
-			bg: 'bg-[#5c8bb0]',
-			text: 'text-white',
+			bg: 'bg-foreground/90',
+			text: 'text-background',
 			symbol: '!',
-			border: 'border-[#4b779a]'
+			border: 'border-foreground/80'
 		},
 		best: {
 			label: 'Best Move',
-			bg: 'bg-[#81b64c]',
-			text: 'text-white',
+			bg: 'bg-foreground text-background',
+			text: 'text-background',
 			symbol: '★',
-			border: 'border-[#6c9c3e]'
+			border: 'border-foreground'
 		},
 		excellent: {
 			label: 'Excellent',
-			bg: 'bg-[#96be76]',
-			text: 'text-white',
+			bg: 'bg-secondary',
+			text: 'text-foreground',
 			symbol: '✓',
-			border: 'border-[#7ea560]'
+			border: 'border-border'
 		},
 		good: {
 			label: 'Good',
-			bg: 'bg-[#96a578]',
-			text: 'text-white',
+			bg: 'bg-secondary',
+			text: 'text-foreground',
 			symbol: '✓',
-			border: 'border-[#7e8d62]'
+			border: 'border-border'
 		},
 		book: {
 			label: 'Book Move',
-			bg: 'bg-[#bca380]',
-			text: 'text-white',
+			bg: 'bg-secondary',
+			text: 'text-foreground',
 			symbol: 'book',
-			border: 'border-[#a68e6e]'
+			border: 'border-border'
 		},
 		inaccuracy: {
 			label: 'Inaccuracy',
-			bg: 'bg-[#f0c15c]',
-			text: 'text-white',
+			bg: 'bg-amber-500/15',
+			text: 'text-amber-500',
 			symbol: '?!',
-			border: 'border-[#d6aa4d]'
+			border: 'border-amber-500/30'
 		},
 		mistake: {
 			label: 'Mistake',
-			bg: 'bg-[#e67a2e]',
-			text: 'text-white',
+			bg: 'bg-orange-500/15',
+			text: 'text-orange-500',
 			symbol: '?',
-			border: 'border-[#c76621]'
+			border: 'border-orange-500/30'
 		},
 		miss: {
 			label: 'Miss',
-			bg: 'bg-[#e05353]',
-			text: 'text-white',
+			bg: 'bg-rose-500/15',
+			text: 'text-rose-500',
 			symbol: '⨉',
-			border: 'border-[#c44343]'
+			border: 'border-rose-500/30'
 		},
 		blunder: {
 			label: 'Blunder',
-			bg: 'bg-[#ca3431]',
-			text: 'text-white',
+			bg: 'bg-destructive',
+			text: 'text-destructive-foreground',
 			symbol: '??',
-			border: 'border-[#af2a27]'
+			border: 'border-destructive'
 		},
 		forced: {
 			label: 'Forced',
-			bg: 'bg-[#8c8a86]',
-			text: 'text-white',
+			bg: 'bg-secondary',
+			text: 'text-muted-foreground',
 			symbol: '□',
-			border: 'border-[#74726f]'
+			border: 'border-border'
 		}
 	};
 
@@ -100,10 +100,9 @@
 
 <div class="inline-flex items-center gap-1.5 select-none" title={current.label}>
 	<div
-		class="{dimClasses} {current.bg} {current.text} border {current.border} rounded-full shadow-[0_2px_5px_rgba(0,0,0,0.5)] flex items-center justify-center font-black font-sans shrink-0 leading-none"
+		class="{dimClasses} {current.bg} {current.text} border {current.border} rounded-full shadow-xs flex items-center justify-center font-black font-sans shrink-0 leading-none"
 	>
 		{#if current.symbol === 'book'}
-			<!-- Crisp Book SVG icon -->
 			<svg
 				class={size === 'sm' ? 'w-2.5 h-2.5 fill-current' : size === 'lg' ? 'w-4 h-4 fill-current' : 'w-3 h-3 fill-current'}
 				viewBox="0 0 24 24"
@@ -117,7 +116,7 @@
 	</div>
 
 	{#if showLabel}
-		<span class="text-xs font-bold text-slate-200">
+		<span class="text-xs font-bold text-foreground">
 			{current.label}
 		</span>
 	{/if}

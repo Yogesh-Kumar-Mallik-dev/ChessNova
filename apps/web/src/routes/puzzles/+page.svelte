@@ -305,38 +305,38 @@
 
 <div class="flex-1 max-w-7xl mx-auto w-full px-2 py-1 sm:px-4 sm:py-1.5 lg:px-6 flex flex-col justify-center min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-hidden">
 	<!-- Slim Unified Header & Filter Toolbar -->
-	<div class="mb-1.5 flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-slate-800/80 rounded-xl px-2.5 py-1.5 backdrop-blur-md shrink-0 shadow-md">
+	<div class="mb-1.5 flex flex-wrap items-center justify-between gap-2 bg-card border border-border rounded-xl px-2.5 py-1.5 shrink-0 shadow-xs">
 		<!-- Left: Mode Switcher -->
-		<div class="flex items-center gap-1">
+		<div class="flex items-center gap-1 bg-secondary/80 p-0.5 rounded-lg border border-border">
 			<button
-				class="px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 {puzzleMode === 'practice'
-					? 'bg-slate-800 text-white font-bold border border-slate-700/80 shadow-xs'
-					: 'text-slate-400 hover:text-slate-200'}"
+				class="px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 {puzzleMode === 'practice'
+					? 'bg-foreground text-background font-bold shadow-xs'
+					: 'text-muted-foreground hover:text-foreground'}"
 				on:click={() => loadPuzzle('practice')}
 			>
-				<Icon name="puzzle" size={13} className={puzzleMode === 'practice' ? 'text-emerald-400' : ''} />
+				<Icon name="puzzle" size={13} />
 				<span>Practice</span>
 			</button>
 
 			<button
-				class="px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 {puzzleMode === 'daily'
-					? 'bg-slate-800 text-amber-300 font-bold border border-slate-700/80 shadow-xs'
-					: 'text-slate-400 hover:text-slate-200'}"
+				class="px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 {puzzleMode === 'daily'
+					? 'bg-foreground text-background font-bold shadow-xs'
+					: 'text-muted-foreground hover:text-foreground'}"
 				on:click={() => loadPuzzle('daily')}
 			>
-				<Icon name="flame" size={13} className="text-amber-400" />
+				<Icon name="flame" size={13} />
 				<span>Daily</span>
 			</button>
 
 			<button
-				class="px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 {puzzleMode === 'weekly'
-					? 'bg-slate-800 text-indigo-300 font-bold border border-slate-700/80 shadow-xs'
-					: 'text-slate-400 hover:text-slate-200'}"
+				class="px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 {puzzleMode === 'weekly'
+					? 'bg-foreground text-background font-bold shadow-xs'
+					: 'text-muted-foreground hover:text-foreground'}"
 				on:click={() => loadPuzzle('weekly')}
 			>
-				<Icon name="trophy" size={13} className="text-indigo-400" />
+				<Icon name="trophy" size={13} />
 				<span class="hidden sm:inline">Weekly</span>
-				<span class="text-[10px] font-mono opacity-80">({weeklyList.length || 7})</span>
+				<span class="text-[10px] font-mono opacity-80 tabular-nums">({weeklyList.length || 7})</span>
 			</button>
 		</div>
 
@@ -344,12 +344,12 @@
 		{#if puzzleMode === 'practice'}
 			<div class="hidden sm:flex items-center gap-2">
 				<!-- Category Filter -->
-				<div class="flex items-center gap-0.5 bg-slate-950/70 p-0.5 rounded-lg border border-slate-800">
+				<div class="flex items-center gap-0.5 bg-secondary/60 p-0.5 rounded-lg border border-border">
 					{#each ['all', 'mate', 'fork', 'pin', 'capture'] as cat}
 						<button
 							class="px-2 py-0.5 rounded text-[11px] font-medium transition capitalize {selectedCategory === cat
-								? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold'
-								: 'text-slate-400 hover:text-slate-200'}"
+								? 'bg-foreground text-background font-bold shadow-xs'
+								: 'text-muted-foreground hover:text-foreground'}"
 							on:click={() => {
 								selectedCategory = cat;
 								loadPuzzle('practice');
@@ -361,11 +361,11 @@
 				</div>
 
 				<!-- Tier Filter -->
-				<div class="flex items-center gap-0.5 bg-slate-950/70 p-0.5 rounded-lg border border-slate-800">
+				<div class="flex items-center gap-0.5 bg-secondary/60 p-0.5 rounded-lg border border-border">
 					<button
 						class="px-1.5 py-0.5 rounded text-[11px] font-medium transition {selectedTier === 0
-							? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
-							: 'text-slate-400 hover:text-slate-200'}"
+							? 'bg-foreground text-background font-bold shadow-xs'
+							: 'text-muted-foreground hover:text-foreground'}"
 						on:click={() => {
 							selectedTier = 0;
 							loadPuzzle('practice');
@@ -376,8 +376,8 @@
 					{#each [1, 2, 3, 4, 5] as tierLvl}
 						<button
 							class="px-1.5 py-0.5 rounded text-[11px] font-medium transition {selectedTier === tierLvl
-								? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
-								: 'text-slate-400 hover:text-slate-200'}"
+								? 'bg-foreground text-background font-bold shadow-xs'
+								: 'text-muted-foreground hover:text-foreground'}"
 							title={`Tier ${tierLvl}`}
 							on:click={() => {
 								selectedTier = tierLvl;
@@ -393,18 +393,18 @@
 
 		<!-- Right: Rating Badge & Quick Actions -->
 		<div class="flex items-center gap-2">
-			<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs font-mono">
-				<span class="text-slate-400 text-[10px] uppercase font-bold">Elo:</span>
-				<span class="font-extrabold text-white">{userRating}</span>
+			<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-secondary border border-border text-xs font-mono">
+				<span class="text-muted-foreground text-[10px] uppercase font-bold">Elo:</span>
+				<span class="font-bold text-foreground tabular-nums">{userRating}</span>
 				{#if ratingDiff !== null}
-					<span class="text-[10px] font-bold {ratingDiff > 0 ? 'text-emerald-400' : 'text-rose-400'}">
+					<span class="text-[10px] font-bold {ratingDiff > 0 ? 'text-emerald-500' : 'text-destructive'} tabular-nums">
 						{ratingDiff > 0 ? `+${ratingDiff}` : ratingDiff}
 					</span>
 				{/if}
 			</div>
 
 			<button
-				class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700/60 flex items-center justify-center"
+				class="p-1.5 bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition border border-border flex items-center justify-center"
 				on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 				title="Flip Board"
 			>
@@ -422,14 +422,14 @@
 				<!-- Turn Banner -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-xs font-semibold select-none mb-1">
 					<div class="flex items-center gap-2">
-						<span class="w-2.5 h-2.5 rounded-full {turn === 'white' ? 'bg-white border border-slate-400' : 'bg-slate-900 border border-slate-600'}"></span>
-						<span class="text-slate-300 text-xs font-bold capitalize">{turn} to play</span>
+						<span class="w-2.5 h-2.5 rounded-full {turn === 'white' ? 'bg-foreground border border-border' : 'bg-background border border-border'}"></span>
+						<span class="text-foreground text-xs font-bold capitalize">{turn} to play</span>
 					</div>
 					{#if currentPuzzle}
-						<div class="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+						<div class="flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground">
 							<span>Rating {currentPuzzle.rating}</span>
 							{#if currentPuzzle.tier}
-								<span class="px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-bold">
+								<span class="px-1.5 py-0.2 rounded bg-secondary text-foreground border border-border font-bold">
 									T{currentPuzzle.tier}
 								</span>
 							{/if}
@@ -439,9 +439,9 @@
 
 				<!-- Chess Board -->
 				{#if loading}
-					<div class="w-full aspect-square bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col items-center justify-center text-sm text-slate-400 gap-3 shadow-2xl backdrop-blur-xl animate-pulse">
-						<div class="w-8 h-8 border-2 border-sky-500/30 border-t-sky-400 rounded-full animate-spin"></div>
-						<span class="text-xs font-mono text-slate-400">Loading tactical position...</span>
+					<div class="w-full aspect-square bg-card border border-border rounded-xl flex flex-col items-center justify-center text-sm text-muted-foreground gap-3 shadow-md animate-pulse">
+						<div class="w-8 h-8 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+						<span class="text-xs font-mono text-muted-foreground">Loading tactical position...</span>
 					</div>
 				{:else}
 					<ChessBoard
@@ -458,15 +458,15 @@
 					/>
 				{/if}
 
-				<!-- Tactical Status & Immediate Action Bar (DIRECTLY ATTACHED UNDER BOARD) -->
+				<!-- Tactical Status & Immediate Action Bar -->
 				<div class="w-full mt-2 flex flex-col gap-1.5">
 					<!-- Status Banner -->
 					<div
 						class="px-3 py-2 rounded-xl border flex items-center justify-between gap-2 transition-all duration-200 {statusType === 'success'
-							? 'bg-emerald-950/50 border-emerald-500/50 text-emerald-200 shadow-md shadow-emerald-500/10'
+							? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
 							: statusType === 'error'
-								? 'bg-rose-950/50 border-rose-500/50 text-rose-200'
-								: 'bg-slate-900/80 border-slate-800 text-slate-300'}"
+								? 'bg-destructive/10 border-destructive/30 text-destructive'
+								: 'bg-card border-border text-foreground'}"
 					>
 						<div class="flex items-center gap-2 min-w-0">
 							<div class="shrink-0">
@@ -475,11 +475,11 @@
 										<Icon name={finishedWithMate ? 'crown' : 'check'} size={12} />
 									</div>
 								{:else if statusType === 'error'}
-									<div class="w-5 h-5 rounded-md bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
+									<div class="w-5 h-5 rounded-md bg-destructive/20 text-destructive flex items-center justify-center border border-destructive/30">
 										<Icon name="x" size={12} />
 									</div>
 								{:else}
-									<div class="w-5 h-5 rounded-md bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-500/30">
+									<div class="w-5 h-5 rounded-md bg-secondary text-foreground flex items-center justify-center border border-border">
 										<Icon name="sparkles" size={12} />
 									</div>
 								{/if}
@@ -490,7 +490,7 @@
 						</div>
 
 						{#if statusType === 'success' && ratingDiff && ratingDiff > 0}
-							<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono font-bold text-xs shrink-0 animate-bounce">
+							<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono font-bold text-xs shrink-0 tabular-nums">
 								+{ratingDiff}
 							</span>
 						{/if}
@@ -502,19 +502,19 @@
 							<Button
 								variant="primary"
 								size="sm"
-								className="flex-1 shadow-md shadow-sky-500/20 font-bold justify-center gap-1.5 py-2"
+								className="flex-1 font-bold justify-center gap-1.5 py-2"
 								on:click={loadRandomPuzzle}
 							>
 								<span>Next Puzzle</span>
 								<Icon name="arrow-right" size={13} />
-								<span class="text-[10px] text-white/70 font-mono font-normal">(Enter)</span>
+								<span class="text-[10px] opacity-75 font-mono font-normal">(Enter)</span>
 							</Button>
 
 							<Button
 								variant="outline"
 								size="sm"
 								on:click={resetToInitial}
-								className="text-slate-300 py-2"
+								className="py-2"
 								title="Retry position"
 							>
 								<Icon name="rotate-ccw" size={13} />
@@ -530,7 +530,7 @@
 								<Button
 									variant="outline"
 									size="sm"
-									className="text-slate-300 py-2"
+									className="py-2"
 									title="Analyze in Game Review"
 								>
 									<Icon name="search" size={13} />
@@ -543,10 +543,10 @@
 								size="sm"
 								disabled={isSolutionRevealed}
 								on:click={requestHint}
-								className="flex-1 text-slate-200 py-2"
+								className="flex-1 py-2"
 								title="Get tactical hint without penalty"
 							>
-								<Icon name="sparkles" size={13} className="text-amber-400" />
+								<Icon name="sparkles" size={13} className="text-muted-foreground" />
 								<span>{hintCount === 0 ? 'Hint' : 'Target'}</span>
 							</Button>
 
@@ -555,10 +555,10 @@
 								size="sm"
 								disabled={isSolutionRevealed}
 								on:click={revealSolution}
-								className="flex-1 text-slate-200 py-2"
+								className="flex-1 py-2"
 								title="Reveal the winning move sequence"
 							>
-								<Icon name="eye" size={13} className="text-cyan-400" />
+								<Icon name="eye" size={13} className="text-muted-foreground" />
 								<span>Solution</span>
 							</Button>
 
@@ -566,7 +566,7 @@
 								variant="outline"
 								size="sm"
 								on:click={resetToInitial}
-								className="text-slate-300 py-2"
+								className="py-2"
 								title="Reset position"
 							>
 								<Icon name="rotate-ccw" size={13} />
@@ -576,7 +576,7 @@
 								variant="outline"
 								size="sm"
 								on:click={loadRandomPuzzle}
-								className="text-slate-300 py-2"
+								className="py-2"
 								title="Skip to next puzzle"
 							>
 								<Icon name="chevrons-right" size={13} />
@@ -588,41 +588,41 @@
 		</div>
 
 		<!-- Right: Puzzle Details Card (Desktop) -->
-		<div class="hidden lg:flex lg:col-span-5 xl:col-span-4 h-[min(calc(100dvh-110px),640px)] bg-slate-900/80 border border-slate-800/80 backdrop-blur-xl rounded-2xl p-5 shadow-2xl flex-col justify-between overflow-y-auto">
-			<div class="flex items-center justify-between pb-4 border-b border-slate-800/80">
+		<div class="hidden lg:flex lg:col-span-5 xl:col-span-4 h-[min(calc(100dvh-110px),640px)] bg-card border border-border rounded-xl p-5 shadow-lg flex-col justify-between overflow-y-auto">
+			<div class="flex items-center justify-between pb-4 border-b border-border">
 				<div>
-					<span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider">Puzzle Elo</span>
+					<span class="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Puzzle Elo</span>
 					<div class="flex items-center gap-2 mt-1">
-						<span class="text-xl font-mono font-black text-white">{userRating}</span>
+						<span class="text-xl font-mono font-black text-foreground tabular-nums">{userRating}</span>
 						{#if ratingDiff !== null}
 							<span
 								class="px-2 py-0.5 rounded-md text-xs font-mono font-bold {ratingDiff > 0
 									? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-									: 'bg-rose-500/20 text-rose-400 border border-rose-500/30'} animate-bounce"
+									: 'bg-destructive/20 text-destructive border border-destructive/30'} tabular-nums"
 							>
 								{ratingDiff > 0 ? `+${ratingDiff}` : ratingDiff}
 							</span>
 						{/if}
 					</div>
-					<div class="text-[10px] text-slate-500 mt-0.5">
+					<div class="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
 						{solvedCount} solved today
 					</div>
 				</div>
 
 				{#if currentPuzzle}
 					<div class="text-right">
-						<span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Puzzle Level</span>
-						<div class="text-lg font-mono font-extrabold text-cyan-400 flex items-center justify-end gap-1.5">
+						<span class="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Puzzle Level</span>
+						<div class="text-lg font-mono font-extrabold text-foreground flex items-center justify-end gap-1.5 tabular-nums">
 							<span>{currentPuzzle.rating}</span>
 							{#if currentPuzzle.tier}
-								<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+								<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-secondary text-foreground border border-border">
 									T{currentPuzzle.tier}
 								</span>
 							{/if}
 						</div>
-						<div class="text-[10px] text-slate-500 capitalize flex items-center justify-end gap-1.5 mt-0.5">
+						<div class="text-[10px] text-muted-foreground capitalize flex items-center justify-end gap-1.5 mt-0.5">
 							{#if currentPuzzle.category}
-								<span class="px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold uppercase text-[9px]">
+								<span class="px-1.5 py-0.2 rounded bg-secondary text-muted-foreground border border-border font-semibold uppercase text-[9px]">
 									{currentPuzzle.category}
 								</span>
 							{/if}
@@ -635,14 +635,14 @@
 			{#if currentPuzzle && currentPuzzle.themes?.length}
 				<div>
 					<div class="flex items-center justify-between mb-2">
-						<span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Tactical Themes</span>
-						<span class="text-[10px] text-slate-400 font-mono">
+						<span class="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Tactical Themes</span>
+						<span class="text-[10px] text-muted-foreground font-mono">
 							#{currentPuzzle.id ? currentPuzzle.id.slice(0, 8) : 'tactics'}
 						</span>
 					</div>
 					<div class="flex flex-wrap gap-1.5">
 						{#each currentPuzzle.themes as theme}
-							<span class="px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50 text-[11px] font-medium text-slate-300">
+							<span class="px-2.5 py-1 rounded-md bg-secondary border border-border text-[11px] font-medium text-foreground">
 								#{theme}
 							</span>
 						{/each}
@@ -651,12 +651,12 @@
 			{/if}
 
 			<!-- Practice Tier Quick Info -->
-			<div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+			<div class="p-3 bg-secondary/40 rounded-xl border border-border text-xs text-muted-foreground flex items-center justify-between">
 				<div class="flex items-center gap-2">
-					<Icon name="shield" size={15} className="text-cyan-400" />
+					<Icon name="shield" size={15} />
 					<span>Calculation Trainer</span>
 				</div>
-				<span class="font-mono text-[11px] text-slate-500">525+ Curated Puzzles</span>
+				<span class="font-mono text-[11px] text-muted-foreground">525+ Curated Puzzles</span>
 			</div>
 		</div>
 	</div>

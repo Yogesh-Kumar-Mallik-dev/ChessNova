@@ -7,7 +7,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import BorderBeam from '$lib/components/magicui/BorderBeam.svelte';
 
 	interface Preset {
 		label: string;
@@ -152,28 +151,28 @@
 	});
 </script>
 
-<div class="flex-1 max-w-4xl mx-auto w-full px-4 py-8 flex flex-col justify-center">
+<div class="flex-1 max-w-4xl mx-auto w-full px-4 py-8 sm:py-12 flex flex-col justify-center">
 	<div class="text-center mb-8">
-		<Badge variant="default" className="mb-3">
-			<Icon name="zap" size={13} />
-			<span>Online Matchmaking</span>
+		<Badge variant="outline" className="mb-3 font-mono text-xs uppercase tracking-wider">
+			<Icon name="zap" size={12} className="mr-1" />
+			<span>Matchmaking Queue</span>
 		</Badge>
-		<h1 class="text-3xl sm:text-4xl font-black text-white tracking-tight">Play Online</h1>
-		<p class="text-xs sm:text-sm text-slate-400 mt-1 max-w-md mx-auto">
-			Select your preferred time control to find a rated match.
+		<h1 class="text-3xl sm:text-4xl font-black text-foreground tracking-tight">Play Online</h1>
+		<p class="text-xs sm:text-sm text-muted-foreground mt-1.5 max-w-md mx-auto">
+			Select a standard time control to queue for a live rated pairing.
 		</p>
 	</div>
 
 	{#if activeOngoingGame}
-		<div class="mb-6 p-4 bg-amber-500/10 border border-amber-500/40 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 max-w-xl mx-auto shadow-xl animate-in fade-in duration-200">
+		<div class="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 max-w-xl mx-auto shadow-sm">
 			<div class="flex items-center gap-3">
-				<div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-					<Icon name="swords" size={20} />
+				<div class="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold">
+					<Icon name="swords" size={18} />
 				</div>
 				<div>
-					<div class="text-sm font-bold text-white">Active Match in Progress</div>
-					<div class="text-xs text-amber-200/80">
-						You have an unfinished game in progress. Return to avoid abandonment forfeit!
+					<div class="text-sm font-bold text-foreground">Active Match in Progress</div>
+					<div class="text-xs text-muted-foreground">
+						You have an unfinished game. Return to avoid clock forfeiture.
 					</div>
 				</div>
 			</div>
@@ -181,7 +180,7 @@
 				<Button
 					variant="outline"
 					size="sm"
-					className="flex-1 sm:flex-initial text-rose-400 hover:text-rose-300 border-rose-500/40 hover:bg-rose-500/10"
+					className="flex-1 sm:flex-initial text-destructive border-destructive/30 hover:bg-destructive/10"
 					on:click={async () => {
 						if (activeOngoingGame) {
 							try {
@@ -206,50 +205,49 @@
 	{/if}
 
 	{#if error}
-		<div class="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-sm text-rose-300 text-center max-w-md mx-auto shadow-md">
+		<div class="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-xl text-sm text-destructive text-center max-w-md mx-auto">
 			{error}
 		</div>
 	{/if}
 
 	{#if isSearching}
-		<!-- Matchmaking Search Radar Modal with BorderBeam -->
-		<div class="relative max-w-md mx-auto w-full p-8 sm:p-10 text-center flex flex-col items-center animate-fade-in bg-slate-900/80 backdrop-blur-xl border border-sky-500/40 rounded-2xl shadow-2xl overflow-hidden">
-			<BorderBeam size={180} duration={6} colorFrom="#38bdf8" colorTo="#818cf8" />
-
-			<!-- Radar Scanner Graphic -->
-			<div class="relative w-28 h-28 rounded-full border border-sky-500/30 flex items-center justify-center mb-6">
-				<div class="absolute inset-2 rounded-full border border-sky-500/20"></div>
-				<div class="absolute inset-6 rounded-full border border-sky-500/15"></div>
-				<div class="absolute inset-0 rounded-full border-2 border-sky-400 border-t-transparent animate-spin"></div>
-				<div class="w-3 h-3 rounded-full bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.9)] animate-ping"></div>
+		<!-- Matchmaking Search Radar Status Card -->
+		<div class="max-w-md mx-auto w-full p-8 sm:p-10 text-center flex flex-col items-center bg-card border border-border rounded-2xl shadow-xl">
+			<!-- Sleek Radar Display -->
+			<div class="relative w-28 h-28 rounded-full border border-border flex items-center justify-center mb-6">
+				<div class="absolute inset-3 rounded-full border border-border/60"></div>
+				<div class="absolute inset-7 rounded-full border border-border/40"></div>
+				<!-- Radar Sweep -->
+				<div class="absolute inset-0 rounded-full border-2 border-foreground border-t-transparent animate-spin"></div>
+				<div class="w-3 h-3 rounded-full bg-foreground animate-ping"></div>
 			</div>
 
-			<h2 class="text-xl font-bold text-white mb-1">Searching for Opponent...</h2>
-			<div class="text-xs font-mono text-sky-400 font-bold mb-6 flex items-center gap-1.5">
-				<Icon name={selectedPreset.icon} size={14} />
+			<h2 class="text-xl font-bold text-foreground mb-1">Searching for Opponent</h2>
+			<div class="text-xs font-mono text-muted-foreground font-semibold mb-6 flex items-center gap-1.5">
+				<Icon name={selectedPreset.icon} size={13} />
 				<span>{selectedPreset.label} • {selectedPreset.type}</span>
 			</div>
 
-			<!-- Dynamic Stats Grid -->
-			<div class="w-full grid grid-cols-3 gap-2 bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 mb-6 text-center">
+			<!-- Dynamic Queue Stats -->
+			<div class="w-full grid grid-cols-3 gap-2 bg-secondary/50 border border-border rounded-xl p-3.5 mb-6 text-center">
 				<div>
-					<span class="block text-white font-mono text-base font-extrabold">{waitSeconds}s</span>
-					<span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Wait Time</span>
+					<span class="block text-foreground font-mono text-base font-bold tabular-nums">{waitSeconds}s</span>
+					<span class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Elapsed</span>
 				</div>
 				<div>
-					<span class="block text-sky-400 font-mono text-base font-extrabold">{tolerance === 'Any' ? 'Any' : `±${tolerance}`}</span>
-					<span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Tolerance</span>
+					<span class="block text-foreground font-mono text-base font-bold tabular-nums">{tolerance === 'Any' ? 'Any' : `±${tolerance}`}</span>
+					<span class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Tolerance</span>
 				</div>
 				<div>
-					<span class="block text-indigo-400 font-mono text-base font-extrabold">{userRating}</span>
-					<span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Your Rating</span>
+					<span class="block text-foreground font-mono text-base font-bold tabular-nums">{userRating}</span>
+					<span class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Your Rating</span>
 				</div>
 			</div>
 
 			<Button
 				variant="outline"
 				size="lg"
-				className="w-full text-slate-300 hover:text-white"
+				className="w-full"
 				on:click={cancelMatchmaking}
 			>
 				Cancel Search
@@ -257,53 +255,54 @@
 		</div>
 	{:else}
 		<!-- Time Control Selector -->
-		<Card className="p-6 sm:p-8 max-w-xl mx-auto w-full shadow-2xl border-slate-800">
+		<Card className="p-6 sm:p-8 max-w-xl mx-auto w-full shadow-lg">
 			<div class="flex items-center justify-between mb-4">
-				<h2 class="text-xs font-mono font-bold uppercase tracking-widest text-slate-400">Select Time Control</h2>
-				<span class="text-[11px] font-mono text-sky-400 font-semibold">
-					Your Rating: {userRating}
+				<h2 class="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground">Select Time Control</h2>
+				<span class="text-xs font-mono text-foreground font-semibold tabular-nums">
+					Current Rating: {userRating}
 				</span>
 			</div>
 
 			<!-- Presets Grid -->
-			<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6">
 				{#each presets as preset}
 					{@const isSelected = selectedPreset.label === preset.label}
 					<button
-						class="flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-150 text-center group cursor-pointer active:translate-y-px
+						type="button"
+						class="flex flex-col items-center justify-center p-3.5 rounded-xl border transition-all text-center cursor-pointer active:translate-y-px
 						{isSelected
-							? 'bg-slate-800 border-emerald-500 text-white ring-1 ring-emerald-500/40 shadow-xs'
-							: 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white hover:border-slate-750 hover:bg-slate-900'}"
+							? 'bg-foreground text-background border-foreground font-bold shadow-xs'
+							: 'bg-card border-border text-foreground hover:bg-muted/70 hover:border-foreground/30'}"
 						on:click={() => (selectedPreset = preset)}
 					>
-						<div class="w-8 h-8 rounded-lg flex items-center justify-center mb-1 {isSelected ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-300'}">
-							<Icon name={preset.icon} size={18} />
+						<div class="w-7 h-7 rounded-lg flex items-center justify-center mb-1 {isSelected ? 'text-background' : 'text-muted-foreground'}">
+							<Icon name={preset.icon} size={17} />
 						</div>
-						<span class="text-sm font-extrabold text-white leading-tight">{preset.label}</span>
-						<span class="text-[10px] uppercase font-mono font-semibold text-slate-500 mt-0.5">{preset.type}</span>
+						<span class="text-sm font-extrabold tracking-tight leading-tight">{preset.label}</span>
+						<span class="text-[10px] uppercase font-mono font-semibold opacity-75 mt-0.5">{preset.type}</span>
 					</button>
 				{/each}
 			</div>
 
 			<!-- Launch Actions -->
-			<div class="flex flex-col gap-3">
+			<div class="flex flex-col gap-2.5">
 				<Button
 					variant="primary"
 					size="lg"
-					className="w-full text-sm font-bold shadow-xs"
+					className="w-full text-sm font-bold"
 					on:click={startMatchmaking}
 				>
-					<Icon name="zap" size={18} />
-					<span>Play {selectedPreset.label} {selectedPreset.type}</span>
+					<Icon name="zap" size={17} />
+					<span>Queue for {selectedPreset.label} {selectedPreset.type}</span>
 				</Button>
 
 				<Button
 					variant="secondary"
 					size="default"
-					className="w-full"
+					className="w-full text-xs font-medium"
 					on:click={createDirectGame}
 				>
-					<Icon name="swords" size={14} className="text-slate-400" />
+					<Icon name="swords" size={14} className="text-muted-foreground" />
 					<span>Direct Match vs Guest</span>
 				</Button>
 			</div>

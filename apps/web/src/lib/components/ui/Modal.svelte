@@ -6,8 +6,8 @@
 	export let title = '';
 	export let description = '';
 	export let icon: any = null;
-	export let iconBg = 'bg-slate-800 text-slate-300';
-	export let iconColor = 'text-sky-400';
+	export let iconBg = '';
+	export let iconColor = '';
 	export let confirmText = 'Confirm';
 	export let confirmVariant: 'danger' | 'primary' | 'warning' | 'default' = 'primary';
 	export let cancelText = 'Cancel';
@@ -35,13 +35,12 @@
 	$: confirmBtnClass = (() => {
 		switch (confirmVariant) {
 			case 'danger':
-				return 'bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white shadow-lg shadow-rose-900/30';
+				return 'bg-red-950/40 text-red-400 hover:bg-red-900/60 font-semibold border border-red-800/50 shadow-xs';
 			case 'warning':
-				return 'bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white shadow-lg shadow-amber-900/30';
+				return 'bg-amber-950/40 text-amber-400 hover:bg-amber-900/60 font-semibold border border-amber-800/50 shadow-xs';
 			case 'primary':
-				return 'bg-[#81b64c] hover:bg-[#91c65d] active:bg-[#73a443] text-white shadow-lg shadow-[#81b64c]/20';
 			default:
-				return 'bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white shadow-lg shadow-sky-900/30';
+				return 'bg-foreground text-background hover:opacity-90 font-semibold shadow-xs border border-transparent';
 		}
 	})();
 </script>
@@ -50,17 +49,17 @@
 
 {#if isOpen}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 animate-in fade-in duration-150"
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
 		on:click={handleBackdropClick}
 		on:keydown={(e) => e.key === 'Escape' && dispatch('close')}
 	>
-		<div class="relative bg-gradient-to-b from-[#161f30] to-[#0c121e] border border-slate-700/80 rounded-2xl p-6 max-w-sm w-full shadow-2xl flex flex-col items-center text-center scale-in-95 duration-150 animate-in">
+		<div class="relative bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl flex flex-col items-center text-center scale-in-95 duration-150 animate-in">
 			<!-- Close button -->
 			<button
-				class="absolute top-3.5 right-3.5 w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 flex items-center justify-center transition"
+				class="absolute top-3.5 right-3.5 w-7 h-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary flex items-center justify-center transition"
 				on:click={() => dispatch('close')}
 				title="Close"
 				aria-label="Close"
@@ -70,19 +69,19 @@
 
 			<!-- Modal Icon Emblem -->
 			{#if icon}
-				<div class="w-13 h-13 rounded-2xl flex items-center justify-center mb-3.5 shadow-lg {iconBg}">
-					<Icon name={icon} size={26} className={iconColor} />
+				<div class="w-12 h-12 rounded-xl border border-border flex items-center justify-center mb-3.5 {iconBg || 'bg-secondary'}">
+					<Icon name={icon} size={22} className={iconColor || 'text-foreground'} />
 				</div>
 			{/if}
 
 			<!-- Title -->
-			<h2 class="text-xl font-black text-white tracking-tight mb-2">
+			<h2 class="text-lg font-bold text-foreground tracking-tight mb-1.5">
 				{title}
 			</h2>
 
 			<!-- Description -->
 			{#if description}
-				<p class="text-xs sm:text-sm text-slate-300/90 leading-relaxed mb-6 font-medium">
+				<p class="text-xs text-muted-foreground leading-relaxed mb-6 font-normal">
 					{description}
 				</p>
 			{/if}
@@ -93,7 +92,7 @@
 			<div class="flex gap-2.5 w-full mt-2">
 				{#if showCancel}
 					<button
-						class="flex-1 py-2.5 px-4 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer"
+						class="flex-1 py-2 px-3 bg-secondary hover:bg-accent text-secondary-foreground font-medium text-xs rounded-lg border border-border transition cursor-pointer"
 						on:click={() => dispatch('cancel')}
 					>
 						{cancelText}
@@ -101,7 +100,7 @@
 				{/if}
 
 				<button
-					class="flex-1 py-2.5 px-4 font-bold text-xs rounded-xl transition cursor-pointer {confirmBtnClass}"
+					class="flex-1 py-2 px-3 font-semibold text-xs rounded-lg transition cursor-pointer {confirmBtnClass}"
 					on:click={() => dispatch('confirm')}
 				>
 					{confirmText}

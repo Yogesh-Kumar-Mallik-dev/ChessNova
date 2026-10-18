@@ -3,10 +3,7 @@
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import Spotlight from '$lib/components/magicui/Spotlight.svelte';
-	import BorderBeam from '$lib/components/magicui/BorderBeam.svelte';
-	import BentoGrid from '$lib/components/magicui/BentoGrid.svelte';
-	import BentoCard from '$lib/components/magicui/BentoCard.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import ChessBoard from '$lib/components/chess/ChessBoard.svelte';
 	import { INITIAL_FEN, type Color, type PieceType } from '$lib/chess/engine';
 	import { soundEffects } from '$lib/audio/sounds';
@@ -28,12 +25,11 @@
 				heroLastMove = { from, to, san: m.san, isCapture: m.captured !== undefined };
 				heroMovesCount++;
 
-				// If played, auto-respond with a simple reply after 350ms to make the board feel alive!
+				// Auto-respond with an immediate reply to make the board feel responsive
 				if (!heroChess.isGameOver()) {
 					setTimeout(() => {
 						const legalMoves = heroChess.moves({ verbose: true });
 						if (legalMoves.length > 0) {
-							// Prefer a capture or check if available, else random move
 							const capture = legalMoves.find((lm) => lm.captured) || legalMoves[Math.floor(Math.random() * legalMoves.length)];
 							heroChess.move(capture);
 							heroFen = heroChess.fen();
@@ -41,7 +37,7 @@
 							heroLastMove = { from: capture.from, to: capture.to, san: capture.san, isCapture: !!capture.captured };
 							heroMovesCount++;
 						}
-					}, 380);
+					}, 320);
 				}
 			}
 		} catch (e) {
@@ -59,77 +55,92 @@
 	}
 </script>
 
-<div class="relative flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 lg:py-16 overflow-hidden">
-	<!-- Ambient Directional Spotlight -->
-	<Spotlight class="-top-40 left-0 md:left-60 md:-top-20" fill="#38bdf8" />
-
-	<!-- Main Hero Grid -->
-	<div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center relative z-10">
-		<!-- Left: Punchy Consumer Copy -->
+<div class="relative flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
+	<!-- Main Hero Section -->
+	<div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+		<!-- Left: Typography & Value Proposition -->
 		<div class="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left">
-			<Badge variant="default" className="mb-6 bg-slate-900/90 border-slate-700/80 px-3.5 py-1 text-slate-300">
-				<Icon name="sparkles" size={13} className="text-sky-400" />
-				<span>Modern Online Chess</span>
+			<Badge variant="outline" className="mb-6 px-3 py-1 font-mono text-xs tracking-wider uppercase text-muted-foreground border-border">
+				<span class="inline-block w-1.5 h-1.5 rounded-full bg-foreground mr-1.5"></span>
+				<span>Competitive Chess Platform</span>
 			</Badge>
 
-			<h1 class="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.05] mb-6">
-				Play chess <br class="hidden sm:inline" />
-				<span class="bg-gradient-to-r from-sky-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
-					smooth & distraction-free.
+			<h1 class="text-4xl sm:text-6xl lg:text-7xl font-black text-foreground tracking-tight leading-[1.04] mb-6">
+				Play chess.<br />
+				<span class="text-muted-foreground font-light tracking-normal">
+					Pure. Precise. Focused.
 				</span>
 			</h1>
 
-			<p class="text-base sm:text-lg text-slate-300/90 max-w-xl mb-8 leading-relaxed font-normal">
-				Instant matchmaking across all time controls, tiered tactical puzzles, natural bot sparring, and deep post-game analysis without the noise.
+			<p class="text-base sm:text-lg text-muted-foreground max-w-xl mb-8 leading-relaxed font-normal">
+				Instant low-latency matchmaking across all rating tiers, progressive tactical training, Stockfish engine sparring, and deep post-game analysis without the visual noise.
 			</p>
 
 			<!-- Action Buttons -->
 			<div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mb-10">
 				<a href="/play/online" class="w-full sm:w-auto">
-					<Button variant="primary" size="lg" className="w-full sm:w-auto text-base shadow-sm">
-						<Icon name="zap" size={18} />
+					<Button variant="primary" size="lg" className="w-full sm:w-auto text-base">
+						<Icon name="zap" size={17} />
 						<span>Play Online</span>
 					</Button>
 				</a>
 
 				<a href="/puzzles" class="w-full sm:w-auto">
 					<Button variant="secondary" size="lg" className="w-full sm:w-auto">
-						<Icon name="puzzle" size={16} className="text-emerald-400" />
-						<span>Puzzles</span>
+						<Icon name="puzzle" size={16} />
+						<span>Tactics Lab</span>
 					</Button>
 				</a>
 
 				<a href="/play" class="w-full sm:w-auto">
 					<Button variant="outline" size="lg" className="w-full sm:w-auto">
-						<Icon name="swords" size={16} className="text-slate-300" />
-						<span>Practice Bot</span>
+						<Icon name="swords" size={16} />
+						<span>Spar with Bot</span>
 					</Button>
 				</a>
 			</div>
 
 			<!-- Live Platform Stats -->
-			<div class="grid grid-cols-3 gap-6 pt-6 border-t border-slate-800/80 w-full max-w-lg text-left">
+			<div class="grid grid-cols-3 gap-6 pt-6 border-t border-border w-full max-w-lg text-left">
 				<div>
-					<div class="text-xl sm:text-2xl font-black font-mono text-white tracking-tight">400–2800</div>
-					<div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold mt-0.5">Separate Elo</div>
+					<div class="text-xl sm:text-2xl font-black font-mono text-foreground tracking-tight">400–2800</div>
+					<div class="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mt-0.5">Rating Pools</div>
 				</div>
 				<div>
-					<div class="text-xl sm:text-2xl font-black font-mono text-sky-400 tracking-tight">Zero Lag</div>
-					<div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold mt-0.5">Instant Clocks</div>
+					<div class="text-xl sm:text-2xl font-black font-mono text-foreground tracking-tight">Sub-10ms</div>
+					<div class="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mt-0.5">Clock Sync</div>
 				</div>
 				<div>
-					<div class="text-xl sm:text-2xl font-black font-mono text-emerald-400 tracking-tight">1,000+</div>
-					<div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold mt-0.5">Curated Puzzles</div>
+					<div class="text-xl sm:text-2xl font-black font-mono text-foreground tracking-tight">1,000+</div>
+					<div class="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mt-0.5">Curated Puzzles</div>
 				</div>
 			</div>
 		</div>
 
-		<!-- Right: Real Interactive Showcase Board with BorderBeam -->
+		<!-- Right: Showcase Interactive Board -->
 		<div class="lg:col-span-5 flex flex-col items-center justify-center w-full">
-			<div class="relative w-full max-w-[420px] aspect-square rounded-2xl p-2.5 bg-slate-900/80 backdrop-blur-xl border border-slate-800 shadow-2xl overflow-hidden group">
-				<BorderBeam size={220} duration={10} colorFrom="#38bdf8" colorTo="#a855f7" />
+			<div class="w-full max-w-[420px] rounded-2xl p-2.5 bg-card border border-border shadow-2xl overflow-hidden">
+				<!-- Board Header Bar -->
+				<div class="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border text-xs text-muted-foreground">
+					<div class="flex items-center gap-2">
+						<span class="w-2 h-2 rounded-full bg-foreground animate-pulse"></span>
+						<span class="font-medium text-foreground text-[11px]">
+							{heroMovesCount === 0 ? 'Interactive Board — Try a move' : `Move ${heroMovesCount} • ${heroTurn} to play`}
+						</span>
+					</div>
+					{#if heroMovesCount > 0}
+						<button
+							class="text-[11px] text-muted-foreground hover:text-foreground font-medium flex items-center gap-1 transition"
+							on:click={resetHeroBoard}
+							title="Reset board"
+						>
+							<Icon name="rotate-ccw" size={11} />
+							<span>Reset</span>
+						</button>
+					{/if}
+				</div>
 
-				<!-- Real Interactive Board -->
+				<!-- Board Canvas -->
 				<ChessBoard
 					fen={heroFen}
 					orientation="white"
@@ -142,61 +153,87 @@
 				/>
 			</div>
 
-			<!-- Interactive Board Status Pill & Reset -->
-			<div class="w-full max-w-[420px] mt-3 flex items-center justify-between px-2 text-xs text-slate-400">
-				<div class="flex items-center gap-2">
-					<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-					<span class="font-medium">
-						{heroMovesCount === 0 ? 'Try making a move on the board!' : `Move ${heroMovesCount} • ${heroTurn} to play`}
-					</span>
-				</div>
-				{#if heroMovesCount > 0}
-					<button
-						class="text-[11px] text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1 transition"
-						on:click={resetHeroBoard}
-					>
-						<Icon name="rotate-ccw" size={12} />
-						<span>Reset</span>
-					</button>
-				{/if}
-			</div>
+			<p class="text-[11px] text-muted-foreground text-center mt-3 font-mono">
+				Standard FIDE algebraic rules · Drag or click to move
+			</p>
 		</div>
 	</div>
 
-	<!-- Bento Feature Matrix -->
-	<div class="mt-16 sm:mt-24 relative z-10">
-		<div class="mb-8 text-center sm:text-left">
-			<h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Everything you need to compete and grow</h2>
-			<p class="text-sm text-slate-400 mt-1.5 font-normal">Built for smooth games, precise tactical training, and master-level reviews.</p>
+	<!-- Core Capabilities Grid -->
+	<div class="mt-16 sm:mt-24">
+		<div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-4">
+			<div>
+				<h2 class="text-2xl sm:text-3xl font-black text-foreground tracking-tight">Built for serious play</h2>
+				<p class="text-sm text-muted-foreground mt-1">Engineered for low-latency competition, deliberate study, and master-level reviews.</p>
+			</div>
+			<div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">
+				Features & Protocols
+			</div>
 		</div>
 
-		<BentoGrid>
-			<BentoCard
-				name="Real-Time Matchmaking"
-				icon="zap"
-				description="Bullet, Blitz, Rapid, and Classical pools with instant fair matchmaking against opponents at your exact skill rating."
-				href="/play/online"
-				cta="Enter Queue"
-				colSpan="md:col-span-1"
-			/>
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+			<!-- Online Matchmaking -->
+			<Card className="flex flex-col justify-between p-6 transition-colors hover:border-foreground/30">
+				<div>
+					<div class="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-foreground mb-5 border border-border">
+						<Icon name="zap" size={20} />
+					</div>
+					<h3 class="text-lg font-bold text-foreground mb-2">Real-Time Matchmaking</h3>
+					<p class="text-sm text-muted-foreground leading-relaxed">
+						Bullet, Blitz, Rapid, and Classical pools with fair Elo pairings, sub-millisecond clock reconciliation, and reconnection safeguards.
+					</p>
+				</div>
+				<div class="pt-6 mt-6 border-t border-border">
+					<a href="/play/online">
+						<Button variant="ghost" size="sm" className="w-full justify-between px-0 hover:bg-transparent text-foreground hover:text-foreground/80">
+							<span class="font-semibold text-xs uppercase tracking-wider">Enter Queue</span>
+							<Icon name="arrow-right" size={14} />
+						</Button>
+					</a>
+				</div>
+			</Card>
 
-			<BentoCard
-				name="Curated Tactics Lab"
-				icon="puzzle"
-				description="Progressive tactical puzzles organized into Mate, Fork, Pin, Skewer, and tier levels. Includes separate puzzle rating and daily challenges."
-				href="/puzzles"
-				cta="Solve Tactics"
-				colSpan="md:col-span-1"
-			/>
+			<!-- Tactics Lab -->
+			<Card className="flex flex-col justify-between p-6 transition-colors hover:border-foreground/30">
+				<div>
+					<div class="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-foreground mb-5 border border-border">
+						<Icon name="puzzle" size={20} />
+					</div>
+					<h3 class="text-lg font-bold text-foreground mb-2">Curated Tactics Lab</h3>
+					<p class="text-sm text-muted-foreground leading-relaxed">
+						Tactical positions categorized by motif (Mate, Fork, Pin, Skewer, Deflection) with separate puzzle ratings and streak tracking.
+					</p>
+				</div>
+				<div class="pt-6 mt-6 border-t border-border">
+					<a href="/puzzles">
+						<Button variant="ghost" size="sm" className="w-full justify-between px-0 hover:bg-transparent text-foreground hover:text-foreground/80">
+							<span class="font-semibold text-xs uppercase tracking-wider">Solve Tactics</span>
+							<Icon name="arrow-right" size={14} />
+						</Button>
+					</a>
+				</div>
+			</Card>
 
-			<BentoCard
-				name="Post-Game Analysis"
-				icon="search"
-				description="Full game accuracy scores, move classifications, key moment detections, evaluation graphs, and simple reviews with advanced tools on demand."
-				href="/analysis"
-				cta="Open Board"
-				colSpan="md:col-span-1"
-			/>
-		</BentoGrid>
+			<!-- Analysis Board -->
+			<Card className="flex flex-col justify-between p-6 transition-colors hover:border-foreground/30">
+				<div>
+					<div class="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-foreground mb-5 border border-border">
+						<Icon name="search" size={20} />
+					</div>
+					<h3 class="text-lg font-bold text-foreground mb-2">Deep Game Analysis</h3>
+					<p class="text-sm text-muted-foreground leading-relaxed">
+						Stockfish engine evaluation, accuracy percentages, move classifications (Brilliant, Best, Mistake, Blunder), and full PGN export.
+					</p>
+				</div>
+				<div class="pt-6 mt-6 border-t border-border">
+					<a href="/analysis">
+						<Button variant="ghost" size="sm" className="w-full justify-between px-0 hover:bg-transparent text-foreground hover:text-foreground/80">
+							<span class="font-semibold text-xs uppercase tracking-wider">Open Board</span>
+							<Icon name="arrow-right" size={14} />
+						</Button>
+					</a>
+				</div>
+			</Card>
+		</div>
 	</div>
 </div>

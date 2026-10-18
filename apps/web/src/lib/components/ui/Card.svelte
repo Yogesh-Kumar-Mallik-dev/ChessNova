@@ -7,8 +7,8 @@
 
 <div
 	class={cn(
-		'rounded-2xl border border-slate-800/80 bg-slate-900/75 backdrop-blur-xl text-slate-100 shadow-xl transition-all duration-200',
-		interactive && 'hover:border-slate-700 hover:bg-slate-900/90 hover:shadow-2xl hover:shadow-sky-500/5 active:scale-[0.99] cursor-pointer',
+		'rounded-xl border border-border bg-card text-card-foreground shadow-xs transition-colors',
+		interactive && 'hover:border-border/80 hover:bg-accent/30 active:scale-[0.995] cursor-pointer',
 		className
 	)}
 	on:click

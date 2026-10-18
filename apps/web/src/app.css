@@ -3,145 +3,118 @@
 @tailwind utilities;
 
 @layer base {
-	:root, [data-app-theme="dark-slate"] {
-		--app-slate-950: 222 47% 4%;   /* #050811 deep navy slate */
-		--app-slate-900: 222 47% 7%;   /* #0b111e */
-		--app-slate-850: 220 38% 10%;  /* #101827 */
-		--app-slate-800: 217 33% 13%;  /* #162032 */
-		--app-slate-750: 217 30% 16%;  /* #1d293d */
-		--app-slate-700: 215 25% 20%;  /* #26354d */
-		--app-slate-600: 215 20% 30%;  /* #3d4f6c */
-
-		--background: 222 47% 4%;
-		--foreground: 210 40% 98%;
-		--card: 222 47% 7%;
-		--card-foreground: 210 40% 98%;
-		--popover: 222 47% 6%;
-		--popover-foreground: 210 40% 98%;
-		--primary: 142 71% 45%;
-		--primary-foreground: 210 40% 98%;
-		--secondary: 217 33% 13%;
-		--secondary-foreground: 210 40% 98%;
-		--muted: 217 33% 12%;
-		--muted-foreground: 215 20% 65%;
-		--accent: 217 33% 15%;
-		--accent-foreground: 210 40% 98%;
-		--destructive: 0 63% 31%;
-		--destructive-foreground: 210 40% 98%;
-		--border: 217 33% 15%;
-		--input: 217 33% 15%;
-		--ring: 142 71% 45%;
-		--radius: 0.75rem;
-	}
-
-	[data-app-theme="chess-dark"] {
-		--app-slate-950: 30 10% 7%;    /* #141311 Chess.com authentic warm background */
-		--app-slate-900: 30 8% 12%;    /* #21201d Chess.com surface */
-		--app-slate-850: 30 7% 15%;    /* #272522 Chess.com panel */
-		--app-slate-800: 30 6% 19%;    /* #312e2b Chess.com borders */
-		--app-slate-750: 30 6% 23%;    /* #3c3935 */
-		--app-slate-700: 30 5% 28%;    /* #484541 */
-		--app-slate-600: 30 5% 42%;    /* #6d6964 */
-
-		--background: 30 10% 7%;
-		--foreground: 40 20% 96%;
-		--card: 30 8% 12%;
-		--card-foreground: 40 20% 96%;
-		--popover: 30 7% 11%;
-		--popover-foreground: 40 20% 96%;
-		--primary: 90 45% 50%; /* #81b64c classic green */
-		--primary-foreground: 0 0% 100%;
-		--secondary: 30 6% 16%;
-		--secondary-foreground: 40 20% 96%;
-		--muted: 30 6% 14%;
-		--muted-foreground: 30 10% 60%;
-		--accent: 30 6% 18%;
-		--accent-foreground: 40 20% 96%;
-		--destructive: 0 63% 31%;
-		--destructive-foreground: 40 20% 96%;
-		--border: 30 6% 19%;
-		--input: 30 6% 19%;
-		--ring: 90 45% 50%;
-		--radius: 0.75rem;
-	}
-
-	[data-app-theme="oled-black"] {
-		--app-slate-950: 0 0% 1%;      /* #030303 pure black */
-		--app-slate-900: 0 0% 5%;      /* #0d0d0d */
-		--app-slate-850: 0 0% 8%;      /* #141414 */
-		--app-slate-800: 0 0% 12%;     /* #1f1f1f */
-		--app-slate-750: 0 0% 15%;     /* #262626 */
-		--app-slate-700: 0 0% 20%;     /* #333333 */
-		--app-slate-600: 0 0% 35%;     /* #595959 */
-
-		--background: 0 0% 1%;
-		--foreground: 0 0% 98%;
-		--card: 0 0% 5%;
-		--card-foreground: 0 0% 98%;
-		--popover: 0 0% 4%;
-		--popover-foreground: 0 0% 98%;
-		--primary: 142 71% 45%;
-		--primary-foreground: 0 0% 100%;
-		--secondary: 0 0% 10%;
-		--secondary-foreground: 0 0% 98%;
-		--muted: 0 0% 8%;
-		--muted-foreground: 0 0% 60%;
-		--accent: 0 0% 12%;
-		--accent-foreground: 0 0% 98%;
-		--destructive: 0 63% 31%;
-		--destructive-foreground: 0 0% 98%;
-		--border: 0 0% 12%;
-		--input: 0 0% 12%;
-		--ring: 142 71% 45%;
-		--radius: 0.75rem;
-	}
-
+	/* 1. Default Monochrome Dark (Studio Noir) */
+	:root,
+	[data-app-theme="dark"],
+	[data-app-theme="dark-slate"],
+	[data-app-theme="chess-dark"],
 	[data-app-theme="emerald-studio"] {
-		--app-slate-950: 160 50% 3%;   /* #04100b deep pine */
-		--app-slate-900: 160 40% 7%;   /* #0a1f16 forest card */
-		--app-slate-850: 160 35% 10%;  /* #102a1e */
-		--app-slate-800: 160 30% 14%;  /* #143527 forest border */
-		--app-slate-750: 160 25% 17%;  /* #1d4333 */
-		--app-slate-700: 160 20% 22%;  /* #2c5443 */
-		--app-slate-600: 160 15% 35%;  /* #4a7562 */
+		--app-slate-950: 240 6% 6%;    /* #0f0f12 deep canvas */
+		--app-slate-900: 240 5% 10%;   /* #18181d surface card */
+		--app-slate-850: 240 5% 13%;   /* #1f1f25 surface panel */
+		--app-slate-800: 240 4% 17%;   /* #292931 surface hover & border */
+		--app-slate-750: 240 4% 21%;   /* #33333d subtle divider */
+		--app-slate-700: 240 4% 28%;   /* #444450 border prominent */
+		--app-slate-600: 240 4% 42%;   /* #696978 muted icons */
 
-		--background: 160 50% 3%;
-		--foreground: 150 30% 96%;
-		--card: 160 40% 7%;
-		--card-foreground: 150 30% 96%;
-		--popover: 160 35% 6%;
-		--popover-foreground: 150 30% 96%;
-		--primary: 150 65% 44%;
-		--primary-foreground: 0 0% 100%;
-		--secondary: 160 25% 14%;
-		--secondary-foreground: 150 30% 96%;
-		--muted: 160 25% 12%;
-		--muted-foreground: 150 15% 60%;
-		--accent: 160 25% 16%;
-		--accent-foreground: 150 30% 96%;
-		--destructive: 0 63% 31%;
-		--destructive-foreground: 150 30% 96%;
-		--border: 160 30% 14%;
-		--input: 160 30% 14%;
-		--ring: 150 65% 44%;
-		--radius: 0.75rem;
+		--background: 240 6% 6%;
+		--foreground: 0 0% 98%;
+		--card: 240 5% 10%;
+		--card-foreground: 0 0% 98%;
+		--popover: 240 5% 9%;
+		--popover-foreground: 0 0% 98%;
+		--primary: 0 0% 98%;           /* High contrast crisp white primary action */
+		--primary-foreground: 240 6% 6%;
+		--secondary: 240 4% 17%;
+		--secondary-foreground: 0 0% 98%;
+		--muted: 240 4% 14%;
+		--muted-foreground: 240 4% 62%;
+		--accent: 240 4% 18%;
+		--accent-foreground: 0 0% 98%;
+		--destructive: 0 72% 51%;
+		--destructive-foreground: 0 0% 98%;
+		--border: 240 4% 18%;
+		--input: 240 4% 18%;
+		--ring: 0 0% 98%;
+		--radius: 0.5rem;
+	}
+
+	/* 2. Monochrome Light (Studio Alabaster) */
+	[data-app-theme="light"] {
+		--app-slate-950: 0 0% 97%;     /* #f7f7f8 light canvas */
+		--app-slate-900: 0 0% 100%;    /* #ffffff pure white card */
+		--app-slate-850: 240 5% 94%;   /* #eff0f3 panel */
+		--app-slate-800: 240 4% 88%;   /* #dedee3 border */
+		--app-slate-750: 240 4% 82%;   /* #ced0d6 subtle divider */
+		--app-slate-700: 240 4% 70%;   /* #adadb8 */
+		--app-slate-600: 240 4% 50%;   /* #7b7b88 */
+
+		--background: 0 0% 97%;
+		--foreground: 240 6% 10%;      /* #17171d high contrast dark text */
+		--card: 0 0% 100%;
+		--card-foreground: 240 6% 10%;
+		--popover: 0 0% 100%;
+		--popover-foreground: 240 6% 10%;
+		--primary: 240 6% 10%;         /* Solid deep near-black primary action */
+		--primary-foreground: 0 0% 98%;
+		--secondary: 240 5% 92%;
+		--secondary-foreground: 240 6% 10%;
+		--muted: 240 5% 92%;
+		--muted-foreground: 240 4% 45%;
+		--accent: 240 5% 90%;
+		--accent-foreground: 240 6% 10%;
+		--destructive: 0 72% 51%;
+		--destructive-foreground: 0 0% 98%;
+		--border: 240 4% 88%;
+		--input: 240 4% 88%;
+		--ring: 240 6% 10%;
+		--radius: 0.5rem;
+	}
+
+	/* 3. Monochrome OLED Pure Black */
+	[data-app-theme="oled"],
+	[data-app-theme="oled-black"] {
+		--app-slate-950: 0 0% 0%;      /* #000000 pure black */
+		--app-slate-900: 0 0% 6%;      /* #0f0f0f */
+		--app-slate-850: 0 0% 10%;     /* #1a1a1a */
+		--app-slate-800: 0 0% 15%;     /* #262626 */
+		--app-slate-750: 0 0% 20%;     /* #333333 */
+		--app-slate-700: 0 0% 26%;     /* #424242 */
+		--app-slate-600: 0 0% 40%;     /* #666666 */
+
+		--background: 0 0% 0%;
+		--foreground: 0 0% 98%;
+		--card: 0 0% 6%;
+		--card-foreground: 0 0% 98%;
+		--popover: 0 0% 5%;
+		--popover-foreground: 0 0% 98%;
+		--primary: 0 0% 98%;
+		--primary-foreground: 0 0% 0%;
+		--secondary: 0 0% 12%;
+		--secondary-foreground: 0 0% 98%;
+		--muted: 0 0% 10%;
+		--muted-foreground: 0 0% 60%;
+		--accent: 0 0% 14%;
+		--accent-foreground: 0 0% 98%;
+		--destructive: 0 72% 51%;
+		--destructive-foreground: 0 0% 98%;
+		--border: 0 0% 15%;
+		--input: 0 0% 15%;
+		--ring: 0 0% 98%;
+		--radius: 0.5rem;
 	}
 
 	* {
 		border-color: hsl(var(--border));
 	}
 
-	html, body {
-		color-scheme: dark;
-	}
-
 	body {
 		background-color: hsl(var(--background));
 		color: hsl(var(--foreground));
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Helvetica, Arial, sans-serif;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Helvetica, Arial, sans-serif;
 		user-select: none;
 		-webkit-tap-highlight-color: transparent;
-		transition: background-color 200ms ease, color 200ms ease;
+		transition: background-color 150ms ease, color 150ms ease;
 	}
 
 	/* Prevent browser autofill & paste from turning input fields bright white */
@@ -175,32 +148,32 @@
 	transition: transform 120ms cubic-bezier(0.2, 0, 0, 1), box-shadow 120ms ease;
 }
 .interactive-tap:active {
-	transform: scale(0.98);
+	transform: scale(0.985);
 }
 
-.glass-panel {
-	background: rgba(15, 20, 31, 0.75);
-	backdrop-filter: blur(16px);
-	-webkit-backdrop-filter: blur(16px);
-	border: 1px solid rgba(255, 255, 255, 0.08);
+.surface-panel {
+	background-color: hsl(var(--card));
+	border: 1px solid hsl(var(--border));
 }
 
-.subtle-ring {
-	box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 24px -4px rgba(0, 0, 0, 0.6);
+.surface-elevated {
+	background-color: hsl(var(--popover));
+	border: 1px solid hsl(var(--border));
+	box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.15);
 }
 
-/* Custom scrollbars */
+/* Custom restrained scrollbars */
 ::-webkit-scrollbar {
-	width: 6px;
-	height: 6px;
+	width: 5px;
+	height: 5px;
 }
 ::-webkit-scrollbar-track {
-	background: rgba(0, 0, 0, 0.2);
+	background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-	background: rgba(148, 163, 184, 0.2);
-	border-radius: 4px;
+	background: hsl(var(--border));
+	border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-	background: rgba(148, 163, 184, 0.35);
+	background: hsl(var(--muted-foreground));
 }

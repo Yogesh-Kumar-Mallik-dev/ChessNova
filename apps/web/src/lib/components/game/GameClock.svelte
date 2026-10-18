@@ -61,17 +61,17 @@
 </script>
 
 <div
-	class="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl font-mono text-lg sm:text-2xl font-black tracking-tight transition-all duration-200 flex items-center gap-2 select-none backdrop-blur-md
+	class="px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg font-mono text-base sm:text-xl font-bold tracking-tight transition-colors duration-100 flex items-center gap-2 select-none tabular-nums
 	{isActive
 		? isLow
-			? 'bg-rose-950/80 text-rose-100 ring-2 ring-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.4)] animate-pulse'
-			: 'bg-slate-900/90 text-white ring-2 ring-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]'
-		: 'bg-slate-900/50 text-slate-400 border border-slate-800/80'}"
+			? 'bg-red-950/70 text-red-300 border-2 border-red-500 shadow-xs animate-pulse'
+			: 'bg-foreground text-background shadow-xs font-extrabold'
+		: 'bg-secondary text-muted-foreground border border-border'}"
 >
 	<Icon
 		name="timer"
-		size={16}
-		className={isActive ? (isLow ? 'text-rose-400 animate-spin' : 'text-sky-400') : 'text-slate-600'}
+		size={14}
+		className={isActive ? (isLow ? 'text-red-400' : 'text-background') : 'text-muted-foreground/60'}
 	/>
 	<span>{formatTime(displayTimeMs)}</span>
 </div>

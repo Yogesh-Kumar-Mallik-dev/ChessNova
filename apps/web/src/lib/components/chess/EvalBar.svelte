@@ -34,25 +34,25 @@
 </script>
 
 <div
-	class="relative w-6 sm:w-7 h-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex flex-col justify-end shadow-md select-none"
+	class="relative w-5 sm:w-6 h-full bg-[#1c1d22] rounded-md overflow-hidden border border-border flex flex-col justify-end shadow-xs select-none"
 	title="Advantage: {formattedScore}"
 >
 	<!-- Black Portion (Top if White orientation) -->
-	<div class="absolute inset-0 bg-slate-900"></div>
+	<div class="absolute inset-0 bg-[#1c1d22]"></div>
 
 	<!-- White Portion (Bottom if White orientation) -->
 	<div
-		class="w-full bg-slate-100 transition-all duration-300 ease-out"
+		class="w-full bg-[#f4f4f6] transition-all duration-300 ease-out"
 		style="height: {bottomPercent}%;"
 	></div>
 
 	<!-- Score Badge Label -->
 	<div
 		class="absolute inset-x-0 flex items-center justify-center transition-all duration-300 pointer-events-none"
-		style={bottomPercent > 50 ? 'bottom: 8px;' : 'top: 8px;'}
+		style={bottomPercent > 50 ? 'bottom: 6px;' : 'top: 6px;'}
 	>
 		<span
-			class="px-1 py-0.5 rounded text-[10px] font-mono font-black leading-none {bottomPercent > 50 ? 'text-black' : 'text-white'}"
+			class="px-1 py-0.5 rounded text-[10px] font-mono font-bold leading-none {bottomPercent > 50 ? 'text-[#1c1d22]' : 'text-[#f4f4f6]'}"
 		>
 			{formattedScore}
 		</span>

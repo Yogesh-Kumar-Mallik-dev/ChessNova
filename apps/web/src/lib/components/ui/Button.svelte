@@ -11,38 +11,37 @@
 	export let type: 'button' | 'submit' | 'reset' = 'button';
 
 	const variantStyles: Record<Variant, string> = {
-		// Clean high-contrast solid button (modern shadcn style)
+		// High-contrast primary action (solid white on dark, solid black on light)
 		default:
-			'bg-white text-slate-950 hover:bg-slate-100 font-semibold shadow-sm border border-transparent active:translate-y-px',
-		// The iconic, tactile chess green action button (Chess.com style)
+			'bg-foreground text-background hover:opacity-90 font-semibold shadow-xs border border-transparent active:translate-y-px',
 		primary:
-			'bg-[#81b64c] hover:bg-[#77a942] active:bg-[#689437] text-white font-bold shadow-sm border border-[#6ea03c]/60 active:translate-y-px',
+			'bg-foreground text-background hover:opacity-90 font-semibold shadow-xs border border-transparent active:translate-y-px',
 		emerald:
-			'bg-[#81b64c] hover:bg-[#77a942] active:bg-[#689437] text-white font-bold shadow-sm border border-[#6ea03c]/60 active:translate-y-px',
+			'bg-foreground text-background hover:opacity-90 font-semibold shadow-xs border border-transparent active:translate-y-px',
 		glow:
-			'bg-[#81b64c] hover:bg-[#77a942] active:bg-[#689437] text-white font-bold shadow-sm border border-[#6ea03c]/60 active:translate-y-px',
-		// Secondary dark slate button with subtle border
+			'bg-foreground text-background hover:opacity-90 font-semibold shadow-xs border border-transparent active:translate-y-px',
+		// Secondary surface button with subtle border
 		secondary:
-			'bg-slate-800/90 hover:bg-slate-700/90 text-slate-100 font-semibold border border-slate-700/60 shadow-xs active:translate-y-px',
-		// Sophisticated outline button
+			'bg-secondary text-secondary-foreground hover:bg-accent font-medium border border-border shadow-xs active:translate-y-px',
+		// Refined outline button
 		outline:
-			'border border-slate-700/80 bg-slate-900/50 hover:bg-slate-800 hover:text-white text-slate-200 font-semibold shadow-xs active:translate-y-px',
-		// Ghost button for lightweight actions
+			'border border-border bg-transparent hover:bg-secondary hover:text-foreground text-foreground font-medium shadow-xs active:translate-y-px',
+		// Ghost button for clean toolbar actions
 		ghost:
-			'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 font-medium active:translate-y-px',
-		// Crisp destructive button
+			'text-muted-foreground hover:text-foreground hover:bg-secondary font-medium active:translate-y-px',
+		// Restrained destructive button
 		destructive:
-			'bg-rose-600 hover:bg-rose-500 text-white font-semibold shadow-sm border border-rose-500/50 active:translate-y-px',
+			'bg-red-950/40 text-red-400 hover:bg-red-900/60 font-semibold border border-red-800/50 active:translate-y-px',
 		// Clean text link
 		link:
-			'text-sky-400 underline-offset-4 hover:underline p-0 h-auto font-medium'
+			'text-foreground underline-offset-4 hover:underline p-0 h-auto font-medium'
 	};
 
 	const sizeStyles: Record<Size, string> = {
-		default: 'h-9 sm:h-10 px-4 py-2 text-xs sm:text-sm rounded-xl',
-		sm: 'h-8 px-3 text-xs rounded-lg',
-		lg: 'h-11 sm:h-12 px-6 text-sm sm:text-base rounded-xl font-bold',
-		icon: 'h-9 w-9 p-0 rounded-xl flex items-center justify-center'
+		default: 'h-9 sm:h-10 px-4 py-2 text-xs sm:text-sm rounded-lg',
+		sm: 'h-8 px-3 text-xs rounded-md',
+		lg: 'h-11 sm:h-12 px-6 text-sm sm:text-base rounded-lg font-semibold',
+		icon: 'h-9 w-9 p-0 rounded-lg flex items-center justify-center'
 	};
 </script>
 
@@ -50,7 +49,7 @@
 	{type}
 	{disabled}
 	class={cn(
-		'inline-flex items-center justify-center gap-2 whitespace-nowrap transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:pointer-events-none disabled:opacity-40 select-none cursor-pointer tracking-tight',
+		'inline-flex items-center justify-center gap-2 whitespace-nowrap transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40 select-none cursor-pointer tracking-tight',
 		variantStyles[variant],
 		sizeStyles[size],
 		className
