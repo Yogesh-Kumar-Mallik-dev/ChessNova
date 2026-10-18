@@ -454,7 +454,7 @@
 
 				<!-- Top Player Bar (Opponent) -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mb-1 gap-2">
-					<div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+					<div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
 						{#if topPlayer?.username && topPlayer.username !== 'guest-opponent' && topPlayer.username !== 'Opponent'}
 							<UserBadge
 								username={topPlayer.username}
@@ -503,7 +503,7 @@
 
 				<!-- Bottom Player Bar (Self) -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mt-1 gap-2">
-					<div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+					<div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
 						{#if bottomPlayer?.username && bottomPlayer.username !== 'guest-opponent'}
 							<UserBadge
 								username={bottomPlayer.username}
