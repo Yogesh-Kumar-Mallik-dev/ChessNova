@@ -272,11 +272,22 @@
 		return cp > 0 ? `+${pawns}` : `${pawns}`;
 	}
 
+	let prevActivePly: number | null = null;
 	afterUpdate(() => {
-		if (moveContainer) {
-			const activeBtn = moveContainer.querySelector('[data-active="true"]');
+		if (moveContainer && prevActivePly !== currentPly) {
+			prevActivePly = currentPly;
+			const activeBtn = moveContainer.querySelector<HTMLElement>('[data-active="true"]');
 			if (activeBtn) {
-				activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+				const containerTop = moveContainer.scrollTop;
+				const containerHeight = moveContainer.clientHeight;
+				const btnTop = activeBtn.offsetTop - moveContainer.offsetTop;
+				const btnHeight = activeBtn.offsetHeight;
+
+				if (btnTop < containerTop) {
+					moveContainer.scrollTo({ top: btnTop - 8, behavior: 'smooth' });
+				} else if (btnTop + btnHeight > containerTop + containerHeight) {
+					moveContainer.scrollTo({ top: btnTop + btnHeight - containerHeight + 8, behavior: 'smooth' });
+				}
 			}
 		}
 	});

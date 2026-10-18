@@ -6,6 +6,7 @@
 	import EvalBar from '$lib/components/chess/EvalBar.svelte';
 	import MoveList from '$lib/components/game/MoveList.svelte';
 	import GameReview from '$lib/components/chess/GameReview.svelte';
+	import ReviewBadge from '$lib/components/chess/ReviewBadge.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { api } from '$lib/api/client';
@@ -361,6 +362,44 @@
 		customFenInput = fen;
 	}
 
+	function formatEval(cp: number): string {
+		if (Math.abs(cp) >= 10000) {
+			const mateIn = Math.ceil((20000 - Math.abs(cp)) / 2);
+			return cp > 0 ? `+M${mateIn}` : `-M${mateIn}`;
+		}
+		const pawns = (cp / 100).toFixed(1);
+		return cp > 0 ? `+${pawns}` : `${pawns}`;
+	}
+
+	function jumpToNextKeyMove() {
+		if (!reviewResult || reviewResult.moves.length === 0) return;
+		for (let i = currentPly; i < reviewResult.moves.length; i++) {
+			const c = reviewResult.moves[i].classification;
+			if (['blunder', 'mistake', 'miss', 'inaccuracy', 'brilliant', 'great'].includes(c)) {
+				goToPly(i + 1);
+				return;
+			}
+		}
+		for (let i = 0; i < currentPly; i++) {
+			const c = reviewResult.moves[i].classification;
+			if (['blunder', 'mistake', 'miss', 'inaccuracy', 'brilliant', 'great'].includes(c)) {
+				goToPly(i + 1);
+				return;
+			}
+		}
+	}
+
+	function jumpToPrevKeyMove() {
+		if (!reviewResult || reviewResult.moves.length === 0) return;
+		for (let i = currentPly - 2; i >= 0; i--) {
+			const c = reviewResult.moves[i].classification;
+			if (['blunder', 'mistake', 'miss', 'inaccuracy', 'brilliant', 'great'].includes(c)) {
+				goToPly(i + 1);
+				return;
+			}
+		}
+	}
+
 	function loadCustomFen() {
 		if (customFenInput.trim()) {
 			try {
@@ -551,6 +590,77 @@
 					</div>
 				</div>
 
+				<!-- Coach Feedback Banner (when game review is active) -->
+				{#if reviewResult}
+					<div class="w-full mt-2 bg-card border border-border rounded-xl p-2.5 sm:p-3 shadow-md animate-in fade-in duration-150">
+						{#if currentReviewedMove}
+							<div class="flex flex-col gap-1.5">
+								<!-- Header: Classification Badge + Move Name + Accuracy & Eval Pills -->
+								<div class="flex items-center justify-between gap-2">
+									<div class="flex items-center gap-2 min-w-0">
+										<ReviewBadge classification={currentReviewedMove.classification} size="md" />
+										<div class="flex items-center gap-1.5 truncate">
+											<span class="text-xs font-bold text-foreground capitalize">
+												{currentReviewedMove.classification.replace('_', ' ')}
+											</span>
+											<span class="text-[11px] font-mono font-bold text-muted-foreground">
+												{currentReviewedMove.moveNumber}{currentReviewedMove.color === 'white' ? '.' : '...'} {currentReviewedMove.san}
+											</span>
+										</div>
+									</div>
+
+									<div class="flex items-center gap-1.5 shrink-0">
+										<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums" title="Evaluation after move">
+											{formatEval(currentReviewedMove.evalAfter)}
+										</span>
+										<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums" title="Move accuracy">
+											{currentReviewedMove.accuracy}%
+										</span>
+									</div>
+								</div>
+
+								<!-- Coach Commentary Explanation -->
+								<p class="text-xs text-foreground/90 leading-snug font-normal bg-secondary/40 border border-border/80 px-2.5 py-1.5 rounded-lg">
+									{currentReviewedMove.explanation}
+								</p>
+
+								<!-- Best Move Suggestion if move was not best -->
+								{#if currentReviewedMove.bestMoveSan && currentReviewedMove.bestMoveSan !== currentReviewedMove.san}
+									<div class="flex items-center justify-between text-[11px] bg-secondary/60 border border-border px-2.5 py-1 rounded-lg">
+										<div class="flex items-center gap-1.5 truncate">
+											<ReviewBadge classification="best" size="sm" />
+											<span class="text-muted-foreground font-medium">Best was:</span>
+											<span class="font-mono font-bold text-foreground">{currentReviewedMove.bestMoveSan}</span>
+										</div>
+										<span class="font-mono text-[10px] text-muted-foreground tabular-nums">
+											{formatEval(currentReviewedMove.evalBefore)}
+										</span>
+									</div>
+								{/if}
+							</div>
+						{:else}
+							<!-- Starting Position -->
+							<div class="flex items-center justify-between gap-2 py-0.5">
+								<div class="flex items-center gap-2">
+									<div class="w-6 h-6 rounded-md bg-secondary border border-border flex items-center justify-center text-foreground shrink-0">
+										<Icon name="search" size={13} />
+									</div>
+									<div>
+										<span class="text-xs font-bold text-foreground">Starting Position</span>
+										<p class="text-[11px] text-muted-foreground">Step through moves below to inspect the game review.</p>
+									</div>
+								</div>
+								<button
+									class="px-2.5 py-1 rounded-lg bg-secondary hover:bg-muted text-foreground text-xs font-semibold border border-border transition cursor-pointer"
+									on:click={() => goToPly(1)}
+								>
+									Start &rarr;
+								</button>
+							</div>
+						{/if}
+					</div>
+				{/if}
+
 				<!-- Universal Stepper & Action Controls -->
 				<div class="w-full mt-2 flex items-center justify-between gap-1.5 p-1.5 bg-card border border-border rounded-xl shadow-md">
 					<div class="flex items-center gap-1">
@@ -602,6 +712,24 @@
 					</div>
 
 					<div class="flex items-center gap-1">
+						{#if reviewResult}
+							<button
+								class="p-1.5 sm:px-2 sm:py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground transition text-xs font-medium flex items-center gap-1"
+								on:click={jumpToPrevKeyMove}
+								title="Previous Turning Point"
+							>
+								<Icon name="flag" size={13} />
+								<span class="hidden sm:inline">Prev Key</span>
+							</button>
+							<button
+								class="p-1.5 sm:px-2 sm:py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground transition text-xs font-medium flex items-center gap-1"
+								on:click={jumpToNextKeyMove}
+								title="Next Turning Point"
+							>
+								<Icon name="zap" size={13} />
+								<span class="hidden sm:inline">Next Key</span>
+							</button>
+						{/if}
 						<button
 							class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground transition text-xs font-medium flex items-center gap-1"
 							on:click={() => (orientation = orientation === 'white' ? 'black' : 'white')}

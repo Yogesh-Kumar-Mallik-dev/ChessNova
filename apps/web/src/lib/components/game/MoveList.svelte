@@ -22,12 +22,23 @@
 		return result;
 	})();
 
+	let prevActivePly: number | null = null;
 	afterUpdate(() => {
-		if (container) {
-			const activeEl = container.querySelector('[data-active="true"]');
+		if (container && prevActivePly !== activePly) {
+			prevActivePly = activePly;
+			const activeEl = container.querySelector<HTMLElement>('[data-active="true"]');
 			if (activeEl) {
-				activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-			} else {
+				const containerTop = container.scrollTop;
+				const containerHeight = container.clientHeight;
+				const elTop = activeEl.offsetTop - container.offsetTop;
+				const elHeight = activeEl.offsetHeight;
+
+				if (elTop < containerTop) {
+					container.scrollTo({ top: elTop - 8, behavior: 'smooth' });
+				} else if (elTop + elHeight > containerTop + containerHeight) {
+					container.scrollTo({ top: elTop + elHeight - containerHeight + 8, behavior: 'smooth' });
+				}
+			} else if (activePly === -1 && container.scrollHeight > container.clientHeight) {
 				container.scrollTop = container.scrollHeight;
 			}
 		}
