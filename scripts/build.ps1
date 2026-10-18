@@ -10,6 +10,10 @@ if (-not (Test-Path "bin")) { New-Item -ItemType Directory -Path "bin" | Out-Nul
 go build -o bin\server.exe .\cmd\server\main.go
 Write-Host "✅ [build] Go server binary built: apps/server/bin/server.exe" -ForegroundColor Green
 
+Write-Host "==> [build] Compiling Go engine microservice..." -ForegroundColor Cyan
+go build -o bin\engine-service.exe .\cmd\engine-service\main.go
+Write-Host "✅ [build] Engine microservice built: apps/server/bin/engine-service.exe" -ForegroundColor Green
+
 Write-Host "==> [build] Building SvelteKit production bundle..." -ForegroundColor Cyan
 Set-Location (Join-Path $RootDir "apps\web")
 npm run build

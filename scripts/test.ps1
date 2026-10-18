@@ -11,4 +11,8 @@ go test -v .\internal\chess\...
 Write-Host "==> [test] Running end-to-end integration tests..." -ForegroundColor Cyan
 go test -v .\internal\...
 
+Write-Host "==> [test] Running frontend unit tests with Vitest..." -ForegroundColor Cyan
+Set-Location (Join-Path $RootDir "apps\web")
+npm test
+
 Write-Host "✅ [test] All test suites passed." -ForegroundColor Green

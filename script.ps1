@@ -29,6 +29,8 @@ function Show-Help {
     Write-Host "  deps     Install Go and npm dependencies"
     Write-Host "  envi     Initialize local environment and start Docker services"
     Write-Host "  uenvi    Tear down local Docker containers"
+    Write-Host "  desktop  Launch ChessNova Tauri desktop application in dev mode"
+    Write-Host "  desktop-build Build ChessNova Tauri desktop native release binary"
     Write-Host "  flush    Flush database (MongoDB) and Redis caches"
     Write-Host "  help     Display this help message"
     Write-Host "==================================================================" -ForegroundColor Cyan
@@ -62,6 +64,14 @@ switch ($Command.ToLower()) {
     "uenvi" {
         $target = Join-Path $ScriptDir "scripts\uenvi.ps1"
         if (Test-Path $target) { & $target @RemainingArgs } else { Write-Host "scripts\uenvi.ps1 not found" }
+    }
+    "desktop" {
+        $target = Join-Path $ScriptDir "scripts\desktop.ps1"
+        if (Test-Path $target) { & $target "dev" @RemainingArgs } else { Write-Host "scripts\desktop.ps1 not found" }
+    }
+    "desktop-build" {
+        $target = Join-Path $ScriptDir "scripts\desktop.ps1"
+        if (Test-Path $target) { & $target "build" @RemainingArgs } else { Write-Host "scripts\desktop.ps1 not found" }
     }
     { $_ -in "flush", "flush-db", "flush_db" } {
         $target = Join-Path $ScriptDir "scripts\flush_db.ps1"

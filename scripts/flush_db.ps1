@@ -10,11 +10,12 @@ if (Get-Command redis-cli -ErrorAction SilentlyContinue) {
     & docker exec chess-redis redis-cli flushall
 }
 
-Write-Host "==> [flush] Resetting MongoDB test data..." -ForegroundColor Cyan
+Write-Host "==> [flush] Resetting MongoDB databases..." -ForegroundColor Cyan
+$DbName = if ($env:MONGODB_DATABASE) { $env:MONGODB_DATABASE } else { "chess" }
 if (Get-Command mongosh -ErrorAction SilentlyContinue) {
-    & mongosh --eval "use chess_test; db.dropDatabase();"
+    & mongosh --eval "use $DbName; db.dropDatabase(); use chess_test; db.dropDatabase();"
 } elseif (Get-Command docker -ErrorAction SilentlyContinue) {
-    & docker exec chess-mongo mongosh --eval "use chess_test; db.dropDatabase();"
+    & docker exec chess-mongo mongosh --eval "use $DbName; db.dropDatabase(); use chess_test; db.dropDatabase();"
 }
 
 Write-Host "✅ [flush] Database and caches flushed successfully." -ForegroundColor Green

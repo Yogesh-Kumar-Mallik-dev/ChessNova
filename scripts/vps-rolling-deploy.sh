@@ -37,7 +37,8 @@ echo "==> [3/5] Verifying systemd multi-instance service template..."
 $SSH_CMD "cat <<'EOF' > /etc/systemd/system/chessnova@.service
 [Unit]
 Description=ChessNova Real-Time Chess Server (Port %i)
-After=network.target mongodb.service redis.service
+After=network.target docker.service
+Wants=docker.service
 
 [Service]
 Type=simple

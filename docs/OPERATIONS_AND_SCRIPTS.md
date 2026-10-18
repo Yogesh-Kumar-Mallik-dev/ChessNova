@@ -10,16 +10,16 @@ ChessNova follows the unified script orchestration standard. All platform tasks 
 
 | Command | Action | Sub-Script Invoked |
 | :--- | :--- | :--- |
-| **`dev`** | Verifies port availability, spins up Docker dependencies (MongoDB/Redis), and launches Go backend (`:8080`) & SvelteKit frontend (`:5173`) in parallel with coordinated shutdown. | `scripts/dev.sh` |
-| **`build`** | Compiles the Go server binary to `apps/server/bin/server` and builds the SvelteKit production bundle. | `scripts/build.sh` |
-| **`check`** | Executes static analysis: Go `vet` and SvelteKit `svelte-check` type checking. | `scripts/check.sh` |
-| **`test`** | Executes pure Go chess rules engine tests, HTTP handler tests, rating tests, review laboratory tests, and end-to-end integration tests. | `scripts/test.sh` |
-| **`deps`** | Installs backend Go modules (`go mod download`) and frontend npm packages across `apps/web` and `packages/shared`. | `scripts/deps.sh` |
-| **`envi`** | Scaffolds `.env` from `.env.example` if absent and starts Docker containers (`chess-mongo`, `chess-redis`). | `scripts/envi.sh` |
-| **`uenvi`** | Tears down and stops all Docker infrastructure containers. | `scripts/uenvi.sh` |
-| **`flush`** | Flushes the Redis memory cache and drops all collections in the MongoDB database for a clean slate. | `scripts/flush_db.sh` |
-| **`desktop`** | Launches the ChessNova Tauri v2 desktop application in development mode with hot-reloading. | `scripts/desktop.sh` |
-| **`desktop-build`** | Compiles the production native desktop application release bundle (.AppImage, .deb, etc.). | `scripts/desktop.sh` |
+| **`dev`** | Verifies port availability, spins up Docker dependencies (MongoDB/Redis/MinIO), and launches Go backend (`:8080`) & SvelteKit frontend (`:5173`) in parallel with coordinated shutdown. | `scripts/dev.sh` / `scripts/dev.ps1` |
+| **`build`** | Compiles Go server binary (`apps/server/bin/server`), engine microservice (`apps/server/bin/engine-service`), and builds SvelteKit production bundle. | `scripts/build.sh` / `scripts/build.ps1` |
+| **`check`** | Executes static analysis: Go `vet` and SvelteKit `svelte-check` type checking. | `scripts/check.sh` / `scripts/check.ps1` |
+| **`test`** | Executes pure Go chess rules engine tests, HTTP handler tests, rating tests, review laboratory tests, end-to-end integration tests, and Vitest frontend unit tests. | `scripts/test.sh` / `scripts/test.ps1` |
+| **`deps`** | Installs backend Go modules, downloads Stockfish binary if absent, and installs npm dependencies for `apps/web` and `apps/desktop`. | `scripts/deps.sh` / `scripts/deps.ps1` |
+| **`envi`** | Scaffolds `.env` from `.env.example` if absent and starts Docker containers (`chess-mongo`, `chess-redis`, `chess-minio`). | `scripts/envi.sh` / `scripts/envi.ps1` |
+| **`uenvi`** | Tears down and stops all Docker infrastructure containers (`chess-mongo`, `chess-redis`, `chess-minio`). | `scripts/uenvi.sh` / `scripts/uenvi.ps1` |
+| **`flush`** | Flushes Redis memory cache and drops development (`chess`) and test (`chess_test`) databases in MongoDB. | `scripts/flush_db.sh` / `scripts/flush_db.ps1` |
+| **`desktop`** | Launches the ChessNova Tauri v2 desktop application in development mode with hot-reloading. | `scripts/desktop.sh` / `scripts/desktop.ps1` |
+| **`desktop-build`** | Compiles the production native desktop application release bundle (.AppImage, .deb, .msi, etc.). | `scripts/desktop.sh` / `scripts/desktop.ps1` |
 
 ---
 
@@ -56,65 +56,93 @@ Executes complete automated validation across the entire stack:
 Environment variables are loaded from the root `.env` file (copied from `.env.example`):
 
 ```bash
-# Server Configuration
-PORT=8080
-CORS_ORIGIN=http://localhost:5173
+# Environment Mode (development | production)
+ENV=development
 
-# Persistence & Cache
-MONGO_URI=mongodb://localhost:27017
-MONGO_DB_NAME=chessnova
+# MongoDB Configuration
+MONGODB_URI=mongodb://localhost:27017
+MONGODB_DATABASE=chess
+
+# Redis Configuration
 REDIS_URL=localhost:6379
 
-# Authentication Secrets
-JWT_ACCESS_SECRET=chessnova-access-secret-production-random-key-12345
-JWT_REFRESH_SECRET=chessnova-refresh-secret-production-random-key-67890
+# JWT Secrets (Must be distinct and >= 32 characters in production)
+JWT_ACCESS_SECRET=super-secret-access-token-key-change-in-production-12345
+JWT_REFRESH_SECRET=super-secret-refresh-token-key-change-in-production-67890
 
-# Engine Binary Configuration
-STOCKFISH_PATH=./apps/server/bin/stockfish
+# Administrative Credentials (Strictly independent from JWT secrets; >= 32 chars in production)
+ADMIN_SECRET=super-secret-admin-key-change-in-production-abcdef12345
+
+# Trusted Reverse Proxies (Comma-separated CIDRs/IPs evaluated for X-Forwarded-For rate limiting)
+TRUSTED_PROXIES=127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+
+# Server Port & CORS Configuration
+SERVER_PORT=8080
+CORS_ORIGIN=http://localhost:5173
 
 # S3-Compatible Object Storage (AWS S3, MinIO, Cloudflare R2, Wasabi)
 # Leave empty for automatic local storage fallback to ./uploads/avatars
-S3_ENDPOINT=
+S3_ENDPOINT=localhost:9000
 S3_BUCKET=chessnova-avatars
-S3_ACCESS_KEY=
-S3_SECRET_KEY=
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=miniopassword123
 S3_REGION=us-east-1
-S3_USE_SSL=true
-S3_PUBLIC_URL=
+S3_USE_SSL=false
+S3_PUBLIC_URL=/api/v1/storage/avatars
 LOCAL_UPLOAD_DIR=uploads/avatars
+
+# Engine Binary Configuration
+STOCKFISH_PATH=./apps/server/bin/stockfish
 ```
 
 ---
 
 ## 4. Docker Compose Infrastructure
 
-`docker-compose.yml` orchestrates local persistent databases:
+`docker-compose.yml` orchestrates local persistent databases and object storage:
 
 ```yaml
-version: '3.8'
+name: chessnova
 
 services:
-  chess-mongo:
+  mongodb:
     image: mongo:7
     container_name: chess-mongo
+    restart: always
     ports:
-      - "27017:27017"
+      - '127.0.0.1:27017:27017'
     volumes:
-      - mongo-data:/data/db
-    restart: unless-stopped
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=chess
 
-  chess-redis:
+  redis:
     image: redis:7-alpine
     container_name: chess-redis
+    restart: always
     ports:
-      - "6379:6379"
+      - '127.0.0.1:6379:6379'
     volumes:
-      - redis-data:/data
-    restart: unless-stopped
+      - redis_data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: chess-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    ports:
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
+    volumes:
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=miniopassword123
 
 volumes:
-  mongo-data:
-  redis-data:
+  mongo_data:
+  redis_data:
+  minio_data:
 ```
 
 ---

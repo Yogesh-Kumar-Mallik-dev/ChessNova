@@ -22,6 +22,7 @@ $SSH_CMD "bash -s" < "${PROJECT_ROOT}/scripts/vps-setup.sh"
 # 2. Deploy .env file
 echo "==> [2/6] Writing production environment configuration..."
 $SSH_CMD 'cat << "EOF" > /opt/chessnova/.env
+ENV=production
 MONGODB_URI=mongodb://127.0.0.1:27017
 MONGODB_DATABASE=chess
 REDIS_URL=127.0.0.1:6379
@@ -29,7 +30,16 @@ CORS_ORIGIN=https://chess.yogeshmallik.in
 ALLOWED_ORIGINS=https://chess.yogeshmallik.in,http://chess.yogeshmallik.in,http://162.35.173.209,http://localhost,http://127.0.0.1,tauri://localhost,http://tauri.localhost
 JWT_ACCESS_SECRET=chessnova-production-jwt-access-secret-32-chars-long-987123
 JWT_REFRESH_SECRET=chessnova-production-jwt-refresh-secret-32-chars-long-456789
+ADMIN_SECRET=chessnova-production-admin-secret-32-chars-long-abcdef456789
+TRUSTED_PROXIES=127.0.0.1,::1
 LOCAL_UPLOAD_DIR=/opt/chessnova/uploads/avatars
+S3_ENDPOINT=
+S3_BUCKET=chessnova-avatars
+S3_ACCESS_KEY=
+S3_SECRET_KEY=
+S3_REGION=us-east-1
+S3_USE_SSL=true
+S3_PUBLIC_URL=/api/v1/storage/avatars
 RESEND_API_KEY=
 SMTP_HOST=
 SMTP_PORT=587
@@ -41,16 +51,17 @@ chown -R yogesh:yogesh /opt/chessnova/.env
 chmod 600 /opt/chessnova/.env
 '
 
-# 3. Compile & Deploy Backend Go Binary
-echo "==> [3/6] Compiling backend binary for linux/amd64..."
+# 3. Compile & Deploy Backend Go Binaries
+echo "==> [3/6] Compiling backend binaries for linux/amd64..."
 cd "${PROJECT_ROOT}/apps/server"
 mkdir -p bin
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/server cmd/server/main.go
-echo "    Binary compiled successfully ($(du -h bin/server | cut -f1))"
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/engine-service cmd/engine-service/main.go
+echo "    Binaries compiled successfully (server: $(du -h bin/server | cut -f1), engine-service: $(du -h bin/engine-service | cut -f1))"
 
-echo "    Uploading backend binary to VPS..."
-rsync -avzP -e "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=accept-new" bin/server "${TARGET_USER}@${TARGET_HOST}:/opt/chessnova/bin/server"
-$SSH_CMD "chmod +x /opt/chessnova/bin/server && chown -R yogesh:yogesh /opt/chessnova/bin"
+echo "    Uploading backend binaries to VPS..."
+rsync -avzP -e "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=accept-new" bin/server bin/engine-service "${TARGET_USER}@${TARGET_HOST}:/opt/chessnova/bin/"
+$SSH_CMD "chmod +x /opt/chessnova/bin/* && chown -R yogesh:yogesh /opt/chessnova/bin"
 
 # 4. Build & Deploy Frontend Static Bundle
 echo "==> [4/6] Building frontend static bundle..."

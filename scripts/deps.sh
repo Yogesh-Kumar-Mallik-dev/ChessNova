@@ -39,6 +39,11 @@ echo "==> [deps] Installing web frontend dependencies..."
 cd "$ROOT_DIR/apps/web"
 npm install
 
+if [ -d "$ROOT_DIR/apps/desktop" ]; then
+  echo "==> [deps] Installing desktop application dependencies..."
+  cd "$ROOT_DIR/apps/desktop"
+  npm install
+fi
 
 echo "✅ [deps] All dependencies installed successfully."
 

@@ -21,4 +21,11 @@ Write-Host "==> [deps] Installing web frontend dependencies..." -ForegroundColor
 Set-Location (Join-Path $RootDir "apps\web")
 npm install
 
+$DesktopDir = Join-Path $RootDir "apps\desktop"
+if (Test-Path $DesktopDir) {
+    Write-Host "==> [deps] Installing desktop application dependencies..." -ForegroundColor Cyan
+    Set-Location $DesktopDir
+    npm install
+}
+
 Write-Host "✅ [deps] All dependencies installed successfully." -ForegroundColor Green
