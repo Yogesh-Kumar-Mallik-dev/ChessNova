@@ -26,6 +26,7 @@ function show_help() {
   echo "  uenvi    Tear down local Docker containers"
   echo "  desktop  Launch ChessNova Tauri desktop application in dev mode"
   echo "  desktop-build Build ChessNova Tauri desktop native release binary"
+  echo "  engine   Launch standalone Stockfish 19 engine microservice (port 8081)"
   echo "  flush    Flush database (MongoDB) and Redis caches"
   echo "  help     Display this help message"
   echo "=================================================================="
@@ -111,6 +112,11 @@ case "$COMMAND" in
       echo "scripts/desktop.sh not found"
       exit 1
     fi
+    ;;
+  engine)
+    echo "==> [engine] Launching standalone Stockfish 19 engine microservice on port 8081..."
+    cd "$SCRIPT_DIR/apps/server"
+    exec go run cmd/engine-service/main.go "$@"
     ;;
   help|--help|-h)
     show_help

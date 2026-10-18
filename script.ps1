@@ -31,6 +31,7 @@ function Show-Help {
     Write-Host "  uenvi    Tear down local Docker containers"
     Write-Host "  desktop  Launch ChessNova Tauri desktop application in dev mode"
     Write-Host "  desktop-build Build ChessNova Tauri desktop native release binary"
+    Write-Host "  engine   Launch standalone Stockfish 19 engine microservice (port 8081)"
     Write-Host "  flush    Flush database (MongoDB) and Redis caches"
     Write-Host "  help     Display this help message"
     Write-Host "==================================================================" -ForegroundColor Cyan
@@ -72,6 +73,11 @@ switch ($Command.ToLower()) {
     "desktop-build" {
         $target = Join-Path $ScriptDir "scripts\desktop.ps1"
         if (Test-Path $target) { & $target "build" @RemainingArgs } else { Write-Host "scripts\desktop.ps1 not found" }
+    }
+    "engine" {
+        Write-Host "==> [engine] Launching standalone Stockfish 19 engine microservice on port 8081..." -ForegroundColor Cyan
+        Set-Location (Join-Path $ScriptDir "apps\server")
+        go run cmd\engine-service\main.go @RemainingArgs
     }
     { $_ -in "flush", "flush-db", "flush_db" } {
         $target = Join-Path $ScriptDir "scripts\flush_db.ps1"

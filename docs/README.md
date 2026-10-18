@@ -14,13 +14,13 @@ Explore the detailed architecture, specifications, and operational manuals:
 | :--- | :--- |
 | **[System Architecture](./ARCHITECTURE.md)** | High-level topology, modular Go monolith, SvelteKit client, concurrency model, MongoDB & Redis persistence schemas. |
 | **[Chess Engine & Rules](./ENGINE_AND_RULES.md)** | Pure Go FIDE rules engine specification: move generation, castling lifecycle, en passant, promotions, check/stalemate, terminal detection, SAN & PGN. |
-| **[Game Review & Stockfish Laboratory](./GAME_REVIEW_AND_EVALUATION.md)** | Stockfish 19 UCI integration, minimax/PST fallback, move classification (Brilliant, Great, Best, etc.), CAPS win-chance curves, and ECO opening book. |
+| **[Game Review & Stockfish Laboratory](./GAME_REVIEW_AND_EVALUATION.md)** | Stockfish 19 UCI & WASM integration, minimax/PST fallback, tactical motif pattern engine (forks, hanging blunders, discovered checks, queen trades), move classification (Brilliant, Great, Best, etc.), and natural coaching commentary. |
 | **[Rating & Matchmaking](./RATING_AND_MATCHMAKING.md)** | Chess.com-adapted Elo formulas (400 baseline, 100 floor, K-32), time-control categories, Redis matchmaking queues, expanding tolerance windows. |
 | **[REST API & WebSocket Protocol](./API_AND_WEBSOCKET_PROTOCOL.md)** | Full specification for HTTP endpoints (Auth, Games, Review, Puzzles, Leaderboards, Profiles, External Sync) and bidirectional WebSocket events. |
 | **[Security & Data Practices](./SECURITY_AND_DATA_PRACTICES.md)** | JWT authentication, bcrypt passwords, ownership authorization, S3-compatible avatar storage, magic-byte sniffing, and security headers. |
-| **[Frontend & UI/UX Design System](./FRONTEND_AND_UI_DESIGN.md)** | SvelteKit client architecture, dynamic multi-theme engine, custom vector Staunton SVG pieces, viewport clamping, review laboratory, and local guest archives. |
+| **[Frontend & UI/UX Design System](./FRONTEND_AND_UI_DESIGN.md)** | SvelteKit client architecture, dynamic multi-theme engine, custom vector Staunton SVG pieces, viewport clamping, desktop review layout, and local guest archives. |
 | **[Bot Persona & Personality Blueprint](./BOT_PERSONA_BLUEPRINT.md)** | Architecture for human-like bots, phase blunder curves, sacrifice biases, tactical vs positional heuristics, and trash-talk engine. |
-| **[Operations & Orchestration](./OPERATIONS_AND_SCRIPTS.md)** | Developer lifecycle runbook via `./script.sh` (`dev`, `build`, `check`, `test`, `deps`, `envi`, `uenvi`, `flush`), Docker compose, and environment setup. |
+| **[Operations & Orchestration](./OPERATIONS_AND_SCRIPTS.md)** | Developer lifecycle runbook via `./script.sh` (`dev`, `build`, `check`, `test`, `deps`, `envi`, `uenvi`, `flush`, `desktop`, `desktop-build`, `engine`), Docker compose, and environment setup. |
 
 ---
 

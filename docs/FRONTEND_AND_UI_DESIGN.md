@@ -95,8 +95,10 @@ The Game Review interface (`apps/web/src/routes/analysis` and `GameReview.svelte
 ```
 
 - **Dynamic Evaluation Bar (`EvalBar.svelte`)**: Animated vertical or horizontal bar showing real-time win probability and engine advantage.
-- **Classification Badges (`ReviewBadge.svelte`)**: Tiers for Brilliant, Great, Best, Excellent, Good, Book, Forced, Inaccuracy, Mistake, Miss, and Blunder.
-- **Move Scrubbing**: Jump to any ply by clicking move cells or using keyboard arrow navigation.
+- **Classification Badges (`ReviewBadge.svelte`)**: Tiers for Brilliant (`!!`), Great (`!`), Best (`★`), Excellent (`✓`), Good (`✓`), Book (`📖`), Forced (`□`), Inaccuracy (`?!`), Mistake (`?`), Miss (`⨉`), and Blunder (`??`).
+- **Tactical Motif Coach Card**: Displays natural-language tactical explanations (forks, pins, hanging pieces, sacrifices, discovered checks, queen trades) directly below the dynamic eval graph.
+- **Ergonomic Desktop Review Layout**: On desktop screens, move navigation controls (`◄◄`, `◄`, `►`, `►►`) are relocated directly below the coach card and move table, keeping the board maximized without crowding player info cards or causing vertical scroll clipping.
+- **Local Stockfish 19 Lite WASM with NNUE**: Client-side sparring and instant local reviews run directly in the browser via official Stockfish 19 Lite WASM with embedded neural network evaluation (`nn-61e7af4bb97d.nnue`, $\sim 1.8\text{ MB}$).
 
 ---
 

@@ -107,11 +107,21 @@ mkdir -p /opt/chessnova/bin \
 chown -R yogesh:yogesh /opt/chessnova
 chown -R www-data:www-data /var/www/chessnova/html
 
-# Link system stockfish binary if not in /opt/chessnova/bin
-if [ -f /usr/games/stockfish ] && [ ! -f /opt/chessnova/bin/stockfish ]; then
-    ln -sf /usr/games/stockfish /opt/chessnova/bin/stockfish
-elif [ -f /usr/bin/stockfish ] && [ ! -f /opt/chessnova/bin/stockfish ]; then
-    ln -sf /usr/bin/stockfish /opt/chessnova/bin/stockfish
+# Ensure Stockfish 19 binary is installed in /opt/chessnova/bin
+if [ ! -f /opt/chessnova/bin/stockfish ]; then
+    echo "==> Downloading official Stockfish 19 binary..."
+    TMP_SF="$(mktemp -d)"
+    if curl -sL -o "$TMP_SF/sf.tar.gz" "https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-linux-x86-64-universal.tar.gz"; then
+        tar -xzf "$TMP_SF/sf.tar.gz" -C "$TMP_SF"
+        cp "$TMP_SF/stockfish/stockfish-linux-x86-64-universal" /opt/chessnova/bin/stockfish
+        chmod +x /opt/chessnova/bin/stockfish
+        rm -rf "$TMP_SF"
+        echo "✅ Stockfish 19 installed in /opt/chessnova/bin/stockfish"
+    elif [ -f /usr/games/stockfish ]; then
+        ln -sf /usr/games/stockfish /opt/chessnova/bin/stockfish
+    elif [ -f /usr/bin/stockfish ]; then
+        ln -sf /usr/bin/stockfish /opt/chessnova/bin/stockfish
+    fi
 fi
 
 # 5. Setup Docker Compose for MongoDB and Redis (Local Only)

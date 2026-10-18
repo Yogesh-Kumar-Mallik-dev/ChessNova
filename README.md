@@ -65,9 +65,12 @@ Comprehensive architectural specifications, mathematical formulations, and opera
   - Comprehensive unit test suite covering full game sequences and complex edge cases.
 - **Stockfish 19 Game Review Laboratory (`internal/engine`, `internal/review`, `internal/openings`)**:
   - Stockfish 19 UCI engine subprocess with pure-Go minimax & PST fallback.
+  - Official Stockfish 19 Lite WASM with embedded NNUE (`nn-61e7af4bb97d.nnue`, $\sim 1.8\text{ MB}$) for instant in-browser sparring and offline client reviews.
+  - Baseline Depth 14 search, automatically boosted to **$16\text{ plies}$** in endgames ($\le 10$ pieces remaining) for theoretical precision.
+  - **Tactical Motif Pattern Recognizer**: Detects Royal/Knight/Pawn forks, hanging piece blunders, discovered checks, double checks, queen trades, and sound piece sacrifices.
+  - **Human-Grade Coach Commentary**: Generates Chess.com-parity natural language explanations for every played move.
   - Official CAPS win-probability curve with calibrated platform Elo ratings ($400\text{--}2850$).
   - Separate accuracy percentages computed for **Opening**, **Middlegame**, and **Endgame** phases.
-  - Automatic Stockfish depth boosting ($14\text{ plies}$) when $\le 10$ pieces remain on the board for theoretical endgame precision.
   - Full move classification tiers: Brilliant (`!!`), Great (`!`), Best (`★`), Excellent (`✓`), Good (`✓`), Book (`📖`), Forced (`□`), Inaccuracy (`?!`), Mistake (`?`), Miss (`⨉`), and Blunder (`??`).
   - ECO opening theory catalog (A00–E99) recognizing hundreds of openings and variations.
 - **S3-Compatible Object Storage & Defense-in-Depth (`internal/storage`, `internal/http`)**:
@@ -87,6 +90,7 @@ Comprehensive architectural specifications, mathematical formulations, and opera
   - Dynamic HSL theme palettes: **Dark Slate**, **Chess Classic** (`#161512` / `#21201d`), **OLED Black** (`#000000`), and **Emerald Studio** (`#05140e`).
   - Bespoke vector Staunton SVG chess pieces with dual-layer gradients and subtle drop shadows.
   - Responsive viewport clamping (`calc(100dvh - 180px)`) ensuring the full board is always 100% visible without scrolling.
+  - Ergonomic Desktop Review layout with tactical coach card feedback and relocated move navigation controls preventing vertical viewport clipping.
   - Local guest game archive (`localGames.ts`) preserving up to 50 games for instant offline or post-game review without requiring an account.
 
 ---

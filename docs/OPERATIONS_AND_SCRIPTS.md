@@ -20,6 +20,7 @@ ChessNova follows the unified script orchestration standard. All platform tasks 
 | **`flush`** | Flushes Redis memory cache and drops development (`chess`) and test (`chess_test`) databases in MongoDB. | `scripts/flush_db.sh` / `scripts/flush_db.ps1` |
 | **`desktop`** | Launches the ChessNova Tauri v2 desktop application in development mode with hot-reloading. | `scripts/desktop.sh` / `scripts/desktop.ps1` |
 | **`desktop-build`** | Compiles the production native desktop application release bundle (.AppImage, .deb, .msi, etc.). | `scripts/desktop.sh` / `scripts/desktop.ps1` |
+| **`engine`** | Launches the standalone Stockfish 19 engine microservice on port `:8081`. | `apps/server/cmd/engine-service/main.go` |
 
 ---
 
