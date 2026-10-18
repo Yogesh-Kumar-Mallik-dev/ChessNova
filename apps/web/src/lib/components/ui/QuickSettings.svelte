@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import {
 		themeStore,
@@ -10,6 +11,20 @@
 	} from '$lib/stores/preferences';
 
 	let isOpen = false;
+
+	$: if (typeof document !== 'undefined') {
+		if (isOpen && window.innerWidth < 640) {
+			document.body.style.overflow = 'hidden';
+		} else if (!document.querySelector('[data-mobile-menu="true"]')) {
+			document.body.style.overflow = '';
+		}
+	}
+
+	onDestroy(() => {
+		if (typeof document !== 'undefined' && !document.querySelector('[data-mobile-menu="true"]')) {
+			document.body.style.overflow = '';
+		}
+	});
 
 	const boardThemes: { id: BoardTheme; name: string; light: string; dark: string }[] = [
 		{ id: 'monochrome', name: 'Monochrome', light: '#ffffff', dark: '#2b2c34' },
@@ -64,13 +79,13 @@
 	</button>
 
 	{#if isOpen}
-		<!-- Backdrop for closing -->
+		<!-- Backdrop for closing and blocking background interaction -->
 		<!-- svelte-ignore a11y-click-events-have-key-events -->
 		<!-- svelte-ignore a11y-no-static-element-interactions -->
-		<div class="fixed inset-0 z-40" on:click={close}></div>
+		<div class="fixed inset-0 z-40 bg-black/60 backdrop-blur-2xs sm:bg-transparent" on:click={close}></div>
 
-		<!-- Dropdown Panel -->
-		<div class="absolute right-0 mt-2 w-80 bg-card border border-border rounded-xl p-4 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 max-h-[85vh] overflow-y-auto">
+		<!-- Dropdown Panel: Centered sheet on mobile, right-docked on desktop -->
+		<div class="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 max-w-[calc(100vw-1.5rem)] bg-card border border-border rounded-xl p-4 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 max-h-[82vh] overflow-y-auto">
 			<div class="flex items-center justify-between pb-3 border-b border-border">
 				<div class="flex items-center gap-2">
 					<Icon name="settings" size={14} className="text-foreground" />

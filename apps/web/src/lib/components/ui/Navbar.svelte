@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { authStore } from '$lib/stores/auth';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -8,6 +9,24 @@
 	import UserBadge from '$lib/components/ui/UserBadge.svelte';
 
 	let mobileMenuOpen = false;
+
+	$: if (typeof document !== 'undefined') {
+		if (mobileMenuOpen) {
+			document.body.style.overflow = 'hidden';
+		} else {
+			document.body.style.overflow = '';
+		}
+	}
+
+	onDestroy(() => {
+		if (typeof document !== 'undefined') {
+			document.body.style.overflow = '';
+		}
+	});
+
+	$: if ($page.url.pathname) {
+		mobileMenuOpen = false;
+	}
 
 	function handleLogout() {
 		authStore.logout();
@@ -109,7 +128,18 @@
 
 <!-- Mobile Navigation Drawer -->
 {#if mobileMenuOpen}
-	<div class="md:hidden fixed inset-x-0 top-14 sm:top-16 z-30 bg-card border-b border-border p-3 shadow-xl flex flex-col gap-1 animate-in fade-in duration-150">
+	<!-- Backdrop overlay to prevent interaction with the background page and dim background -->
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
+	<div
+		class="md:hidden fixed inset-0 top-14 sm:top-16 z-30 bg-black/60 backdrop-blur-2xs animate-in fade-in duration-150"
+		on:click={() => (mobileMenuOpen = false)}
+	></div>
+
+	<div
+		data-mobile-menu="true"
+		class="md:hidden fixed inset-x-0 top-14 sm:top-16 z-40 bg-card border-b border-border p-3 shadow-2xl flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-150 max-h-[calc(100dvh-4rem)] overflow-y-auto"
+	>
 		{#each navItems as item}
 			{@const active = currentPath === item.href}
 			<a
