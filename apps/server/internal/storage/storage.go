@@ -11,6 +11,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -44,6 +45,7 @@ type Config struct {
 type StorageService interface {
 	UploadAvatar(ctx context.Context, userID string, fileData []byte, providedType string) (string, error)
 	DeleteAvatar(ctx context.Context, avatarURL string) error
+	GetAvatar(ctx context.Context, filename string) ([]byte, string, error)
 	IsS3Enabled() bool
 }
 
@@ -199,3 +201,38 @@ func (s *S3StorageService) DeleteAvatar(ctx context.Context, avatarURL string) e
 	_ = os.Remove(localPath)
 	return nil
 }
+
+func (s *S3StorageService) GetAvatar(ctx context.Context, filename string) ([]byte, string, error) {
+	filename = filepath.Base(filename)
+	if filename == "." || filename == "/" || filename == "" {
+		return nil, "", errors.New("invalid filename")
+	}
+
+	if s.s3Enabled && s.minioClient != nil {
+		objectKey := fmt.Sprintf("avatars/%s", filename)
+		obj, err := s.minioClient.GetObject(ctx, s.cfg.Bucket, objectKey, minio.GetObjectOptions{})
+		if err != nil {
+			return nil, "", err
+		}
+		defer obj.Close()
+
+		data, err := io.ReadAll(obj)
+		if err != nil {
+			return nil, "", err
+		}
+		if len(data) == 0 {
+			return nil, "", errors.New("avatar not found")
+		}
+		contentType := http.DetectContentType(data)
+		return data, contentType, nil
+	}
+
+	localPath := filepath.Join(s.cfg.LocalFallbackDir, filename)
+	data, err := os.ReadFile(localPath)
+	if err != nil {
+		return nil, "", err
+	}
+	contentType := http.DetectContentType(data)
+	return data, contentType, nil
+}
+

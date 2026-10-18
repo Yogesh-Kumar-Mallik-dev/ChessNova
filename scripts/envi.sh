@@ -19,7 +19,7 @@ if command -v docker >/dev/null 2>&1; then
   cd "$ROOT_DIR"
 
   # Clean up any conflicting orphaned containers with fixed names from other compose projects
-  for CNAME in chess-mongo chess-redis; do
+  for CNAME in chess-mongo chess-redis chess-minio; do
     if docker ps -a --format '{{.Names}}' | grep -Eq "^${CNAME}$"; then
       PROJ=$(docker inspect "$CNAME" --format '{{index .Config.Labels "com.docker.compose.project"}}' 2>/dev/null || true)
       if [ "$PROJ" != "chessnova" ]; then

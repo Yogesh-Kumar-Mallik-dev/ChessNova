@@ -217,6 +217,7 @@ type Client struct {
 	gameID    string
 	userID    string
 	username  string
+	ip        string
 	isPlayer  bool
 	msgCount  int
 	msgWindow time.Time
@@ -245,6 +246,38 @@ type Hub struct {
 	rdb         *redis.Client
 	instanceID  string
 	ticketMap   sync.Map
+	ipConnsMu   sync.Mutex
+	ipConns     map[string]int
+}
+
+func (h *Hub) acquireIPConnection(ip string, max int) bool {
+	if ip == "" || max <= 0 {
+		return true
+	}
+	h.ipConnsMu.Lock()
+	defer h.ipConnsMu.Unlock()
+	if h.ipConns == nil {
+		h.ipConns = make(map[string]int)
+	}
+	if h.ipConns[ip] >= max {
+		return false
+	}
+	h.ipConns[ip]++
+	return true
+}
+
+func (h *Hub) releaseIPConnection(ip string) {
+	if ip == "" {
+		return
+	}
+	h.ipConnsMu.Lock()
+	defer h.ipConnsMu.Unlock()
+	if h.ipConns != nil {
+		h.ipConns[ip]--
+		if h.ipConns[ip] <= 0 {
+			delete(h.ipConns, ip)
+		}
+	}
 }
 
 func (h *Hub) CreateTicket(userID, username string) string {
@@ -457,8 +490,18 @@ func (h *Hub) subscribeRedis() {
 }
 
 func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID string) {
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		remoteIP = r.RemoteAddr
+	}
+	if !h.acquireIPConnection(remoteIP, 30) {
+		http.Error(w, "too many websocket connections from this IP", http.StatusTooManyRequests)
+		return
+	}
+
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		h.releaseIPConnection(remoteIP)
 		// upgrader writes error status on check origin failure
 		return
 	}
@@ -503,6 +546,7 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 		gameID:   gameID,
 		userID:   userID,
 		username: username,
+		ip:       remoteIP,
 	}
 
 	// Check if active game exists to send initial state
@@ -602,6 +646,7 @@ func (h *Hub) handlePlayerDisconnect(gameID, userID, username string) {
 
 func (c *Client) readPump() {
 	defer func() {
+		c.hub.releaseIPConnection(c.ip)
 		observability.DefaultMetrics.DecActiveWebSocket()
 		room := c.hub.getOrCreateRoom(c.gameID)
 		room.mu.Lock()

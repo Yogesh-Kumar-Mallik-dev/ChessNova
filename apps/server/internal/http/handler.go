@@ -167,7 +167,8 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("GET /api/v1/users/{username}/external-stats", rt.handleGetExternalStats)
 	rt.mux.HandleFunc("GET /api/v1/users/{username}/external-games", rt.handleGetExternalGames)
 
-	// Static local avatars fallback
+	// Storage (Dedicated S3 & Local Avatar Serving)
+	rt.mux.HandleFunc("GET /api/v1/storage/avatars/{filename}", rt.handleServeAvatar)
 	rt.mux.Handle("GET /uploads/avatars/", http.StripPrefix("/uploads/avatars/", http.FileServer(http.Dir("uploads/avatars"))))
 
 	// Matchmaking
@@ -219,13 +220,19 @@ func (rt *Router) routes() {
 
 func (rt *Router) withAuth(next func(w http.ResponseWriter, r *http.Request, claims *auth.Claims)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var tokenStr string
 		authHeader := r.Header.Get("Authorization")
-		if !strings.HasPrefix(authHeader, "Bearer ") {
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+		} else if cookie, err := r.Cookie("access_token"); err == nil && cookie.Value != "" {
+			tokenStr = cookie.Value
+		}
+
+		if tokenStr == "" {
 			writeError(w, http.StatusUnauthorized, "AUTH_REQUIRED", "authorization token required")
 			return
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := rt.authService.ValidateAccessToken(tokenStr)
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "AUTH_INVALID", "invalid or expired access token")
@@ -234,6 +241,51 @@ func (rt *Router) withAuth(next func(w http.ResponseWriter, r *http.Request, cla
 
 		next(w, r, claims)
 	}
+}
+
+func (rt *Router) setAuthCookies(w http.ResponseWriter, r *http.Request, tokens *auth.TokenPair) {
+	if tokens == nil {
+		return
+	}
+	isSecure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	sameSite := http.SameSiteLaxMode
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    tokens.AccessToken,
+		Path:     "/",
+		MaxAge:   15 * 60, // 15 mins
+		HttpOnly: true,
+		Secure:   isSecure,
+		SameSite: sameSite,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    tokens.RefreshToken,
+		Path:     "/api/v1/auth",
+		MaxAge:   7 * 24 * 3600, // 7 days
+		HttpOnly: true,
+		Secure:   isSecure,
+		SameSite: sameSite,
+	})
+}
+
+func (rt *Router) clearAuthCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/api/v1/auth",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
 }
 
 func (rt *Router) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -377,6 +429,7 @@ func (rt *Router) handleRegisterVerifyOTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	rt.setAuthCookies(w, r, tokens)
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"user":   u,
 		"tokens": tokens,
@@ -437,6 +490,7 @@ func (rt *Router) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rt.setAuthCookies(w, r, tokens)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"user":   u,
 		"tokens": tokens,
@@ -450,17 +504,27 @@ type refreshReq struct {
 func (rt *Router) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req refreshReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	refreshToken := strings.TrimSpace(req.RefreshToken)
+	if refreshToken == "" {
+		if cookie, err := r.Cookie("refresh_token"); err == nil && cookie.Value != "" {
+			refreshToken = cookie.Value
+		}
+	}
+
+	if refreshToken == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_REFRESH_TOKEN", "refresh token required")
 		return
 	}
 
-	tokens, err := rt.authService.Refresh(r.Context(), req.RefreshToken)
+	tokens, err := rt.authService.Refresh(r.Context(), refreshToken)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "REFRESH_FAILED", "invalid or revoked refresh token")
 		return
 	}
 
+	rt.setAuthCookies(w, r, tokens)
 	writeJSON(w, http.StatusOK, tokens)
 }
 
@@ -477,9 +541,19 @@ func (rt *Router) handleLogout(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		accessToken = strings.TrimPrefix(authHeader, "Bearer ")
+	} else if cookie, err := r.Cookie("access_token"); err == nil && cookie.Value != "" {
+		accessToken = cookie.Value
 	}
 
-	_ = rt.authService.Logout(r.Context(), accessToken, req.RefreshToken)
+	refreshToken := strings.TrimSpace(req.RefreshToken)
+	if refreshToken == "" {
+		if cookie, err := r.Cookie("refresh_token"); err == nil && cookie.Value != "" {
+			refreshToken = cookie.Value
+		}
+	}
+
+	_ = rt.authService.Logout(r.Context(), accessToken, refreshToken)
+	rt.clearAuthCookies(w)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
 }
 
@@ -632,6 +706,27 @@ func (rt *Router) handleUploadAvatar(w http.ResponseWriter, r *http.Request, cla
 	writeJSON(w, http.StatusOK, map[string]string{
 		"avatar": avatarURL,
 	})
+}
+
+func (rt *Router) handleServeAvatar(w http.ResponseWriter, r *http.Request) {
+	filename := r.PathValue("filename")
+	if filename == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_FILENAME", "filename required")
+		return
+	}
+
+	data, contentType, err := rt.storageService.GetAvatar(r.Context(), filename)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "avatar not found")
+		return
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
 }
 
 type linkAccountsReq struct {

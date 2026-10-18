@@ -22,6 +22,7 @@ async function refreshAccessToken(): Promise<string | null> {
 		try {
 			const res = await fetch(`${API_BASE}/auth/refresh`, {
 				method: 'POST',
+				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ refreshToken })
 			});
@@ -64,6 +65,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 	let res = await fetch(`${API_BASE}${endpoint}`, {
 		...options,
+		credentials: 'include',
 		headers
 	});
 
@@ -74,6 +76,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 			headers['Authorization'] = `Bearer ${newAccess}`;
 			res = await fetch(`${API_BASE}${endpoint}`, {
 				...options,
+				credentials: 'include',
 				headers
 			});
 		}
@@ -134,6 +137,7 @@ export const api = {
 				if (accessToken || refreshToken) {
 					await fetch(`${API_BASE}/auth/logout`, {
 						method: 'POST',
+						credentials: 'include',
 						headers: {
 							'Content-Type': 'application/json',
 							...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
@@ -172,6 +176,7 @@ export const api = {
 
 			const res = await fetch(`${API_BASE}/users/avatar`, {
 				method: 'POST',
+				credentials: 'include',
 				headers,
 				body: formData
 			});

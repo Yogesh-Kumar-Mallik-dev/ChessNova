@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -257,19 +258,31 @@ func (s *Service) MakeMove(ctx context.Context, gameID, userID string, m chess.M
 		return nil, err
 	}
 
-	// 5. Update clock
+	// 5. Update clock and track move duration for anti-cheat
+	var moveDurationMs int64
+	if ag.Clock.Started {
+		moveDurationMs = time.Since(ag.Clock.LastMoveAt).Milliseconds()
+		if moveDurationMs < 0 {
+			moveDurationMs = 0
+		}
+		if playerColor == chess.White {
+			ag.WhiteMoveDurations = append(ag.WhiteMoveDurations, moveDurationMs)
+		} else {
+			ag.BlackMoveDurations = append(ag.BlackMoveDurations, moveDurationMs)
+		}
+	}
+
 	ag.Clock.UpdateAfterMove(ag.TimeControl.Increment)
 	wMs, bMs, _ = ag.Clock.CurrentTimes(ag.Status)
 
 	// 6. Record move
-	timeSpent := int64(0)
 	ag.Moves = append(ag.Moves, PersistedMove{
 		Ply:       rec.Ply,
 		From:      m.From.String(),
 		To:        m.To.String(),
 		SAN:       rec.SAN,
 		FEN:       rec.FENAfter,
-		TimeSpent: timeSpent,
+		TimeSpent: moveDurationMs,
 	})
 
 	// 7. Check if game finished
@@ -543,6 +556,29 @@ func (s *Service) ClaimDraw(ctx context.Context, gameID, userID string) (*GameDo
 	return doc, nil
 }
 
+// DetectSuspiciousTiming detects robotic timing patterns (near-zero variance across consecutive moves)
+func DetectSuspiciousTiming(durations []int64) bool {
+	if len(durations) < 12 {
+		return false
+	}
+	var sum int64
+	for _, d := range durations {
+		sum += d
+	}
+	mean := float64(sum) / float64(len(durations))
+
+	var varianceSum float64
+	for _, d := range durations {
+		diff := float64(d) - mean
+		varianceSum += diff * diff
+	}
+	stdDev := math.Sqrt(varianceSum / float64(len(durations)))
+
+	// Human reaction and movement variance is naturally > 80ms.
+	// Standard deviation < 40ms across 12+ moves strongly signals script/bot injection.
+	return stdDev < 40.0
+}
+
 func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocument {
 	now := time.Now().UTC()
 	ag.FinishedAt = &now
@@ -618,23 +654,26 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 		}
 	}
 
+	suspicious := DetectSuspiciousTiming(ag.WhiteMoveDurations) || DetectSuspiciousTiming(ag.BlackMoveDurations)
+
 	doc := &GameDocument{
-		ID:              ag.ID,
-		White:           ag.White,
-		Black:           ag.Black,
-		Variant:         "standard",
-		TimeControl:     ag.TimeControl,
-		Status:          ag.Status,
-		Result:          ag.Engine.Result(),
-		Outcome:         string(ag.Engine.Outcome),
-		InitialFEN:      chess.ToFEN(ag.Engine.InitialPosition),
-		FinalFEN:        chess.ToFEN(ag.Engine.CurrentPosition),
-		Moves:           ag.Moves,
-		PGN:             pgnStr,
-		WhiteRatingDiff: whiteDiff,
-		BlackRatingDiff: blackDiff,
-		StartedAt:       ag.StartedAt,
-		FinishedAt:      ag.FinishedAt,
+		ID:               ag.ID,
+		White:            ag.White,
+		Black:            ag.Black,
+		Variant:          "standard",
+		TimeControl:      ag.TimeControl,
+		Status:           ag.Status,
+		Result:           ag.Engine.Result(),
+		Outcome:          string(ag.Engine.Outcome),
+		InitialFEN:       chess.ToFEN(ag.Engine.InitialPosition),
+		FinalFEN:         chess.ToFEN(ag.Engine.CurrentPosition),
+		Moves:            ag.Moves,
+		PGN:              pgnStr,
+		WhiteRatingDiff:  whiteDiff,
+		BlackRatingDiff:  blackDiff,
+		StartedAt:        ag.StartedAt,
+		FinishedAt:       ag.FinishedAt,
+		SuspiciousTiming: suspicious,
 	}
 
 	if s.gameRepo != nil {

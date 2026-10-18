@@ -306,7 +306,7 @@ func main() {
 		SecretKey:        getEnv("S3_SECRET_KEY", ""),
 		Region:           getEnv("S3_REGION", "us-east-1"),
 		UseSSL:           getEnv("S3_USE_SSL", "true") == "true",
-		PublicURL:        getEnv("S3_PUBLIC_URL", ""),
+		PublicURL:        getEnv("S3_PUBLIC_URL", "/api/v1/storage/avatars"),
 		LocalFallbackDir: getEnv("LOCAL_UPLOAD_DIR", "uploads/avatars"),
 	})
 	externalService := external.NewService()

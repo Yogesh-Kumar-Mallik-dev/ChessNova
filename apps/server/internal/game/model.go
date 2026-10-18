@@ -152,6 +152,7 @@ type GameDocument struct {
 	StartedAt   time.Time            `bson:"startedAt" json:"startedAt"`
 	FinishedAt  *time.Time           `bson:"finishedAt,omitempty" json:"finishedAt,omitempty"`
 	IsEvaluated bool                 `bson:"isEvaluated" json:"isEvaluated"`
+	SuspiciousTiming bool            `bson:"suspiciousTiming,omitempty" json:"suspiciousTiming,omitempty"`
 	Review      *review.ReviewResult `bson:"review,omitempty" json:"review,omitempty"`
 }
 
@@ -168,19 +169,23 @@ type ActiveGame struct {
 	StartedAt   time.Time       `json:"startedAt"`
 	FinishedAt  *time.Time      `json:"finishedAt,omitempty"`
 	Moves       []PersistedMove `json:"moves"`
+	WhiteMoveDurations []int64  `json:"whiteMoveDurations,omitempty"`
+	BlackMoveDurations []int64  `json:"blackMoveDurations,omitempty"`
 }
 
 func NewActiveGame(id string, white, black PlayerInfo, tc TimeControl) *ActiveGame {
 	return &ActiveGame{
-		ID:          id,
-		White:       white,
-		Black:       black,
-		Engine:      chess.NewGame(),
-		Clock:       NewClock(tc),
-		TimeControl: tc,
-		Status:      StatusPlaying,
-		StartedAt:   time.Now().UTC(),
-		Moves:       make([]PersistedMove, 0),
+		ID:                 id,
+		White:              white,
+		Black:              black,
+		Engine:             chess.NewGame(),
+		Clock:              NewClock(tc),
+		TimeControl:        tc,
+		Status:             StatusPlaying,
+		StartedAt:          time.Now().UTC(),
+		Moves:              make([]PersistedMove, 0),
+		WhiteMoveDurations: make([]int64, 0),
+		BlackMoveDurations: make([]int64, 0),
 	}
 }
 
