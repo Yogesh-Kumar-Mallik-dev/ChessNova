@@ -21,6 +21,7 @@
 	const dispatch = createEventDispatcher<{
 		selectPly: number;
 		close: void;
+		flip: void;
 	}>();
 
 	export let reviewResult: GameReviewResult | null = null;
@@ -488,6 +489,99 @@
 					</button>
 				</div>
 			{/if}
+ 
+			<!-- Move Navigation Controls (Below Coach & Above Move Table) -->
+			<div class="flex items-center justify-between gap-1 p-1.5 bg-secondary/40 border border-border rounded-xl shadow-xs shrink-0 select-none">
+				<!-- Stepper Controls -->
+				<div class="flex items-center gap-1">
+					<button
+						class="p-1.5 rounded-lg bg-card hover:bg-muted text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition border border-border active:translate-y-px"
+						on:click={() => jumpToPly(0)}
+						disabled={currentPly <= 0}
+						title="Start of Game (Home)"
+					>
+						<Icon name="chevrons-left" size={13} />
+					</button>
+
+					<button
+						class="p-1.5 rounded-lg bg-card hover:bg-muted text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition border border-border active:translate-y-px"
+						on:click={handlePrev}
+						disabled={currentPly <= 0}
+						title="Previous Move (Left Arrow)"
+					>
+						<Icon name="chevron-left" size={13} />
+					</button>
+
+					<!-- Auto-Play Toggle -->
+					<button
+						class="px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition active:translate-y-px {isAutoPlaying
+							? 'bg-foreground text-background shadow-xs'
+							: 'bg-card hover:bg-muted text-foreground border border-border'}"
+						on:click={toggleAutoPlay}
+						title={isAutoPlaying ? 'Pause Auto-Play' : 'Auto-Play Moves'}
+					>
+						<Icon name={isAutoPlaying ? 'clock' : 'play'} size={11} />
+						<span class="hidden sm:inline">{isAutoPlaying ? 'Pause' : 'Auto'}</span>
+					</button>
+
+					<button
+						class="p-1.5 rounded-lg bg-card hover:bg-muted text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition border border-border active:translate-y-px"
+						on:click={handleNext}
+						disabled={currentPly >= moves.length}
+						title="Next Move (Right Arrow / Space)"
+					>
+						<Icon name="chevron-right" size={13} />
+					</button>
+
+					<button
+						class="p-1.5 rounded-lg bg-card hover:bg-muted text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition border border-border active:translate-y-px"
+						on:click={() => jumpToPly(moves.length)}
+						disabled={currentPly >= moves.length}
+						title="Latest Move (End)"
+					>
+						<Icon name="chevrons-right" size={13} />
+					</button>
+				</div>
+
+				<!-- Move Counter Badge -->
+				<div class="flex items-center gap-1 font-mono text-[11px] min-w-0">
+					<span class="text-foreground font-bold px-1.5 py-0.5 rounded bg-card border border-border tabular-nums truncate max-w-[85px] sm:max-w-none">
+						{currentPly === 0 ? 'Start' : `${Math.ceil(currentPly / 2)}${currentPly % 2 === 1 ? '.' : '...'} ${moves[currentPly - 1]?.san || ''}`}
+					</span>
+					<span class="text-muted-foreground text-[10px] tabular-nums hidden sm:inline">
+						({currentPly}/{moves.length})
+					</span>
+				</div>
+
+				<!-- Turning Points & Flip -->
+				<div class="flex items-center gap-1">
+					<button
+						class="py-1 px-1.5 sm:px-2 rounded-lg bg-card hover:bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center gap-1 transition border border-border active:translate-y-px"
+						on:click={jumpToPrevKeyMove}
+						title="Previous Turning Point"
+					>
+						<Icon name="flag" size={11} />
+						<span class="hidden xl:inline">Prev Key</span>
+					</button>
+
+					<button
+						class="py-1 px-1.5 sm:px-2 rounded-lg bg-card hover:bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center gap-1 transition border border-border active:translate-y-px"
+						on:click={jumpToNextKeyMove}
+						title="Next Turning Point"
+					>
+						<Icon name="zap" size={11} />
+						<span class="hidden xl:inline">Next Key</span>
+					</button>
+
+					<button
+						class="p-1.5 rounded-lg bg-card hover:bg-muted text-foreground transition text-xs font-medium flex items-center gap-1 border border-border active:translate-y-px"
+						on:click={() => dispatch('flip')}
+						title="Flip Board"
+					>
+						<Icon name="rotate-cw" size={12} />
+					</button>
+				</div>
+			</div>
 
 			<!-- Move Ledger (Takes all remaining vertical space cleanly!) -->
 			<div class="bg-card border border-border rounded-xl overflow-hidden shadow-xs flex flex-col flex-1 min-h-0">
@@ -548,37 +642,6 @@
 						</div>
 					{/each}
 				</div>
-			</div>
-
-			<!-- Bottom Quick Actions: Key Moves & Auto-Play -->
-			<div class="flex items-center justify-between gap-2 p-1.5 bg-secondary/30 border border-border rounded-xl shrink-0">
-				<button
-					class="flex-1 py-1 px-2 rounded-lg bg-card hover:bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center gap-1 transition border border-border active:translate-y-px"
-					on:click={jumpToPrevKeyMove}
-					title="Previous Turning Point"
-				>
-					<Icon name="chevron-left" size={12} />
-					<span>Prev Key</span>
-				</button>
-
-				<button
-					class="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-px {isAutoPlaying
-						? 'bg-foreground text-background shadow-xs'
-						: 'bg-card hover:bg-muted text-foreground border border-border'}"
-					on:click={toggleAutoPlay}
-				>
-					<Icon name={isAutoPlaying ? 'clock' : 'play'} size={12} />
-					<span>{isAutoPlaying ? 'Pause' : 'Auto'}</span>
-				</button>
-
-				<button
-					class="flex-1 py-1 px-2 rounded-lg bg-card hover:bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center gap-1 transition border border-border active:translate-y-px"
-					on:click={jumpToNextKeyMove}
-					title="Next Turning Point"
-				>
-					<span>Next Key</span>
-					<Icon name="chevron-right" size={12} />
-				</button>
 			</div>
 		</div>
 	{:else}

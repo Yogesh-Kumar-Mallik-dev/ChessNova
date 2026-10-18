@@ -580,7 +580,7 @@
 	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-start justify-center min-h-0">
 		<!-- Left: Board with Eval Bar & Universal Stepper Bar -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
-			<div class="w-full max-w-[min(100%,calc(100dvh-270px),480px)] flex flex-col items-center">
+			<div class="w-full max-w-[min(100%,calc(100dvh-215px),580px)] flex flex-col items-center">
 				<!-- Top Player Strip -->
 				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mb-1 gap-2">
 					<div class="flex items-center gap-2 min-w-0">
@@ -741,8 +741,8 @@
 					</div>
 				{/if}
 
-				<!-- Universal Stepper & Action Controls -->
-				<div class="w-full mt-2 flex items-center justify-between gap-1.5 p-1.5 bg-card border border-border rounded-xl shadow-md">
+				<!-- Universal Stepper & Action Controls (Hidden on desktop review where controls live in the review panel) -->
+				<div class="w-full mt-2 flex items-center justify-between gap-1.5 p-1.5 bg-card border border-border rounded-xl shadow-md {reviewResult || rightPanelTab === 'review' ? 'lg:hidden' : ''}">
 					<div class="flex items-center gap-1">
 						<button
 							class="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition text-xs font-semibold flex items-center justify-center"
@@ -824,7 +824,7 @@
 		</div>
 
 		<!-- Right: Analysis Panel -->
-		<div class="lg:col-span-5 xl:col-span-4 h-[480px] lg:h-[min(calc(100dvh-140px),560px)] flex flex-col">
+		<div class="lg:col-span-5 xl:col-span-4 h-[480px] lg:h-[min(calc(100dvh-130px),640px)] flex flex-col">
 			<!-- Panel Tab Navigation -->
 			<div class="flex items-center p-1 bg-card border border-border rounded-xl mb-2.5 shrink-0 overflow-x-auto">
 				<button
@@ -885,6 +885,7 @@
 						{blackPlayerName}
 						{currentPly}
 						on:selectPly={(e: CustomEvent<number>) => goToPly(e.detail)}
+						on:flip={() => (orientation = orientation === 'white' ? 'black' : 'white')}
 					/>
 				{:else if rightPanelTab === 'moves'}
 					<!-- 2. Moves Tab -->
