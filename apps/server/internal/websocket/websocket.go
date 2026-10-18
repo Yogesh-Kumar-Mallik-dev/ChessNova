@@ -2,9 +2,13 @@ package websocket
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -23,18 +27,30 @@ type HubConfig struct {
 	AllowedOrigins     []string
 	AllowMissingOrigin bool
 	AllowDevLocalhost  bool
+	IsProduction       bool
 }
 
 // DefaultHubConfig returns secure default origins including Tauri and local dev ports
 func DefaultHubConfig(customOrigins ...string) HubConfig {
-	origins := []string{
-		"http://localhost:5173",
-		"http://localhost:3000",
-		"http://localhost:4173",
+	env := strings.ToLower(os.Getenv("ENV"))
+	if env == "" {
+		env = strings.ToLower(os.Getenv("APP_ENV"))
+	}
+	isProd := env == "production" || env == "prod"
+
+	var origins []string
+	if !isProd {
+		origins = append(origins,
+			"http://localhost:5173",
+			"http://localhost:3000",
+			"http://localhost:4173",
+		)
+	}
+	origins = append(origins,
 		"tauri://localhost",
 		"http://tauri.localhost",
 		"https://tauri.localhost",
-	}
+	)
 	for _, o := range customOrigins {
 		trimmed := strings.TrimSpace(o)
 		if trimmed != "" {
@@ -43,8 +59,9 @@ func DefaultHubConfig(customOrigins ...string) HubConfig {
 	}
 	return HubConfig{
 		AllowedOrigins:     origins,
-		AllowMissingOrigin: true, // Allow non-browser desktop / test clients without Origin header
-		AllowDevLocalhost:  true,
+		AllowMissingOrigin: !isProd,
+		AllowDevLocalhost:  !isProd,
+		IsProduction:       isProd,
 	}
 }
 
@@ -82,10 +99,33 @@ func ValidateOrigin(origin string, cfg HubConfig, reqHost ...string) bool {
 	originHost := strings.ToLower(u.Hostname())
 	normOrigin := scheme + "://" + strings.ToLower(u.Host)
 
-	// If the request was made to the same host (e.g. r.Host), it is same-origin and trusted
+	// If the request was made to the same host and effective port, it is same-origin and trusted
 	if len(reqHost) > 0 && reqHost[0] != "" {
-		hostOnly := strings.ToLower(strings.Split(reqHost[0], ":")[0])
-		if originHost == hostOnly {
+		reqHostLower := strings.ToLower(strings.TrimSpace(reqHost[0]))
+		reqHostname, reqPort, err := net.SplitHostPort(reqHostLower)
+		if err != nil {
+			reqHostname = reqHostLower
+			reqPort = ""
+		}
+
+		originHostname := strings.ToLower(u.Hostname())
+		originPort := u.Port()
+		if originPort == "" {
+			if scheme == "https" {
+				originPort = "443"
+			} else if scheme == "http" {
+				originPort = "80"
+			}
+		}
+		if reqPort == "" {
+			if scheme == "https" {
+				reqPort = "443"
+			} else if scheme == "http" {
+				reqPort = "80"
+			}
+		}
+
+		if originHostname == reqHostname && originPort == reqPort {
 			return true
 		}
 	}
@@ -171,13 +211,15 @@ type ServerMessage struct {
 }
 
 type Client struct {
-	hub      *Hub
-	conn     *websocket.Conn
-	send     chan []byte
-	gameID   string
-	userID   string
-	username string
-	isPlayer bool
+	hub       *Hub
+	conn      *websocket.Conn
+	send      chan []byte
+	gameID    string
+	userID    string
+	username  string
+	isPlayer  bool
+	msgCount  int
+	msgWindow time.Time
 }
 
 type GameRoom struct {
@@ -185,6 +227,12 @@ type GameRoom struct {
 	clients          map[*Client]bool
 	disconnectTimers map[string]*time.Timer
 	mu               sync.RWMutex
+}
+
+type ticketData struct {
+	userID    string
+	username  string
+	expiresAt time.Time
 }
 
 type Hub struct {
@@ -196,6 +244,51 @@ type Hub struct {
 	upgrader    websocket.Upgrader
 	rdb         *redis.Client
 	instanceID  string
+	ticketMap   sync.Map
+}
+
+func (h *Hub) CreateTicket(userID, username string) string {
+	b := make([]byte, 24)
+	_, _ = rand.Read(b)
+	ticket := hex.EncodeToString(b)
+
+	if h.rdb != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_ = h.rdb.Set(ctx, "ws:ticket:"+ticket, userID+":"+username, 30*time.Second).Err()
+		cancel()
+	}
+	h.ticketMap.Store(ticket, ticketData{
+		userID:    userID,
+		username:  username,
+		expiresAt: time.Now().Add(30 * time.Second),
+	})
+	return ticket
+}
+
+func (h *Hub) ConsumeTicket(ticket string) (string, string, bool) {
+	if ticket == "" {
+		return "", "", false
+	}
+	if h.rdb != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		key := "ws:ticket:" + ticket
+		val, err := h.rdb.Get(ctx, key).Result()
+		_ = h.rdb.Del(ctx, key).Err()
+		cancel()
+		if err == nil && val != "" {
+			parts := strings.SplitN(val, ":", 2)
+			if len(parts) == 2 {
+				return parts[0], parts[1], true
+			}
+		}
+	}
+	if raw, ok := h.ticketMap.LoadAndDelete(ticket); ok {
+		td := raw.(ticketData)
+		if time.Now().Before(td.expiresAt) {
+			return td.userID, td.username, true
+		}
+	}
+	return "", "", false
 }
 
 func (h *Hub) SetRedis(rdb *redis.Client, instanceID string) {
@@ -373,20 +466,31 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 	var userID string
 	var username string
 
-	// Extract token from query param or Authorization header
-	tokenStr := r.URL.Query().Get("token")
-	if tokenStr == "" {
-		authH := r.Header.Get("Authorization")
-		if strings.HasPrefix(authH, "Bearer ") {
-			tokenStr = strings.TrimPrefix(authH, "Bearer ")
+	// 1. Preferred authentication: Single-use connection ticket
+	ticket := r.URL.Query().Get("ticket")
+	if ticket != "" {
+		if tUID, tUname, ok := h.ConsumeTicket(ticket); ok {
+			userID = tUID
+			username = tUname
 		}
 	}
 
-	if tokenStr != "" && h.authService != nil {
-		claims, err := h.authService.ValidateAccessToken(tokenStr)
-		if err == nil {
-			userID = claims.UserID
-			username = claims.Username
+	// 2. Fallback: Authorization header (or query token parameter in development only)
+	if userID == "" {
+		tokenStr := ""
+		authH := r.Header.Get("Authorization")
+		if strings.HasPrefix(authH, "Bearer ") {
+			tokenStr = strings.TrimPrefix(authH, "Bearer ")
+		} else if !h.config.IsProduction {
+			tokenStr = r.URL.Query().Get("token")
+		}
+
+		if tokenStr != "" && h.authService != nil {
+			claims, err := h.authService.ValidateAccessToken(tokenStr)
+			if err == nil {
+				userID = claims.UserID
+				username = claims.Username
+			}
 		}
 	}
 
@@ -552,6 +656,19 @@ func (c *Client) readPump() {
 		}
 		// Refresh read deadline on ANY received packet (including text pings and moves)
 		_ = c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
+		// Per-connection message rate limit (max 25 messages per second)
+		now := time.Now()
+		if now.Sub(c.msgWindow) > time.Second {
+			c.msgWindow = now
+			c.msgCount = 1
+		} else {
+			c.msgCount++
+			if c.msgCount > 25 {
+				c.sendError("message rate limit exceeded, slowing down")
+				continue
+			}
+		}
 
 		var req ClientMessage
 		if err := json.Unmarshal(message, &req); err != nil {

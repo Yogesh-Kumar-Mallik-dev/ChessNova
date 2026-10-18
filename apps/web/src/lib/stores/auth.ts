@@ -102,6 +102,7 @@ function createAuthStore() {
 			});
 		},
 		logout: () => {
+			api.auth.logout().catch(() => {});
 			if (typeof window !== 'undefined') {
 				localStorage.removeItem('access_token');
 				localStorage.removeItem('refresh_token');

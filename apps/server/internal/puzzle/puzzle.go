@@ -228,9 +228,6 @@ func (s *Service) VerifyMove(p *Puzzle, req SolveAttempt) SolveResult {
 				}
 			}
 		}
-	} else if req.Success != nil {
-		isCorrect = *req.Success
-		isFinished = *req.Success
 	}
 
 	result := SolveResult{

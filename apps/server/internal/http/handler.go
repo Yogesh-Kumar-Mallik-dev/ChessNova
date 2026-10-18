@@ -55,8 +55,15 @@ type Router struct {
 	wsHub           *websocket.Hub
 	corsOrigin      string
 	adminSecret     string
-	authLimiter     *ipRateLimiter
-	engineLimiter   *ipRateLimiter
+	authLimiter        *ipRateLimiter
+	otpVerifyLimiter   *ipRateLimiter
+	otpResendLimiter   *ipRateLimiter
+	refreshLimiter     *ipRateLimiter
+	engineLimiter      *ipRateLimiter
+	puzzleLimiter      *ipRateLimiter
+	matchmakingLimiter *ipRateLimiter
+	puzzleAssisted     sync.Map
+	puzzleSolved       sync.Map
 }
 
 func NewRouter(
@@ -82,22 +89,27 @@ func NewRouter(
 	}
 
 	r := &Router{
-		mux:             http.NewServeMux(),
-		authService:     authService,
-		userService:     userService,
-		gameService:     gameService,
-		gameRepo:        gameRepo,
-		ratingRepo:      ratingRepo,
-		mmService:       mmService,
-		puzzleService:   puzzleService,
-		engineService:   engineService,
-		reviewService:   reviewService,
-		storageService:  storageService,
-		externalService: externalService,
-		wsHub:           wsHub,
-		corsOrigin:      corsOrigin,
-		authLimiter:     newIPRateLimiter(10, time.Minute),
-		engineLimiter:   newIPRateLimiter(30, 10*time.Second),
+		mux:                http.NewServeMux(),
+		authService:        authService,
+		userService:        userService,
+		gameService:        gameService,
+		gameRepo:           gameRepo,
+		ratingRepo:         ratingRepo,
+		mmService:          mmService,
+		puzzleService:      puzzleService,
+		engineService:      engineService,
+		reviewService:      reviewService,
+		storageService:     storageService,
+		externalService:    externalService,
+		wsHub:              wsHub,
+		corsOrigin:         corsOrigin,
+		authLimiter:        newIPRateLimiter("auth", 10, time.Minute),
+		otpVerifyLimiter:   newIPRateLimiter("otp_verify", 5, time.Minute),
+		otpResendLimiter:   newIPRateLimiter("otp_resend", 3, time.Minute),
+		refreshLimiter:     newIPRateLimiter("refresh", 30, time.Minute),
+		engineLimiter:      newIPRateLimiter("engine", 30, 10*time.Second),
+		puzzleLimiter:      newIPRateLimiter("puzzle", 60, time.Minute),
+		matchmakingLimiter: newIPRateLimiter("matchmaking", 15, time.Minute),
 	}
 	r.routes()
 	return r
@@ -114,6 +126,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
 	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https: http: ws: wss:; font-src 'self' data:;")
 
 	// Global CORS Handler
 	w.Header().Set("Access-Control-Allow-Origin", rt.corsOrigin)
@@ -139,10 +152,10 @@ func (rt *Router) routes() {
 	// Auth
 	rt.mux.HandleFunc("POST /api/v1/auth/register", rt.authLimiter.Middleware(rt.handleRegister))
 	rt.mux.HandleFunc("POST /api/v1/auth/register/send-otp", rt.authLimiter.Middleware(rt.handleRegisterSendOTP))
-	rt.mux.HandleFunc("POST /api/v1/auth/register/verify-otp", rt.handleRegisterVerifyOTP)
-	rt.mux.HandleFunc("POST /api/v1/auth/register/resend-otp", rt.authLimiter.Middleware(rt.handleRegisterResendOTP))
+	rt.mux.HandleFunc("POST /api/v1/auth/register/verify-otp", rt.otpVerifyLimiter.Middleware(rt.handleRegisterVerifyOTP))
+	rt.mux.HandleFunc("POST /api/v1/auth/register/resend-otp", rt.otpResendLimiter.Middleware(rt.handleRegisterResendOTP))
 	rt.mux.HandleFunc("POST /api/v1/auth/login", rt.authLimiter.Middleware(rt.handleLogin))
-	rt.mux.HandleFunc("POST /api/v1/auth/refresh", rt.handleRefresh)
+	rt.mux.HandleFunc("POST /api/v1/auth/refresh", rt.refreshLimiter.Middleware(rt.handleRefresh))
 	rt.mux.HandleFunc("POST /api/v1/auth/logout", rt.handleLogout)
 
 	// Users & Profiles
@@ -158,7 +171,7 @@ func (rt *Router) routes() {
 	rt.mux.Handle("GET /uploads/avatars/", http.StripPrefix("/uploads/avatars/", http.FileServer(http.Dir("uploads/avatars"))))
 
 	// Matchmaking
-	rt.mux.HandleFunc("POST /api/v1/matchmaking/join", rt.withAuth(rt.handleMatchmakingJoin))
+	rt.mux.HandleFunc("POST /api/v1/matchmaking/join", rt.matchmakingLimiter.Middleware(rt.withAuth(rt.handleMatchmakingJoin)))
 	rt.mux.HandleFunc("POST /api/v1/matchmaking/leave", rt.withAuth(rt.handleMatchmakingLeave))
 	rt.mux.HandleFunc("GET /api/v1/matchmaking/status", rt.withAuth(rt.handleMatchmakingStatus))
 
@@ -191,15 +204,16 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("GET /api/v1/leaderboard", rt.handleLeaderboard)
 
 	// Puzzles
-	rt.mux.HandleFunc("GET /api/v1/puzzles/random", rt.handleGetRandomPuzzle)
+	rt.mux.HandleFunc("GET /api/v1/puzzles/random", rt.puzzleLimiter.Middleware(rt.handleGetRandomPuzzle))
 	rt.mux.HandleFunc("GET /api/v1/puzzles/daily", rt.handleGetDailyPuzzle)
 	rt.mux.HandleFunc("GET /api/v1/puzzles/weekly", rt.handleGetWeeklyPuzzles)
 	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}", rt.handleGetPuzzleByID)
 	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}/hint", rt.handleGetPuzzleHint)
-	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}/solution", rt.handleGetPuzzleSolution)
-	rt.mux.HandleFunc("POST /api/v1/puzzles/{id}/solve", rt.handleSolvePuzzle)
+	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}/solution", rt.withAuth(rt.handleGetPuzzleSolution))
+	rt.mux.HandleFunc("POST /api/v1/puzzles/{id}/solve", rt.puzzleLimiter.Middleware(rt.handleSolvePuzzle))
 
-	// WebSockets
+	// WebSockets & Connection Tickets
+	rt.mux.HandleFunc("POST /api/v1/ws/ticket", rt.withAuth(rt.handleCreateWSTicket))
 	rt.mux.HandleFunc("/ws/game/{id}", rt.handleWebSocket)
 }
 
@@ -267,15 +281,20 @@ func (rt *Router) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, tokens, err := rt.authService.Register(r.Context(), req.Username, req.Email, req.Password)
+	err := rt.authService.InitiateRegistration(r.Context(), req.Username, req.Email, req.Password)
 	if err != nil {
-		writeError(w, http.StatusConflict, "USER_EXISTS", err.Error())
+		if errors.Is(err, auth.ErrUserAlreadyExists) {
+			writeError(w, http.StatusConflict, "USER_EXISTS", err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "REGISTRATION_ERROR", err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"user":   u,
-		"tokens": tokens,
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"message":   "Verification code sent to email. Verification required to complete registration.",
+		"email":     req.Email,
+		"expiresIn": 600,
 	})
 }
 
@@ -298,8 +317,8 @@ func (rt *Router) handleRegisterSendOTP(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid email address")
 		return
 	}
-	if len(req.Password) < 6 {
-		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "password must be at least 6 characters")
+	if len(req.Password) < 6 || len(req.Password) > 128 {
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "password must be between 6 and 128 characters")
 		return
 	}
 
@@ -405,6 +424,7 @@ type loginReq struct {
 }
 
 func (rt *Router) handleLogin(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req loginReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
@@ -428,6 +448,7 @@ type refreshReq struct {
 }
 
 func (rt *Router) handleRefresh(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req refreshReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
@@ -436,14 +457,29 @@ func (rt *Router) handleRefresh(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := rt.authService.Refresh(r.Context(), req.RefreshToken)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "REFRESH_FAILED", "invalid refresh token")
+		writeError(w, http.StatusUnauthorized, "REFRESH_FAILED", "invalid or revoked refresh token")
 		return
 	}
 
 	writeJSON(w, http.StatusOK, tokens)
 }
 
+type logoutReq struct {
+	RefreshToken string `json:"refreshToken,omitempty"`
+}
+
 func (rt *Router) handleLogout(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req logoutReq
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	accessToken := ""
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		accessToken = strings.TrimPrefix(authHeader, "Bearer ")
+	}
+
+	_ = rt.authService.Logout(r.Context(), accessToken, req.RefreshToken)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
 }
 
@@ -462,12 +498,14 @@ func (rt *Router) handleGetMe(w http.ResponseWriter, r *http.Request, claims *au
 	}
 
 	ratingsList := make(map[string]int)
-	for _, cat := range []rating.Category{rating.Bullet, rating.Blitz, rating.Rapid, rating.Classical, rating.Puzzles} {
-		ur, _ := rt.ratingRepo.GetRating(r.Context(), u.ID, cat)
-		if ur != nil {
-			ratingsList[string(cat)] = ur.Rating
-		} else {
-			ratingsList[string(cat)] = rating.DefaultRating
+	if rt.ratingRepo != nil {
+		for _, cat := range []rating.Category{rating.Bullet, rating.Blitz, rating.Rapid, rating.Classical, rating.Puzzles} {
+			ur, _ := rt.ratingRepo.GetRating(r.Context(), u.ID, cat)
+			if ur != nil {
+				ratingsList[string(cat)] = ur.Rating
+			} else {
+				ratingsList[string(cat)] = rating.DefaultRating
+			}
 		}
 	}
 	// Alias puzzle for frontend compatibility
@@ -490,10 +528,12 @@ func (rt *Router) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ratingsList := make(map[string]interface{})
-	for _, cat := range []rating.Category{rating.Bullet, rating.Blitz, rating.Rapid, rating.Classical, rating.Puzzles} {
-		ur, _ := rt.ratingRepo.GetRating(r.Context(), u.ID, cat)
-		if ur != nil {
-			ratingsList[string(cat)] = ur
+	if rt.ratingRepo != nil {
+		for _, cat := range []rating.Category{rating.Bullet, rating.Blitz, rating.Rapid, rating.Classical, rating.Puzzles} {
+			ur, _ := rt.ratingRepo.GetRating(r.Context(), u.ID, cat)
+			if ur != nil {
+				ratingsList[string(cat)] = ur
+			}
 		}
 	}
 	if pz, ok := ratingsList["puzzles"]; ok {
@@ -501,10 +541,15 @@ func (rt *Router) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch recent games
-	recentGames, _ := rt.gameRepo.FindUserGames(r.Context(), u.ID.Hex(), 10, 0)
+	var recentGames interface{} = []interface{}{}
+	if rt.gameRepo != nil {
+		if rg, err := rt.gameRepo.FindUserGames(r.Context(), u.ID.Hex(), 10, 0); err == nil && rg != nil {
+			recentGames = rg
+		}
+	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"user":        u,
+		"user":        u.ToPublic(),
 		"ratings":     ratingsList,
 		"recentGames": recentGames,
 	})
@@ -776,7 +821,23 @@ func (rt *Router) handleMatchmakingJoin(w http.ResponseWriter, r *http.Request, 
 		req.InitialSeconds = 180
 	}
 
-	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	userOID, err := primitive.ObjectIDFromHex(claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_USER_ID", "invalid user ID")
+		return
+	}
+
+	u, err := rt.userService.FindByID(r.Context(), userOID)
+	if err != nil || u == nil {
+		writeError(w, http.StatusNotFound, "USER_NOT_FOUND", "user account not found")
+		return
+	}
+
+	if !u.EmailVerified {
+		writeError(w, http.StatusForbidden, "EMAIL_NOT_VERIFIED", "email verification is required to participate in rated matchmaking")
+		return
+	}
+
 	cat := rating.DetermineCategory(req.InitialSeconds)
 	userRating, _ := rt.ratingRepo.GetRating(r.Context(), userOID, cat)
 	ratVal := rating.DefaultRating
@@ -864,6 +925,7 @@ type createGameReq struct {
 }
 
 func (rt *Router) handleCreateGame(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req createGameReq
 	_ = json.NewDecoder(r.Body).Decode(&req)
 	if req.InitialSeconds <= 0 {
@@ -991,6 +1053,7 @@ type moveReq struct {
 }
 
 func (rt *Router) handleMakeMove(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	id := r.PathValue("id")
 	var req moveReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1307,6 +1370,15 @@ func (rt *Router) handleGetPuzzleHint(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Record server-side assistance if user is authenticated
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		if claims, err := rt.authService.ValidateAccessToken(tokenStr); err == nil {
+			rt.puzzleAssisted.Store(claims.UserID+":"+oid.Hex(), true)
+		}
+	}
+
 	from, to, hint, err := rt.puzzleService.GetHint(r.Context(), oid, ply)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
@@ -1321,13 +1393,17 @@ func (rt *Router) handleGetPuzzleHint(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (rt *Router) handleGetPuzzleSolution(w http.ResponseWriter, r *http.Request) {
+func (rt *Router) handleGetPuzzleSolution(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
 	idStr := r.PathValue("id")
 	oid, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid puzzle ID")
 		return
 	}
+
+	// Authoritatively record server-side assistance for authenticated user
+	rt.puzzleAssisted.Store(claims.UserID+":"+oid.Hex(), true)
+
 	p, err := rt.puzzleService.GetSolution(r.Context(), oid)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "puzzle not found")
@@ -1343,9 +1419,8 @@ func (rt *Router) handleGetPuzzleSolution(w http.ResponseWriter, r *http.Request
 }
 
 type solvePuzzleReq struct {
-	Move          string `json:"move,omitempty"`          // e.g. "e1e8" or "f2g3" (UCI format)
+	Move          string `json:"move"`                    // e.g. "e1e8" or "f2g3" (UCI format)
 	PlyIndex      int    `json:"plyIndex"`               // 0, 2, 4... player's move turn index
-	Success       *bool  `json:"success,omitempty"`       // backward-compatibility fallback
 	IsRetry       bool   `json:"isRetry,omitempty"`       // if player is retrying an already failed puzzle
 	HasAssistance bool   `json:"hasAssistance,omitempty"` // if player viewed hint or full solution
 }
@@ -1364,8 +1439,17 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req solvePuzzleReq
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_BODY", "invalid request body")
+		return
+	}
+
+	if strings.TrimSpace(req.Move) == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_MOVE", "move parameter is required")
+		return
+	}
 
 	// Fetch current user rating for puzzle elo calculation
 	var claims *auth.Claims
@@ -1390,13 +1474,21 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		playerRating = uRat.Rating
+
+		// Authoritative server-side assistance check
+		if _, assisted := rt.puzzleAssisted.Load(claims.UserID + ":" + oid.Hex()); assisted {
+			req.HasAssistance = true
+		}
+		// Idempotency: check if player already solved this puzzle previously
+		if _, solved := rt.puzzleSolved.Load(claims.UserID + ":" + oid.Hex()); solved {
+			req.IsRetry = true
+		}
 	}
 
 	// Verify move using domain service
 	verResult := rt.puzzleService.VerifyMove(p, puzzle.SolveAttempt{
 		Move:          req.Move,
 		PlyIndex:      req.PlyIndex,
-		Success:       req.Success,
 		IsRetry:       req.IsRetry,
 		HasAssistance: req.HasAssistance,
 		PlayerRating:  playerRating,
@@ -1406,20 +1498,24 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 	diff := 0
 
 	// Rating adjustments rules:
-	// 1. If player had assistance (viewed hint/solution), no rating gains are awarded.
-	// 2. If player is retrying a previously failed attempt, do not deduct rating multiple times.
+	// 1. Only authenticated users can modify puzzle ratings.
+	// 2. If player had assistance (viewed hint/solution), no rating gains are awarded.
+	// 3. If player is retrying a previously failed attempt or replaying, do not deduct or award rating.
 	shouldApplyRating := false
 	var score float64
 
-	if verResult.Correct && verResult.Finished {
-		if !req.HasAssistance && !req.IsRetry {
-			score = 1.0
-			shouldApplyRating = true
-		}
-	} else if !verResult.Correct {
-		if !req.IsRetry && !req.HasAssistance {
-			score = 0.0
-			shouldApplyRating = true
+	if claims != nil {
+		if verResult.Correct && verResult.Finished {
+			if !req.HasAssistance && !req.IsRetry {
+				score = 1.0
+				shouldApplyRating = true
+				rt.puzzleSolved.Store(claims.UserID+":"+oid.Hex(), true)
+			}
+		} else if !verResult.Correct {
+			if !req.IsRetry && !req.HasAssistance {
+				score = 0.0
+				shouldApplyRating = true
+			}
 		}
 	}
 
@@ -1442,6 +1538,15 @@ func (rt *Router) handleSolvePuzzle(w http.ResponseWriter, r *http.Request) {
 	verResult.Diff = diff
 
 	writeJSON(w, http.StatusOK, verResult)
+}
+
+// WebSocket Ticket Handler
+func (rt *Router) handleCreateWSTicket(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	ticket := rt.wsHub.CreateTicket(claims.UserID, claims.Username)
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ticket":    ticket,
+		"expiresIn": 30,
+	})
 }
 
 // WebSocket Handler

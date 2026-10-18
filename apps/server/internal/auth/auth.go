@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"chess-platform/server/internal/user"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -57,29 +60,36 @@ type PendingRegistration struct {
 }
 
 type Service struct {
-	userRepo      user.Repository
-	accessSecret  []byte
-	refreshSecret []byte
-	accessExpiry  time.Duration
-	refreshExpiry time.Duration
-	redisClient   *redis.Client
-	mailer        email.Mailer
-	mu            sync.RWMutex
-	pendingOTPs   map[string]*PendingRegistration
+	userRepo        user.Repository
+	accessSecret    []byte
+	refreshSecret   []byte
+	accessExpiry    time.Duration
+	refreshExpiry   time.Duration
+	redisClient     *redis.Client
+	mailer          email.Mailer
+	mu              sync.RWMutex
+	pendingOTPs     map[string]*PendingRegistration
+	revokedTokens   map[string]time.Time
+	userRevocations map[string]time.Time
 }
 
 func NewService(userRepo user.Repository, accessSecret, refreshSecret string) *Service {
 	if len(accessSecret) < 16 || len(refreshSecret) < 16 {
 		panic("JWT access and refresh secrets must each be at least 16 characters for security")
 	}
+	if accessSecret == refreshSecret {
+		panic("JWT access and refresh secrets must be distinct and independently generated")
+	}
 
 	return &Service{
-		userRepo:      userRepo,
-		accessSecret:  []byte(accessSecret),
-		refreshSecret: []byte(refreshSecret),
-		accessExpiry:  7 * 24 * time.Hour,
-		refreshExpiry: 30 * 24 * time.Hour,
-		pendingOTPs:   make(map[string]*PendingRegistration),
+		userRepo:        userRepo,
+		accessSecret:    []byte(accessSecret),
+		refreshSecret:   []byte(refreshSecret),
+		accessExpiry:    7 * 24 * time.Hour,
+		refreshExpiry:   30 * 24 * time.Hour,
+		pendingOTPs:     make(map[string]*PendingRegistration),
+		revokedTokens:   make(map[string]time.Time),
+		userRevocations: make(map[string]time.Time),
 	}
 }
 
@@ -179,6 +189,109 @@ func (s *Service) Login(ctx context.Context, username, password string) (*user.U
 	return u, tokens, nil
 }
 
+func (s *Service) RevokeToken(ctx context.Context, tokenID string, ttl time.Duration) error {
+	if tokenID == "" {
+		return nil
+	}
+	if ttl <= 0 {
+		ttl = 24 * time.Hour
+	}
+	s.mu.Lock()
+	s.revokedTokens[tokenID] = time.Now().Add(ttl)
+	s.mu.Unlock()
+
+	if s.redisClient != nil {
+		_ = s.redisClient.Set(ctx, "auth:revoked_token:"+tokenID, "1", ttl).Err()
+	}
+	return nil
+}
+
+func (s *Service) RevokeUserSessions(ctx context.Context, userID string) error {
+	if userID == "" {
+		return nil
+	}
+	now := time.Now().UTC()
+	s.mu.Lock()
+	s.userRevocations[userID] = now
+	s.mu.Unlock()
+
+	if s.redisClient != nil {
+		_ = s.redisClient.Set(ctx, "auth:revoked_user:"+userID, strconv.FormatInt(now.Unix(), 10), 30*24*time.Hour).Err()
+	}
+	return nil
+}
+
+func (s *Service) isTokenRevoked(ctx context.Context, tokenID, userID string, issuedAt time.Time) bool {
+	// 1. Check Redis if available
+	if s.redisClient != nil {
+		if tokenID != "" {
+			exists, err := s.redisClient.Exists(ctx, "auth:revoked_token:"+tokenID).Result()
+			if err == nil && exists > 0 {
+				return true
+			}
+		}
+		if userID != "" {
+			tsStr, err := s.redisClient.Get(ctx, "auth:revoked_user:"+userID).Result()
+			if err == nil && tsStr != "" {
+				if sec, err := strconv.ParseInt(tsStr, 10, 64); err == nil {
+					revokedAt := time.Unix(sec, 0)
+					if !issuedAt.After(revokedAt) {
+						return true
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Check in-memory state
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if tokenID != "" {
+		if exp, ok := s.revokedTokens[tokenID]; ok {
+			if time.Now().Before(exp) {
+				return true
+			}
+		}
+	}
+
+	if userID != "" {
+		if revokedAt, ok := s.userRevocations[userID]; ok {
+			if !issuedAt.After(revokedAt) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (s *Service) Logout(ctx context.Context, accessToken, refreshToken string) error {
+	if accessToken != "" {
+		token, err := jwt.ParseWithClaims(accessToken, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+			return s.accessSecret, nil
+		})
+		if err == nil && token.Valid {
+			if claims, ok := token.Claims.(*Claims); ok && claims.ID != "" && claims.ExpiresAt != nil {
+				ttl := time.Until(claims.ExpiresAt.Time)
+				_ = s.RevokeToken(ctx, claims.ID, ttl)
+			}
+		}
+	}
+	if refreshToken != "" {
+		token, err := jwt.ParseWithClaims(refreshToken, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+			return s.refreshSecret, nil
+		})
+		if err == nil && token.Valid {
+			if claims, ok := token.Claims.(*Claims); ok && claims.ID != "" && claims.ExpiresAt != nil {
+				ttl := time.Until(claims.ExpiresAt.Time)
+				_ = s.RevokeToken(ctx, claims.ID, ttl)
+			}
+		}
+	}
+	return nil
+}
+
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	token, err := jwt.ParseWithClaims(refreshToken, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if t.Method != jwt.SigningMethodHS256 {
@@ -193,6 +306,24 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	claims, ok := token.Claims.(*Claims)
 	if !ok || claims.TokenType != "refresh" {
 		return nil, ErrInvalidToken
+	}
+
+	// Token Revocation & Reuse Detection:
+	// If an already revoked or previously refreshed token is presented again,
+	// treat this as token theft/replay and invalidate all user sessions!
+	issuedAt := time.Time{}
+	if claims.IssuedAt != nil {
+		issuedAt = claims.IssuedAt.Time
+	}
+	if s.isTokenRevoked(ctx, claims.ID, claims.UserID, issuedAt) {
+		_ = s.RevokeUserSessions(ctx, claims.UserID)
+		return nil, ErrInvalidToken
+	}
+
+	// Invalidate the consumed refresh token immediately (rotation)
+	if claims.ID != "" && claims.ExpiresAt != nil {
+		ttl := time.Until(claims.ExpiresAt.Time)
+		_ = s.RevokeToken(ctx, claims.ID, ttl)
 	}
 
 	objID, err := primitive.ObjectIDFromHex(claims.UserID)
@@ -224,6 +355,14 @@ func (s *Service) ValidateAccessToken(tokenStr string) (*Claims, error) {
 		return nil, ErrInvalidToken
 	}
 
+	issuedAt := time.Time{}
+	if claims.IssuedAt != nil {
+		issuedAt = claims.IssuedAt.Time
+	}
+	if s.isTokenRevoked(context.Background(), claims.ID, claims.UserID, issuedAt) {
+		return nil, ErrInvalidToken
+	}
+
 	return claims, nil
 }
 
@@ -234,6 +373,7 @@ func (s *Service) GenerateTokenPair(u *user.User) (*TokenPair, error) {
 		Username:  u.Username,
 		TokenType: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.New().String(),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.accessExpiry)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			Subject:   u.ID.Hex(),
@@ -249,6 +389,7 @@ func (s *Service) GenerateTokenPair(u *user.User) (*TokenPair, error) {
 		Username:  u.Username,
 		TokenType: "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.New().String(),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.refreshExpiry)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			Subject:   u.ID.Hex(),
@@ -368,7 +509,11 @@ func (s *Service) InitiateRegistration(ctx context.Context, username, emailStr, 
 			return fmt.Errorf("failed to dispatch verification email: %w", err)
 		}
 	} else {
-		log.Printf("[AUTH NOTICE] SMTP not configured. OTP for %s (%s): %s", username, emailStr, otp)
+		env := strings.ToLower(os.Getenv("ENV"))
+		if env == "production" || env == "prod" {
+			return errors.New("email delivery service is unavailable")
+		}
+		log.Printf("[AUTH NOTICE] Verification email dispatch simulated for %s", username)
 	}
 
 	return nil
@@ -454,7 +599,11 @@ func (s *Service) ResendRegistrationOTP(ctx context.Context, emailStr string) er
 			return fmt.Errorf("failed to dispatch verification email: %w", err)
 		}
 	} else {
-		log.Printf("[AUTH NOTICE] SMTP not configured. OTP for %s (%s): %s", pending.Username, emailStr, newOTP)
+		env := strings.ToLower(os.Getenv("ENV"))
+		if env == "production" || env == "prod" {
+			return errors.New("email delivery service is unavailable")
+		}
+		log.Printf("[AUTH NOTICE] Verification email resend simulated for %s", pending.Username)
 	}
 
 	return nil

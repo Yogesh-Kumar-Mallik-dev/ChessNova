@@ -4,13 +4,30 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 )
+
+var validExternalUsername = regexp.MustCompile(`^[a-zA-Z0-9_\-\.]{1,50}$`)
+
+func validateExternalUsername(username string) error {
+	trimmed := strings.TrimSpace(username)
+	if !validExternalUsername.MatchString(trimmed) {
+		return errors.New("invalid external username format")
+	}
+	return nil
+}
+
+func isPrivateOrLoopbackIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
+}
 
 type ExternalGame struct {
 	Platform    string    `json:"platform"` // "chesscom" | "lichess"
@@ -51,6 +68,20 @@ func NewService() *Service {
 	return &Service{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 5 {
+					return errors.New("stopped after 5 redirects")
+				}
+				host := req.URL.Hostname()
+				if ips, err := net.LookupIP(host); err == nil {
+					for _, ip := range ips {
+						if isPrivateOrLoopbackIP(ip) {
+							return errors.New("redirect to private or loopback address blocked")
+						}
+					}
+				}
+				return nil
+			},
 		},
 	}
 }
@@ -59,6 +90,9 @@ func NewService() *Service {
 func (s *Service) FetchChessComStats(ctx context.Context, username string) (*PlatformRatings, error) {
 	if username == "" {
 		return nil, nil
+	}
+	if err := validateExternalUsername(username); err != nil {
+		return nil, err
 	}
 	url := fmt.Sprintf("https://api.chess.com/pub/player/%s/stats", strings.ToLower(username))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -125,6 +159,9 @@ func (s *Service) FetchLichessStats(ctx context.Context, username string) (*Plat
 	if username == "" {
 		return nil, nil
 	}
+	if err := validateExternalUsername(username); err != nil {
+		return nil, err
+	}
 	url := fmt.Sprintf("https://lichess.org/api/user/%s", strings.ToLower(username))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -184,6 +221,9 @@ func (s *Service) FetchLichessStats(ctx context.Context, username string) (*Plat
 func (s *Service) FetchLichessRecentGames(ctx context.Context, username string, limit int) ([]ExternalGame, error) {
 	if username == "" {
 		return nil, nil
+	}
+	if err := validateExternalUsername(username); err != nil {
+		return nil, err
 	}
 	if limit <= 0 || limit > 20 {
 		limit = 10
@@ -285,6 +325,9 @@ func (s *Service) FetchLichessRecentGames(ctx context.Context, username string, 
 func (s *Service) FetchChessComRecentGames(ctx context.Context, username string, limit int) ([]ExternalGame, error) {
 	if username == "" {
 		return nil, nil
+	}
+	if err := validateExternalUsername(username); err != nil {
+		return nil, err
 	}
 	if limit <= 0 || limit > 20 {
 		limit = 10

@@ -172,7 +172,8 @@ func readNextMessage(t *testing.T, conn *gorillaWs.Conn) ServerMessage {
 
 func TestMultiplayerWebSocketMoveAndDrawFlow(t *testing.T) {
 	jwtSecret := "super-secure-jwt-secret-at-least-32-chars-long"
-	authService := auth.NewService(nil, jwtSecret, jwtSecret)
+	refreshSecret := "super-secure-refresh-secret-32-chars-long"
+	authService := auth.NewService(nil, jwtSecret, refreshSecret)
 	gameService := game.NewService(nil, nil)
 	cfg := HubConfig{
 		AllowedOrigins:     []string{"http://localhost:5173"},
@@ -304,7 +305,8 @@ func TestMultiplayerWebSocketMoveAndDrawFlow(t *testing.T) {
 
 func TestMultiplayerResignationFlow(t *testing.T) {
 	jwtSecret := "super-secure-jwt-secret-at-least-32-chars-long"
-	authService := auth.NewService(nil, jwtSecret, jwtSecret)
+	refreshSecret := "super-secure-refresh-secret-32-chars-long"
+	authService := auth.NewService(nil, jwtSecret, refreshSecret)
 	gameService := game.NewService(nil, nil)
 	cfg := HubConfig{
 		AllowedOrigins:     []string{"http://localhost:5173"},
@@ -370,7 +372,8 @@ func TestMultiplayerResignationFlow(t *testing.T) {
 
 func TestMultiplayerContinuousRealTimeMoveTranslation(t *testing.T) {
 	jwtSecret := "super-secure-jwt-secret-at-least-32-chars-long"
-	authService := auth.NewService(nil, jwtSecret, jwtSecret)
+	refreshSecret := "super-secure-refresh-secret-32-chars-long"
+	authService := auth.NewService(nil, jwtSecret, refreshSecret)
 	gameService := game.NewService(nil, nil)
 	cfg := HubConfig{
 		AllowedOrigins:     []string{"http://localhost:5173"},
@@ -490,7 +493,8 @@ func TestMultiplayerMoveTranslationWithRedisCluster(t *testing.T) {
 	}
 
 	jwtSecret := "super-secure-jwt-secret-at-least-32-chars-long"
-	authService := auth.NewService(nil, jwtSecret, jwtSecret)
+	refreshSecret := "super-secure-refresh-secret-32-chars-long"
+	authService := auth.NewService(nil, jwtSecret, refreshSecret)
 
 	gameService1 := game.NewService(nil, nil)
 	gameService1.SetRedis(rdb)

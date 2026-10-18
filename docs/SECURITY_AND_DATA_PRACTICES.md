@@ -1,6 +1,6 @@
 # Backend Security, Authorization & Data Protection Practices
 
-This document specifies the security architecture, authorization enforcement, S3-compatible object storage lifecycle, and data protection standards implemented in ChessNova.
+This document specifies the comprehensive security architecture, authentication and authorization enforcement, rate limiting, S3-compatible object storage lifecycle, and data protection standards implemented in ChessNova.
 
 ---
 
@@ -10,100 +10,162 @@ ChessNova operates on a **zero-trust, server-authoritative** model:
 - **Clients never declare game positions, results, or evaluation scores.**
 - **The client only submits intent** (e.g., `{ "from": "e2", "to": "e4" }`).
 - **All rule validations, clock decrements, ratings, and Game Reviews are authoritatively executed on the Go backend.**
+- **Anonymous/spectator clients have strictly read-only visibility into multiplayer games.**
 
 ```
-Client (Browser) ──[ Intent Payload ]──> Go Server ──[ Validates Legality, Clock, Identity ]──> Authoritative State
+Client (Browser / Tauri) ──[ Intent Payload / WS Ticket ]──> Go Server ──[ Validates Legality, Clock, Identity ]──> Authoritative State
 ```
 
 ---
 
-## 2. Authentication & Authorization
+## 2. Authentication & Credential Lifecycle
 
-### 2.1 JWT Token Architecture
-Authentication is implemented via stateless JSON Web Tokens (JWT) signed with HMAC-SHA256:
+### 2.1 JWT Token Architecture & Secret Isolation
+Authentication is implemented via stateless JSON Web Tokens (JWT) signed exclusively with HMAC-SHA256 (`HS256`):
 - **Access Tokens (`accessToken`)**:
   - Expiry: **15 minutes**.
-  - Payload: `userId`, `username`, `exp`, `iat`, `nbf`.
+  - Payload claims: `userId`, `username`, `jti` (unique UUID), `tokenType: "access"`, `exp`, `iat`, `nbf`.
   - Transmitted via standard `Authorization: Bearer <token>` header.
 - **Refresh Tokens (`refreshToken`)**:
   - Expiry: **7 days**.
+  - Payload claims: `userId`, `username`, `jti`, `tokenType: "refresh"`, `exp`, `iat`, `nbf`.
   - Signed with an independent refresh secret (`JWT_REFRESH_SECRET`) separate from the access secret (`JWT_ACCESS_SECRET`).
-  - Stored securely in client storage; exchanged via `POST /api/v1/auth/refresh`.
+- **Production Secret Validation (`validateSecretsConfig`)**:
+  - In production (`ENV=production`), application startup fails fast if `JWT_ACCESS_SECRET` or `JWT_REFRESH_SECRET` is unset, shorter than 32 characters, or identical to each other.
 
-### 2.2 Password Security
-- Passwords are encrypted using **bcrypt** with `DefaultCost` (`golang.org/x/crypto/bcrypt`).
-- Plaintext passwords are never logged, stored, or returned in API responses (`json:"-"` BSON/JSON tag).
-- Minimum password length: **8 characters**; maximum length: **128 characters** (preventing bcrypt silent truncation beyond 72 bytes).
+### 2.2 Refresh Token Rotation & Theft Detection
+To prevent replay attacks and token compromise:
+1. Every token pair carries a cryptographically random `jti` (token ID).
+2. When `POST /api/v1/auth/refresh` is invoked:
+   - The presenting refresh token's `jti` is marked as revoked.
+   - A completely new token pair with new `jti` values is issued.
+3. **Theft Detection**: If an already rotated or revoked refresh token is presented again, the server assumes token theft, rejects the request (`401 Unauthorized`), and immediately triggers `RevokeUserSessions`, invalidating all active sessions for that user account.
 
-### 2.3 Strict Ownership Authorization
-- Profile edits (`PUT /api/v1/users/profile`), avatar uploads (`POST /api/v1/users/avatar`), and account links (`POST /api/v1/users/link-accounts`) strictly bind the operation to the authenticated `claims.UserID`.
-- Users cannot modify or overwrite another user's bio, avatar, or linked accounts under any condition.
-- Game moves and resignations (`POST /api/v1/games/{id}/moves`, `resign`) verify that `claims.UserID` matches either the White or Black player registered for that active match.
+### 2.3 Explicit Logout & Session Revocation
+- When users log out (`POST /api/v1/auth/logout`), the active access token and refresh token `jti` values are written to Redis (or in-memory cache) with matching TTLs.
+- `ValidateAccessToken` validates tokens against revocation state on every authenticated request.
+- Frontend client (`apps/web/src/lib/api/client.ts` and `apps/web/src/lib/stores/auth.ts`) sends a revocation notification to `/auth/logout` prior to clearing local storage.
+
+### 2.4 OTP Verification & Password Policies
+- **Consistent Password Constraints**: 6 to 128 characters across both direct and OTP registration paths.
+- **Password Hashing**: Passwords use **bcrypt** (`golang.org/x/crypto/bcrypt`). Plaintext passwords are never logged or serialized (`json:"-"`).
+- **OTP Hardening**: OTP codes are 6-digit cryptographically random strings expiring in 10 minutes.
+- **Zero Logging Policy**: Verification OTP codes are never logged to stdout, logs, or error responses. In production, unconfigured email delivery returns an error rather than outputting codes.
+- **Email Verification**: Required for competitive multiplayer matchmaking (`EMAIL_NOT_VERIFIED` check).
 
 ---
 
-## 3. Defense-in-Depth & Network Hardening
+## 3. Administrative Authentication & Secrets Isolation
 
-### 3.1 Security Headers
-All HTTP responses from the Go server (`internal/http/handler.go`) enforce modern defensive headers:
+### 3.1 Independent Administrative Credentials
+- Administrative operations (such as `POST /api/v1/games/close-all`) are governed by `ADMIN_SECRET`.
+- `ADMIN_SECRET` is strictly isolated from JWT signing keys and must be $\ge 32$ characters in production environments.
+- Query parameter authentication (`?secret=`) is completely disabled. Credentials are only accepted via:
+  - Header `X-Admin-Secret: <secret>`
+  - Header `Authorization: Bearer <secret>`
+- Comparison is performed using constant-time evaluation (`crypto/subtle.ConstantTimeCompare`) to prevent timing side-channel attacks.
+- If `ADMIN_SECRET` is unset or empty, administrative endpoints are disabled and return `403 Forbidden` (`ADMIN_DISABLED`).
+
+---
+
+## 4. Public Profile Data Segregation
+
+To prevent sensitive user information leakage:
+- The public profile endpoint (`GET /api/v1/users/{username}`) serializes a dedicated `PublicUser` DTO (`internal/user/user.go`) containing only:
+  - `id`, `username`, `avatar`, `bio`, `country`, `chessComUsername`, `lichessUsername`, `createdAt`.
+- Private fields (`email`, `passwordHash`, `emailVerified`, `updatedAt`) are strictly omitted from public views.
+- Private account data is accessible exclusively by the account owner via `GET /api/v1/users/me` with valid access token claims.
+
+---
+
+## 5. Network Hardening, Rate Limiting & Proxy Trust
+
+### 5.1 Trusted Proxy IP Detection
+To prevent rate limiting bypass via spoofed `X-Forwarded-For` or `X-Real-IP` headers:
+- `getClientIP` in `internal/http/ratelimit.go` inspects the immediate socket peer (`r.RemoteAddr`).
+- Forwarding headers are **only** evaluated if the remote address is a trusted proxy:
+  - Loopback addresses (`127.0.0.1`, `::1`).
+  - Private networks (RFC 1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
+  - Explicitly configured IPs in `TRUSTED_PROXIES`.
+- Forwarding headers from untrusted connections are discarded, enforcing rate limits against the real client socket.
+
+### 5.2 Rate Limiting Matrix
+Sliding-window rate limiting is implemented via Redis atomic pipelines with in-memory mutex fallback:
+
+| Endpoint Path | Rate Limit | Scope | Mitigation Target |
+| :--- | :--- | :--- | :--- |
+| `/api/v1/auth/login`, `/register` | 10 req / min | Client IP | Credential stuffing & brute-force |
+| `/api/v1/auth/register/verify-otp` | 5 req / min | Client IP | OTP brute-force enumeration |
+| `/api/v1/auth/register/resend-otp` | 3 req / min | Client IP | Mailer abuse & spam exhaustion |
+| `/api/v1/auth/refresh` | 30 req / min | Client IP | Token abuse |
+| `/api/v1/matchmaking/join` | 15 req / min | User / IP | Queue flood & resource exhaustion |
+| `/api/v1/puzzles/*` | 60 req / min | Client IP | Scraping & automated solving |
+| `/api/v1/engine/evaluate` | 30 req / 10s | Client IP | CPU exhaustion |
+| Global API routes | 300 req / min | Client IP | DoS protection |
+
+### 5.3 Defensive HTTP Headers
+All HTTP responses enforce modern defense-in-depth headers:
 
 | Header | Value | Purpose |
 | :--- | :--- | :--- |
-| `X-Content-Type-Options` | `nosniff` | Disables MIME sniffing, preventing script execution from uploaded media. |
-| `X-Frame-Options` | `DENY` | Prevents embedding within external `<iframe>` elements (Clickjacking mitigation). |
-| `X-XSS-Protection` | `1; mode=block` | Activates browser XSS filtering and terminates page rendering if reflected attacks are detected. |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Protects privacy by preserving origin details only across encrypted requests. |
-
-### 3.2 Granular CORS Policy
-- Configurable via `CORS_ORIGIN` (defaults to `http://localhost:5173` in development).
-- Explicit allowed methods: `GET, POST, PUT, DELETE, OPTIONS`.
-- Explicit allowed headers: `Content-Type, Authorization, Accept, X-Requested-With`.
-- Credentials enabled: `Access-Control-Allow-Credentials: true`.
-
-### 3.3 Request Body Limits & DoS Mitigation
-To prevent memory exhaustion attacks and Denial-of-Service via unbounded request streams:
-- Standard JSON endpoints enforce `http.MaxBytesReader(w, r.Body, 1<<20)` (strictly $1\text{ MB}$).
-- Avatar upload multipart endpoints enforce `http.MaxBytesReader(w, r.Body, 6*1024*1024)` ($6\text{ MB}$, covering the $5\text{ MB}$ file + boundary headers).
+| `X-Content-Type-Options` | `nosniff` | Blocks MIME sniffing |
+| `X-Frame-Options` | `DENY` | Clickjacking mitigation |
+| `X-XSS-Protection` | `1; mode=block` | Browser XSS filtering |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Origin privacy |
+| `Content-Security-Policy` | Configured strict policy | Script & injection containment |
 
 ---
 
-## 4. S3-Compatible Object Storage for Profile Avatars
+## 6. WebSocket Security & Connection Tickets
 
-### 4.1 Storage Architecture
-The storage subsystem (`internal/storage/storage.go`) leverages `minio-go/v7` to support any standard S3-compliant object store:
-- **Supported Providers**: AWS S3, Cloudflare R2, MinIO, Wasabi, Backblaze B2, Ceph.
-- **Environment Variables**:
-  - `S3_ENDPOINT`: S3 host (e.g., `s3.amazonaws.com` or Cloudflare R2 endpoint).
-  - `S3_BUCKET`: Target bucket name (e.g., `chessnova-avatars`).
-  - `S3_ACCESS_KEY` & `S3_SECRET_KEY`: IAM / API credentials.
-  - `S3_REGION`: Storage region (e.g., `us-east-1` or `auto`).
-  - `S3_USE_SSL`: `true` / `false`.
-  - `S3_PUBLIC_URL`: Optional custom CDN or public domain prefix (e.g., `https://cdn.chessnova.com`).
-  - `LOCAL_UPLOAD_DIR`: Local disk directory for zero-config fallback (default: `uploads/avatars`).
+### 6.1 Single-Use Connection Tickets
+To avoid exposing long-lived access tokens in WebSocket connection URLs and proxy access logs:
+1. Client calls `POST /api/v1/ws/ticket` with standard Bearer authorization.
+2. Server generates a cryptographically random, single-use ticket expiring in 60 seconds (`internal/websocket/websocket.go`).
+3. Client establishes WebSocket connection using `ws://.../ws/game/{id}?ticket={ticket}`.
+4. Ticket is atomically consumed upon connection; reuse attempts are rejected.
 
-### 4.2 MIME Validation & Magic-Byte Sniffing
-To prevent malicious file uploads (e.g., SVG-based stored XSS or disguised executables):
-1. The server reads the raw byte stream into memory.
-2. The byte stream is inspected via `http.DetectContentType(fileData)` for true file signature magic numbers.
-3. Only the following MIME types are accepted:
-   - `image/jpeg` (`.jpg`)
-   - `image/png` (`.png`)
-   - `image/webp` (`.webp`)
-   - `image/gif` (`.gif`)
-4. Files disguised with false headers or SVG markup are rejected immediately with `400 Bad Request`.
+### 6.2 Origin Validation Policy
+In `internal/websocket/websocket.go`:
+- Validates origin scheme, host, and port against configured `CORS_ORIGIN` and production domains (`https://chessnova.com`).
+- Explicitly permits native desktop schemes: `tauri://localhost` and `http://tauri.localhost`.
+- In production (`ENV=production`), missing origins and arbitrary localhost ports are strictly rejected.
 
-### 4.3 Automatic Local Storage Fallback
-When running locally or during self-hosted deployment without S3 credentials, the storage engine:
-- Automatically detects missing S3 configuration.
-- Safely writes validated avatar images to `./uploads/avatars/avatar_<userID>_<randomHex>.<ext>`.
-- Serves avatars directly through a protected static HTTP file handler at `/uploads/avatars/*`.
+### 6.3 Spectator Policy & Per-Connection Rate Limiting
+- **Spectator Authorization**: Spectators connecting to game rooms have strictly read-only capabilities. Any incoming move, draw offer, resignation, or timeout claim from a non-player client is rejected immediately.
+- **Message Rate Limiting**: Each WebSocket client is rate-limited to 25 messages per second to prevent spamming and CPU exhaustion.
+- **Deadlines & Limits**: Configured with 60s read deadlines, periodic ping/pong heartbeats, and 64KB max payload sizes.
 
 ---
 
-## 5. External Platform Verification (Chess.com & Lichess)
+## 7. Puzzle Rating Integrity
 
-To preserve data integrity when users link external accounts:
-- Usernames are validated against alphanumeric and hyphen/underscore rules.
-- When `POST /api/v1/users/link-accounts` is invoked, the Go server performs a synchronous verification request to Chess.com (`/pub/player/{username}/stats`) and Lichess (`/api/user/{username}`).
-- If the account does not exist on the external platform, the linking attempt is rejected with a clear error message.
-- External game archives imported for Game Review are sanitized and parsed through the authoritative pure-Go PGN parser before evaluation.
+- **Server-Side Verification**: `VerifyMove` in `internal/puzzle/puzzle.go` validates user moves strictly against the authoritative puzzle solution; client-provided success booleans are ignored.
+- **Assistance Detection**: Calling `/puzzles/{id}/hint` or `/puzzles/{id}/solution` sets a server-side `puzzleAssisted` flag on the session, disabling rating gains.
+- **Idempotent Scoring**: Duplicate or retry attempts on already-solved puzzles award 0 Elo points (`isRetry = true`). Anonymous users cannot alter ratings.
+
+---
+
+## 8. Avatar Upload Security & SSRF Protections
+
+### 8.1 Image Decoding & Polyglot Defense
+Avatar upload in `internal/storage/storage.go` enforces multi-layer inspection:
+1. Max request body bounded to 6 MB.
+2. Sniffs MIME magic numbers (`image/png`, `image/jpeg`, `image/webp`).
+3. Uses Go's `image.DecodeConfig` to parse actual image dimensions and block SVG XSS, polyglot shells, and decompression bombs ($> 4096 \times 4096\text{ px}$).
+
+### 8.2 SSRF Protections for External Profiles
+In `internal/external/external.go`:
+- Usernames for Chess.com and Lichess are validated against strict regex: `^[a-zA-Z0-9_\-\.]{1,50}$`.
+- The outgoing HTTP client implements a custom `CheckRedirect` interceptor blocking any redirect targeting private or loopback IP ranges (RFC 1918, `127.0.0.0/8`, `169.254.0.0/16`).
+
+---
+
+## 9. Desktop (Tauri) Content Security Policy
+
+In `apps/desktop/src-tauri/tauri.conf.json`, the native webview enforces a strict Content Security Policy:
+```text
+default-src 'self' tauri: ipc:; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https: http: ws: wss: ipc: tauri:; font-src 'self' data:;
+```
+- Allows WebAssembly execution for local Stockfish analysis (`'wasm-unsafe-eval'`).
+- Blocks unauthorized external scripts and inline script execution.

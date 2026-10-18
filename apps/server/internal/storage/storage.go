@@ -7,6 +7,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"log"
 	"net/http"
 	"os"
@@ -117,6 +121,22 @@ func (s *S3StorageService) UploadAvatar(ctx context.Context, userID string, file
 		finalContentType = "image/gif"
 	default:
 		return "", ErrInvalidFileType
+	}
+
+	// Verify image integrity and dimensions to prevent SVG/script polyglots and decompression bombs
+	if finalContentType != "image/webp" {
+		cfg, _, err := image.DecodeConfig(bytes.NewReader(fileData))
+		if err != nil {
+			return "", ErrInvalidFileType
+		}
+		if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > 4096 || cfg.Height > 4096 {
+			return "", errors.New("image dimensions must be between 1x1 and 4096x4096 pixels")
+		}
+	} else {
+		// Basic WebP header integrity
+		if len(fileData) < 12 || string(fileData[:4]) != "RIFF" || string(fileData[8:12]) != "WEBP" {
+			return "", ErrInvalidFileType
+		}
 	}
 
 	// Generate clean randomized filename

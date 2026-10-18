@@ -30,8 +30,48 @@ Returns system health, database status, and current UTC server time.
 ---
 
 ### 1.2 Authentication
+
+#### `POST /api/v1/auth/register/send-otp`
+Initiates account registration by generating a 6-digit email verification OTP.
+- **Request Body**:
+  ```json
+  {
+    "username": "grandmaster_alex",
+    "email": "alex@chessnova.com",
+    "password": "SecurePassword123!"
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "message": "OTP sent to your email address",
+    "email": "alex@chessnova.com",
+    "expiresIn": 600
+  }
+  ```
+
+#### `POST /api/v1/auth/register/verify-otp`
+Completes registration after verifying the one-time password code.
+- **Request Body**:
+  ```json
+  {
+    "email": "alex@chessnova.com",
+    "otp": "481920"
+  }
+  ```
+- **Response**: `201 Created` (returns user profile and initial token pair).
+
+#### `POST /api/v1/auth/register/resend-otp`
+Requests a new verification code for a pending registration. Rate limited to 3 req/min.
+- **Request Body**:
+  ```json
+  {
+    "email": "alex@chessnova.com"
+  }
+  ```
+
 #### `POST /api/v1/auth/register`
-Register a new player account. Default Elo rating of 400 is initialized across all categories.
+Direct registration route (requires password 6–128 characters).
 - **Request Body**:
   ```json
   {
@@ -41,18 +81,6 @@ Register a new player account. Default Elo rating of 400 is initialized across a
   }
   ```
 - **Response**: `201 Created`
-  ```json
-  {
-    "user": {
-      "id": "651234567890abcdef123456",
-      "username": "grandmaster_alex",
-      "email": "alex@chessnova.com",
-      "createdAt": "2026-10-09T01:14:00Z"
-    },
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
-  }
-  ```
 
 #### `POST /api/v1/auth/login`
 Authenticate with credentials and obtain JWT tokens.
@@ -66,10 +94,23 @@ Authenticate with credentials and obtain JWT tokens.
 - **Response**: `200 OK` (returns user and tokens).
 
 #### `POST /api/v1/auth/refresh`
-Exchange a valid refresh token for a newly signed access token.
+Exchange a valid refresh token for a newly signed token pair.
 - **Request Body**:
   ```json
   { "refreshToken": "eyJhbGciOiJIUzI1NiIs..." }
+  ```
+- **Security Notice**: Enforces **Refresh Token Rotation**. The presented token is immediately revoked upon use. Presenting a previously rotated token triggers reuse detection and revokes all active sessions for the user.
+
+#### `POST /api/v1/auth/logout` *(Auth Optional)*
+Explicitly revokes active user tokens on the server.
+- **Headers**: `Authorization: Bearer <accessToken>` (optional)
+- **Request Body**:
+  ```json
+  { "refreshToken": "eyJhbGciOiJIUzI1NiIs..." }
+  ```
+- **Response**: `200 OK`
+  ```json
+  { "message": "logged out successfully" }
   ```
 
 ---
@@ -100,7 +141,30 @@ Fetch the authenticated user's profile, bio, country, linked accounts, and curre
   ```
 
 #### `GET /api/v1/users/{username}`
-Public profile endpoint retrieving public stats, bio, country, ratings, and recent games.
+Public profile endpoint retrieving public stats, bio, country, ratings, and recent games. Sensitive account details (email, password hash, verification status) are strictly omitted.
+- **Response**: `200 OK`
+  ```json
+  {
+    "user": {
+      "id": "651234567890abcdef123456",
+      "username": "grandmaster_alex",
+      "avatar": "/uploads/avatars/avatar_6512_abc123.png",
+      "bio": "Tactical attacking player.",
+      "country": "United States",
+      "chessComUsername": "alex_chess",
+      "lichessUsername": "alex_li",
+      "createdAt": "2026-10-09T01:14:00Z"
+    },
+    "ratings": {
+      "bullet": { "rating": 400, "rd": 350 },
+      "blitz": { "rating": 520, "rd": 210 },
+      "rapid": { "rating": 400, "rd": 350 },
+      "classical": { "rating": 400, "rd": 350 },
+      "puzzle": { "rating": 400, "rd": 350 }
+    },
+    "recentGames": [ ... ]
+  }
+  ```
 
 #### `PUT /api/v1/users/profile` *(Auth Required)*
 Update the authenticated user's profile details.
@@ -307,7 +371,37 @@ Automated server-side review of any finished game by ID.
 - `GET /api/v1/puzzles/{id}`: Retrieves puzzle position and metadata by ID.
 - `GET /api/v1/puzzles/{id}/hint`: Provides a contextual hint (e.g. piece type or tactical theme) without spoiling the solution.
 - `GET /api/v1/puzzles/{id}/solution`: Retrieves the full step-by-step solution sequence.
-- `POST /api/v1/puzzles/{id}/solve`: Validates user move sequence against engine solution and updates user puzzle rating.
+- `POST /api/v1/puzzles/{id}/solve`: Validates user move sequence against engine solution and updates user puzzle rating. Idempotent: repeated attempts on previously solved puzzles award 0 rating points.
+
+---
+
+### 1.9 Administrative Operations
+
+#### `POST /api/v1/games/close-all`
+Forces immediate termination and cleanup of all active hung matches.
+- **Authorization**: Requires `X-Admin-Secret: <ADMIN_SECRET>` header or `Authorization: Bearer <ADMIN_SECRET>`.
+- **Security Notice**: URL query parameter credentials (`?secret=`) are strictly rejected. When `ADMIN_SECRET` is unset or empty, the endpoint is disabled and returns `403 Forbidden` (`ADMIN_DISABLED`).
+- **Response**: `200 OK`
+  ```json
+  {
+    "message": "all active games closed",
+    "closedCount": 3
+  }
+  ```
+
+---
+
+### 1.10 WebSocket Ticket Generation
+
+#### `POST /api/v1/ws/ticket` *(Auth Required)*
+Issues a single-use, cryptographically random connection ticket for WebSocket authentication, avoiding exposure of bearer JWTs in query strings.
+- **Response**: `200 OK`
+  ```json
+  {
+    "ticket": "wst_a1b2c3d4e5f6...",
+    "expiresIn": 60
+  }
+  ```
 
 ---
 
@@ -316,9 +410,14 @@ Automated server-side review of any finished game by ID.
 ### Connection Handshake
 Clients connect to:
 ```text
-ws://localhost:8080/ws/game/{gameId}?token={accessToken}
+ws://localhost:8080/ws/game/{gameId}?ticket={ticket}
 ```
-*(Token is optional for spectators; required for players).*
+*(Alternative for backwards compatibility: `?token={accessToken}`).*
+
+- **Spectator Mode**: If neither `ticket` nor `token` is supplied, the connection is admitted as a **spectator**. Spectators have strictly read-only capabilities and cannot submit moves, draw offers, resignations, or timeout claims.
+- **Single-Use Ticket**: Tickets expire in 60 seconds and are atomically consumed upon connection.
+- **Origin Validation**: Verified against explicit allowlist (`CORS_ORIGIN`, `https://chessnova.com`, and Tauri desktop schemes `tauri://localhost` / `http://tauri.localhost`). In production, missing origins and arbitrary localhost ports are rejected with `403 Forbidden`.
+- **Per-Socket Rate Limiting**: Max 25 messages per second per client connection. Payloads exceeding 64KB or flooding the socket are dropped with connection termination.
 
 Upon establishing connection, the server immediately emits the current board state (`game_start` or initial state).
 

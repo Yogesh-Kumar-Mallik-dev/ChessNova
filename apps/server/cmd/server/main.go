@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -30,6 +33,40 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func validateSecretsConfig(env, accessSecret, refreshSecret, adminSecret string) error {
+	isProd := strings.EqualFold(env, "production") || strings.EqualFold(env, "prod")
+	if isProd {
+		if len(accessSecret) < 32 {
+			return errors.New("JWT_ACCESS_SECRET must be explicitly configured and at least 32 characters in production")
+		}
+		if len(refreshSecret) < 32 {
+			return errors.New("JWT_REFRESH_SECRET must be explicitly configured and at least 32 characters in production")
+		}
+		if accessSecret == refreshSecret {
+			return errors.New("JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be distinct, independently generated keys")
+		}
+		if adminSecret != "" {
+			if len(adminSecret) < 32 {
+				return errors.New("ADMIN_SECRET must be at least 32 characters in production when configured")
+			}
+			if adminSecret == accessSecret || adminSecret == refreshSecret {
+				return errors.New("ADMIN_SECRET must not reuse JWT access or refresh keys")
+			}
+		}
+	} else {
+		if len(accessSecret) < 16 || len(refreshSecret) < 16 {
+			return errors.New("JWT secrets must each be at least 16 characters in development")
+		}
+		if accessSecret == refreshSecret {
+			return errors.New("JWT access and refresh secrets must be distinct keys")
+		}
+		if adminSecret != "" && (adminSecret == accessSecret || adminSecret == refreshSecret) {
+			return errors.New("ADMIN_SECRET must not reuse JWT secrets")
+		}
+	}
+	return nil
+}
+
 func getEnv(key, defaultVal string) string {
 	if val := os.Getenv(key); val != "" {
 		return val
@@ -40,6 +77,32 @@ func getEnv(key, defaultVal string) string {
 func main() {
 	log.Println("Starting Antigravity Chess Platform Server...")
 
+	env := getEnv("ENV", getEnv("APP_ENV", "development"))
+	isProd := strings.EqualFold(env, "production") || strings.EqualFold(env, "prod")
+
+	jwtAccessSecret := os.Getenv("JWT_ACCESS_SECRET")
+	jwtRefreshSecret := os.Getenv("JWT_REFRESH_SECRET")
+	adminSecret := os.Getenv("ADMIN_SECRET")
+
+	if !isProd {
+		if jwtAccessSecret == "" {
+			buf := make([]byte, 24)
+			_, _ = rand.Read(buf)
+			jwtAccessSecret = "dev_ephemeral_access_" + hex.EncodeToString(buf)
+			log.Println("[SECURITY NOTICE] JWT_ACCESS_SECRET unset; generated ephemeral non-production key.")
+		}
+		if jwtRefreshSecret == "" {
+			buf := make([]byte, 24)
+			_, _ = rand.Read(buf)
+			jwtRefreshSecret = "dev_ephemeral_refresh_" + hex.EncodeToString(buf)
+			log.Println("[SECURITY NOTICE] JWT_REFRESH_SECRET unset; generated ephemeral non-production key.")
+		}
+	}
+
+	if err := validateSecretsConfig(env, jwtAccessSecret, jwtRefreshSecret, adminSecret); err != nil {
+		log.Fatalf("Fatal security configuration error: %v", err)
+	}
+
 	mongoURI := getEnv("MONGODB_URI", "mongodb://localhost:27017")
 	mongoDBName := getEnv("MONGODB_DATABASE", "chess")
 	redisURL := getEnv("REDIS_URL", "localhost:6379")
@@ -49,8 +112,6 @@ func main() {
 	observability.DefaultMetrics.SetInstanceID(instanceID)
 
 	corsOrigin := getEnv("CORS_ORIGIN", "http://localhost:5173")
-	jwtAccessSecret := getEnv("JWT_ACCESS_SECRET", "super-secret-access-key-production-strength-12345")
-	jwtRefreshSecret := getEnv("JWT_REFRESH_SECRET", "super-secret-refresh-key-production-strength-67890")
 	resendAPIKey := getEnv("RESEND_API_KEY", "")
 	smtpHost := getEnv("SMTP_HOST", "")
 	smtpPort := getEnv("SMTP_PORT", "587")
@@ -266,7 +327,6 @@ func main() {
 		wsHub,
 		corsOrigin,
 	)
-	adminSecret := getEnv("ADMIN_SECRET", jwtAccessSecret)
 	router.SetAdminSecret(adminSecret)
 
 	loggedHandler := observability.HTTPLoggingMiddleware(observability.DefaultLogger, observability.DefaultMetrics, router)

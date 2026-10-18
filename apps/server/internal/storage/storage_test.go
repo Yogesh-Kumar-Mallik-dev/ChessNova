@@ -1,7 +1,10 @@
 package storage
 
 import (
+	"bytes"
 	"context"
+	"image"
+	"image/png"
 	"os"
 	"testing"
 )
@@ -28,9 +31,13 @@ func TestStorageLocalFallback(t *testing.T) {
 		t.Errorf("Expected ErrInvalidFileType, got %v", err)
 	}
 
-	// 2. Test valid PNG file (header: 89 50 4E 47 0D 0A 1A 0A)
-	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52}
-	url, err := svc.UploadAvatar(ctx, "user123", pngBytes, "image/png")
+	// 2. Test valid PNG file
+	img := image.NewRGBA(image.Rect(0, 0, 10, 10))
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("Failed to encode test PNG: %v", err)
+	}
+	url, err := svc.UploadAvatar(ctx, "user123", buf.Bytes(), "image/png")
 	if err != nil {
 		t.Fatalf("UploadAvatar failed for valid PNG: %v", err)
 	}

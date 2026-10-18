@@ -6,12 +6,18 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"chess-platform/server/internal/auth"
 	"chess-platform/server/internal/engine"
 	"chess-platform/server/internal/game"
 	"chess-platform/server/internal/review"
+	"chess-platform/server/internal/user"
+	"chess-platform/server/internal/websocket"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func setupTestRouter() *Router {
@@ -404,18 +410,26 @@ func TestAdminAuth(t *testing.T) {
 		t.Errorf("expected 200 with correct secret, got %d", w.Code)
 	}
 
-	// 4. Test logs route with query secret
+	// 4. Test logs route with query secret -> MUST be rejected with 401
 	req = httptest.NewRequest("GET", "/api/v1/logs?secret=test-secret-12345", nil)
 	w = httptest.NewRecorder()
-	// Just start request to verify it does not reject with 401
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 rejecting query parameter secret, got %d", w.Code)
+	}
+
+	// 5. Test logs route with header secret -> authorized (not 401)
+	req = httptest.NewRequest("GET", "/api/v1/logs", nil)
+	req.Header.Set("X-Admin-Secret", "test-secret-12345")
+	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	if w.Code == http.StatusUnauthorized {
-		t.Errorf("expected authorized access with query secret, got 401")
+		t.Errorf("expected header secret authorized, got 401")
 	}
 }
 
 func TestRateLimiter(t *testing.T) {
-	limiter := newIPRateLimiter(3, 500*time.Millisecond)
+	limiter := newIPRateLimiter("test", 3, 500*time.Millisecond)
 
 	ip := "192.168.1.100"
 	if !limiter.allow(ip) {
@@ -435,6 +449,205 @@ func TestRateLimiter(t *testing.T) {
 	time.Sleep(550 * time.Millisecond)
 	if !limiter.allow(ip) {
 		t.Fatalf("request after window expiry should be allowed")
+	}
+}
+
+type testUserRepo struct {
+	users map[string]*user.User
+}
+
+func newTestUserRepo() *testUserRepo {
+	return &testUserRepo{users: make(map[string]*user.User)}
+}
+
+func (m *testUserRepo) Create(ctx context.Context, u *user.User) error {
+	u.ID = primitive.NewObjectID()
+	m.users[u.Username] = u
+	return nil
+}
+func (m *testUserRepo) FindByID(ctx context.Context, id primitive.ObjectID) (*user.User, error) {
+	for _, u := range m.users {
+		if u.ID == id {
+			return u, nil
+		}
+	}
+	return nil, user.ErrNotFound
+}
+func (m *testUserRepo) FindByUsername(ctx context.Context, username string) (*user.User, error) {
+	if u, ok := m.users[username]; ok {
+		return u, nil
+	}
+	return nil, user.ErrNotFound
+}
+func (m *testUserRepo) FindByEmail(ctx context.Context, email string) (*user.User, error) {
+	for _, u := range m.users {
+		if u.Email == email {
+			return u, nil
+		}
+	}
+	return nil, user.ErrNotFound
+}
+func (m *testUserRepo) UpdateProfile(ctx context.Context, id primitive.ObjectID, bio, country string) error {
+	return nil
+}
+func (m *testUserRepo) UpdateAvatar(ctx context.Context, id primitive.ObjectID, avatarURL string) error {
+	return nil
+}
+func (m *testUserRepo) UpdateLinkedAccounts(ctx context.Context, id primitive.ObjectID, chessCom, lichess string) error {
+	return nil
+}
+func (m *testUserRepo) EnsureIndexes(ctx context.Context) error {
+	return nil
+}
+
+func TestPublicProfileDoesNotLeakPrivateData(t *testing.T) {
+	repo := newTestUserRepo()
+	testUser := &user.User{
+		ID:            primitive.NewObjectID(),
+		Username:      "grandmaster",
+		Email:         "private_grandmaster@chessnova.com",
+		PasswordHash:  "$2a$10$insecurehashvalueshouldneverbeexposed",
+		EmailVerified: true,
+		Bio:           "Candidate Master",
+		Country:       "NO",
+	}
+	_ = repo.Create(context.Background(), testUser)
+
+	router := NewRouter(nil, repo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "*")
+
+	req := httptest.NewRequest("GET", "/api/v1/users/grandmaster", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", w.Code)
+	}
+
+	respBody := w.Body.String()
+
+	// Verify public fields are present
+	if !strings.Contains(respBody, `"username":"grandmaster"`) {
+		t.Errorf("expected username in public profile response")
+	}
+
+	// Verify private fields are strictly absent
+	if strings.Contains(respBody, "private_grandmaster@chessnova.com") {
+		t.Errorf("SECURITY VULNERABILITY: User email address leaked in public profile: %s", respBody)
+	}
+	if strings.Contains(respBody, "insecurehashvalue") {
+		t.Errorf("SECURITY VULNERABILITY: Password hash leaked in public profile: %s", respBody)
+	}
+	if strings.Contains(respBody, "emailVerified") {
+		t.Errorf("SECURITY VULNERABILITY: Internal emailVerified flag leaked in public profile")
+	}
+}
+
+func TestAdminEndpointsInaccessibleWhenNotConfigured(t *testing.T) {
+	router := setupTestRouter()
+	router.SetAdminSecret("") // explicitly unconfigured
+
+	req := httptest.NewRequest("POST", "/api/v1/games/close-all", nil)
+	req.Header.Set("X-Admin-Secret", "some-arbitrary-secret")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected 403 Forbidden when admin secret is unconfigured, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "ADMIN_DISABLED") {
+		t.Errorf("expected ADMIN_DISABLED error code, got %s", w.Body.String())
+	}
+}
+
+func TestSpoofedIPRateLimiting(t *testing.T) {
+	// 1. Untrusted peer trying to spoof X-Forwarded-For
+	req := httptest.NewRequest("GET", "/api/v1/games", nil)
+	req.RemoteAddr = "203.0.113.195:54321" // Public internet IP (not trusted proxy)
+	req.Header.Set("X-Forwarded-For", "127.0.0.1, 10.0.0.1")
+	req.Header.Set("X-Real-IP", "1.1.1.1")
+
+	extractedIP := getClientIP(req)
+	if extractedIP != "203.0.113.195" {
+		t.Errorf("SECURITY VULNERABILITY: Blindly trusted X-Forwarded-For from untrusted remote peer! Got %s, expected 203.0.113.195", extractedIP)
+	}
+
+	// 2. Trusted reverse proxy forwarding client IP
+	proxyReq := httptest.NewRequest("GET", "/api/v1/games", nil)
+	proxyReq.RemoteAddr = "127.0.0.1:45123" // Localhost Nginx reverse proxy
+	proxyReq.Header.Set("X-Forwarded-For", "198.51.100.77")
+
+	trustedExtracted := getClientIP(proxyReq)
+	if trustedExtracted != "198.51.100.77" {
+		t.Errorf("expected trusted proxy forwarding to extract client IP 198.51.100.77, got %s", trustedExtracted)
+	}
+}
+
+func TestWSTicketCreationAndConsumption(t *testing.T) {
+	authSvc := auth.NewService(nil, "access-secret-32-chars-long-test1", "refresh-secret-32-chars-long-test2")
+	hub := websocket.NewHub(nil, authSvc)
+
+	ticket := hub.CreateTicket("user-123", "charlie")
+	if ticket == "" {
+		t.Fatalf("expected non-empty ticket")
+	}
+
+	// First consumption succeeds
+	uid, uname, ok := hub.ConsumeTicket(ticket)
+	if !ok || uid != "user-123" || uname != "charlie" {
+		t.Fatalf("expected successful ticket consumption, got ok=%v uid=%s uname=%s", ok, uid, uname)
+	}
+
+	// Second consumption fails (single-use ticket)
+	_, _, ok2 := hub.ConsumeTicket(ticket)
+	if ok2 {
+		t.Errorf("SECURITY VULNERABILITY: WebSocket connection ticket was re-used after consumption!")
+	}
+}
+
+func TestRefreshTokenRotationAndSessionRevocation(t *testing.T) {
+	repo := newTestUserRepo()
+	authSvc := auth.NewService(repo, "access-secret-32-chars-long-test1", "refresh-secret-32-chars-long-test2")
+	ctx := context.Background()
+
+	u := &user.User{Username: "david"}
+	_ = repo.Create(ctx, u)
+	tokens, err := authSvc.GenerateTokenPair(u)
+	if err != nil {
+		t.Fatalf("failed to generate tokens: %v", err)
+	}
+
+	// 1. Initial access token is valid
+	claims, err := authSvc.ValidateAccessToken(tokens.AccessToken)
+	if err != nil || claims.Username != "david" {
+		t.Fatalf("expected valid access token: %v", err)
+	}
+
+	// 2. Refresh token rotation: using refresh token issues new pair and revokes old
+	newPair, err := authSvc.Refresh(ctx, tokens.RefreshToken)
+	if err != nil {
+		t.Fatalf("expected successful refresh: %v", err)
+	}
+	if newPair.AccessToken == "" || newPair.RefreshToken == "" {
+		t.Fatalf("expected new tokens")
+	}
+
+	// 3. Reuse detection: using the old refresh token MUST fail and trigger session revocation!
+	_, err = authSvc.Refresh(ctx, tokens.RefreshToken)
+	if err != auth.ErrInvalidToken {
+		t.Errorf("SECURITY VULNERABILITY: Rotated refresh token was accepted again without reuse error! Got %v", err)
+	}
+
+	// 4. Logout revokes token
+	logoutPair, _ := authSvc.GenerateTokenPair(u)
+	err = authSvc.Logout(ctx, logoutPair.AccessToken, logoutPair.RefreshToken)
+	if err != nil {
+		t.Fatalf("logout error: %v", err)
+	}
+
+	// Validating logged-out access token must fail
+	_, err = authSvc.ValidateAccessToken(logoutPair.AccessToken)
+	if err != auth.ErrInvalidToken {
+		t.Errorf("SECURITY VULNERABILITY: Logged out access token was still accepted as valid!")
 	}
 }
 

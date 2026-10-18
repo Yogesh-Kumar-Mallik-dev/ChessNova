@@ -126,6 +126,33 @@ export const api = {
 			request<{ accessToken: string; refreshToken: string }>('/auth/refresh', {
 				method: 'POST',
 				body: JSON.stringify({ refreshToken })
+			}),
+		logout: async () => {
+			const accessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+			const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
+			try {
+				if (accessToken || refreshToken) {
+					await fetch(`${API_BASE}/auth/logout`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+						},
+						body: JSON.stringify({ refreshToken })
+					});
+				}
+			} catch (e) {
+				console.error('Failed to notify server of logout:', e);
+			} finally {
+				if (typeof window !== 'undefined') {
+					localStorage.removeItem('access_token');
+					localStorage.removeItem('refresh_token');
+				}
+			}
+		},
+		getWSTicket: () =>
+			request<{ ticket: string; expiresIn: number }>('/ws/ticket', {
+				method: 'POST'
 			})
 	},
 	users: {

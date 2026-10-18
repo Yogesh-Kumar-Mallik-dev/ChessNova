@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -9,6 +10,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// ErrNotFound is returned when a requested user document does not exist.
+var ErrNotFound = errors.New("user not found")
+
 
 type User struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty" json:"id"`
@@ -23,6 +28,32 @@ type User struct {
 	EmailVerified    bool               `bson:"emailVerified" json:"emailVerified"`
 	CreatedAt        time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt        time.Time          `bson:"updatedAt" json:"updatedAt"`
+}
+
+// PublicUser is the sanitized DTO returned by public endpoints, strictly omitting
+// email, password hashes, verification state, and internal timestamps.
+type PublicUser struct {
+	ID               primitive.ObjectID `json:"id"`
+	Username         string             `json:"username"`
+	Avatar           string             `json:"avatar"`
+	Bio              string             `json:"bio"`
+	Country          string             `json:"country"`
+	ChessComUsername string             `json:"chessComUsername,omitempty"`
+	LichessUsername  string             `json:"lichessUsername,omitempty"`
+	CreatedAt        time.Time          `json:"createdAt"`
+}
+
+func (u *User) ToPublic() PublicUser {
+	return PublicUser{
+		ID:               u.ID,
+		Username:         u.Username,
+		Avatar:           u.Avatar,
+		Bio:              u.Bio,
+		Country:          u.Country,
+		ChessComUsername: u.ChessComUsername,
+		LichessUsername:  u.LichessUsername,
+		CreatedAt:        u.CreatedAt,
+	}
 }
 
 type Repository interface {

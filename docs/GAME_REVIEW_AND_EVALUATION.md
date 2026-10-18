@@ -144,3 +144,23 @@ To avoid unrealistic or arbitrary ratings, ChessNova calibrates estimated perfor
 Installing complete 6-piece Syzygy endgame tablebases requires $\sim 150\text{ GB}$ of disk storage, which is impractical for portable repository distribution. Instead, ChessNova deploys **automatic dynamic depth scaling**:
 - When total remaining pieces on the board drop to **$\le 10$ pieces**, the review engine boosts Stockfish search depth from $10$ to **$14\text{ plies}$**.
 - This guarantees $\ge 99.5\%$ theoretical accuracy on endgames within milliseconds, accurately identifying technical winning conversions and tablebase-style draws with zero storage overhead.
+
+---
+
+## 10. Cost-Effective & Fair Hybrid Evaluation Architecture
+
+To ensure optimal server scalability while preserving competitive fairness:
+
+### 10.1 Dual-Tier Evaluation Distribution
+- **Offline & Bot Games (Local Stockfish WASM)**:
+  - Practice matches against Bot personas, Pass-and-Play games, and local PGN scratchpad explorations run on the client via **Stockfish WebAssembly (WASM)**.
+  - Generates instant pre-reviews and move classifications without consuming backend CPU cycles or incurring server hosting costs.
+  - Enables full Game Review capabilities even when disconnected or running offline in the desktop Tauri client.
+- **Ranked & Multiplayer Games (Server-Authoritative Stockfish 19 UCI)**:
+  - All rated multiplayer matches are evaluated authoritatively on the Go backend (`internal/review`).
+  - Guarantees unbiased, tamper-proof CAPS accuracy scores, fair Elo performance estimations, and authoritative cheat-detection heuristics.
+
+### 10.2 Default Pre-Review & Persistent Caching
+- When a multiplayer match concludes or a review is requested for the first time via `POST /api/v1/games/{id}/review`, the evaluation result is computed and atomically persisted into the MongoDB document (`game.review`).
+- Subsequent requests to view the game review retrieve the cached payload immediately (`200 OK`) in $< 5\text{ ms}$, eliminating redundant engine evaluations and ensuring games are stored reviewed by default.
+
