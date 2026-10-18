@@ -1820,7 +1820,8 @@ func (rt *Router) handleReviewGameByID(w http.ResponseWriter, r *http.Request) {
 	var result *review.ReviewResult
 	if strings.TrimSpace(gameDoc.PGN) != "" {
 		result, err = rt.reviewService.AnalyzePGN(r.Context(), gameDoc.PGN)
-	} else if len(gameDoc.Moves) > 0 {
+	}
+	if (result == nil || err != nil) && len(gameDoc.Moves) > 0 {
 		inputMoves := make([]review.InputMove, len(gameDoc.Moves))
 		for i, m := range gameDoc.Moves {
 			inputMoves[i] = review.InputMove{
@@ -1831,7 +1832,12 @@ func (rt *Router) handleReviewGameByID(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		result, err = rt.reviewService.AnalyzeMoves(r.Context(), inputMoves)
-	} else {
+	}
+	if result == nil && err != nil {
+		writeError(w, http.StatusInternalServerError, "REVIEW_ERROR", err.Error())
+		return
+	}
+	if result == nil {
 		writeError(w, http.StatusBadRequest, "NO_MOVES", "game has no moves to review")
 		return
 	}

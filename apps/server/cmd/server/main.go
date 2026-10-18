@@ -151,42 +151,51 @@ func main() {
 	engineService := engine.NewStockfishEngine()
 	reviewService := review.NewReviewService(engineService)
 
-	// Background Game Pre-Evaluation Worker
-	// Automatically analyzes finished multiplayer matches so Game Review is instant (<1ms)
-	preEvalQueue := make(chan string, 100)
-	go func() {
-		for gameID := range preEvalQueue {
-			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-			doc, err := gameRepo.FindByID(ctx, gameID)
-			if err == nil && doc != nil && !doc.IsEvaluated && len(doc.Moves) > 0 {
-				var res *review.ReviewResult
-				var rErr error
-				if strings.TrimSpace(doc.PGN) != "" {
-					res, rErr = reviewService.AnalyzePGN(ctx, doc.PGN)
-				} else {
-					inputMoves := make([]review.InputMove, len(doc.Moves))
-					for i, m := range doc.Moves {
-						inputMoves[i] = review.InputMove{
-							From: m.From,
-							To:   m.To,
-							SAN:  m.SAN,
-							FEN:  m.FEN,
-						}
+	// Background Game Pre-Evaluation Worker Pool
+	// Automatically analyzes finished games so they are stored reviewed by default
+	preEvalQueue := make(chan string, 200)
+	for w := 0; w < 2; w++ {
+		go func(workerID int) {
+			for gameID := range preEvalQueue {
+				ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+				doc, err := gameRepo.FindByID(ctx, gameID)
+				if err == nil && doc != nil && !doc.IsEvaluated && len(doc.Moves) > 0 {
+					var res *review.ReviewResult
+					var rErr error
+					if strings.TrimSpace(doc.PGN) != "" {
+						res, rErr = reviewService.AnalyzePGN(ctx, doc.PGN)
 					}
-					res, rErr = reviewService.AnalyzeMoves(ctx, inputMoves)
+					if (res == nil || rErr != nil) && len(doc.Moves) > 0 {
+						inputMoves := make([]review.InputMove, len(doc.Moves))
+						for i, m := range doc.Moves {
+							inputMoves[i] = review.InputMove{
+								From: m.From,
+								To:   m.To,
+								SAN:  m.SAN,
+								FEN:  m.FEN,
+							}
+						}
+						res, rErr = reviewService.AnalyzeMoves(ctx, inputMoves)
+					}
+					if rErr == nil && res != nil {
+						_ = gameRepo.SaveReview(ctx, gameID, res)
+						observability.DefaultLogger.Info("Game stored with review completed", map[string]interface{}{
+							"worker":        workerID,
+							"gameId":        gameID,
+							"whiteAccuracy": res.WhiteAccuracy,
+							"blackAccuracy": res.BlackAccuracy,
+						})
+					} else {
+						// Persist placeholder review to avoid re-queuing corrupted/unparsable games
+						_ = gameRepo.SaveReview(ctx, gameID, &review.ReviewResult{
+							Moves: []review.ReviewedMove{},
+						})
+					}
 				}
-				if rErr == nil && res != nil {
-					_ = gameRepo.SaveReview(ctx, gameID, res)
-					observability.DefaultLogger.Info("Background game pre-evaluation completed", map[string]interface{}{
-						"gameId":        gameID,
-						"whiteAccuracy": res.WhiteAccuracy,
-						"blackAccuracy": res.BlackAccuracy,
-					})
-				}
+				cancel()
 			}
-			cancel()
-		}
-	}()
+		}(w + 1)
+	}
 
 	// Register background pre-evaluation hook when any game finishes
 	gameService.AddOnGameFinish(func(doc *game.GameDocument) {
@@ -194,10 +203,39 @@ func main() {
 			select {
 			case preEvalQueue <- doc.ID:
 			default:
-				// Queue full under extreme load, will be evaluated on-demand if requested
+				// Queue full under extreme load, will be evaluated by background sweeper
 			}
 		}
 	})
+
+	// Background Sweeper: Ensures all past and unreviewed finished games are reviewed by default
+	go func() {
+		time.Sleep(3 * time.Second)
+		ticker := time.NewTicker(3 * time.Minute)
+		defer ticker.Stop()
+
+		sweep := func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			unreviewed, err := gameRepo.FindUnreviewedGames(ctx, 30)
+			if err == nil && len(unreviewed) > 0 {
+				observability.DefaultLogger.Info("Queuing unreviewed games for automatic review", map[string]interface{}{
+					"count": len(unreviewed),
+				})
+				for _, g := range unreviewed {
+					select {
+					case preEvalQueue <- g.ID:
+					default:
+					}
+				}
+			}
+		}
+
+		sweep()
+		for range ticker.C {
+			sweep()
+		}
+	}()
 
 	// 6. Initialize Storage & External Platform Services
 	storageService := storage.NewStorageService(storage.Config{

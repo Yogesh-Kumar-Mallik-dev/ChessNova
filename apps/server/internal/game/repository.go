@@ -16,6 +16,7 @@ type Repository interface {
 	FindByID(ctx context.Context, id string) (*GameDocument, error)
 	FindUserGames(ctx context.Context, userID string, limit, skip int) ([]GameDocument, error)
 	FindRecentGames(ctx context.Context, limit int) ([]GameDocument, error)
+	FindUnreviewedGames(ctx context.Context, limit int) ([]GameDocument, error)
 	EnsureIndexes(ctx context.Context) error
 }
 
@@ -126,3 +127,29 @@ func (r *MongoRepository) FindRecentGames(ctx context.Context, limit int) ([]Gam
 	}
 	return list, nil
 }
+
+func (r *MongoRepository) FindUnreviewedGames(ctx context.Context, limit int) ([]GameDocument, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	filter := bson.M{
+		"isEvaluated": bson.M{"$ne": true},
+		"moves.0":     bson.M{"$exists": true},
+	}
+	opts := options.Find().
+		SetSort(bson.D{{Key: "startedAt", Value: -1}}).
+		SetLimit(int64(limit))
+
+	cursor, err := r.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var list []GameDocument
+	if err := cursor.All(ctx, &list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+

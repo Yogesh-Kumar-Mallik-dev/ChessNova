@@ -61,6 +61,16 @@ func (m *mockGameRepo) FindRecentGames(ctx context.Context, limit int) ([]GameDo
 	return list, nil
 }
 
+func (m *mockGameRepo) FindUnreviewedGames(ctx context.Context, limit int) ([]GameDocument, error) {
+	var list []GameDocument
+	for _, g := range m.games {
+		if !g.IsEvaluated && len(g.Moves) > 0 {
+			list = append(list, *g)
+		}
+	}
+	return list, nil
+}
+
 func (m *mockGameRepo) EnsureIndexes(ctx context.Context) error {
 	return nil
 }

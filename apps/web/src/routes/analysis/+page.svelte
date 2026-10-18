@@ -142,12 +142,19 @@
 				sessionStorage.removeItem('review_pgn');
 			} else if (gameIdParam) {
 				try {
-					const fetchedPgn = await api.games.getPgn(gameIdParam);
+					const [fetchedPgn, gameReview] = await Promise.all([
+						api.games.getPgn(gameIdParam).catch(() => null),
+						api.games.review(gameIdParam).catch(() => null)
+					]);
 					if (fetchedPgn) {
 						loadPgnContent(fetchedPgn);
 					}
+					if (gameReview) {
+						reviewResult = gameReview;
+						rightPanelTab = 'review';
+					}
 				} catch (e) {
-					console.error('Failed to load game PGN:', e);
+					console.error('Failed to load game data:', e);
 				}
 			} else {
 				const savedMoves = sessionStorage.getItem('review_moves');
