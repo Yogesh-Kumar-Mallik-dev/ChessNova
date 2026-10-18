@@ -650,35 +650,81 @@ export async function reviewGameLocally(
 	let blackAccSum = 0;
 	let blackAccCount = 0;
 
+	const getPieceName = (pieceType: string): string => {
+		switch (pieceType) {
+			case 'q': return 'Queen';
+			case 'r': return 'Rook';
+			case 'b': return 'Bishop';
+			case 'n': return 'Knight';
+			case 'p': return 'pawn';
+			case 'k': return 'King';
+			default: return 'piece';
+		}
+	};
+
 	let prevScoreCp = 30; // standard starting evaluation
 	let prevWinChance = 52.8;
+	let prevBestMoveUci = 'e2e4';
 
 	const total = moves.length;
-	onProgress?.(5, 'Starting local Stockfish game review...');
+	onProgress?.(5, 'Starting local Stockfish 19 game review...');
+
+	try {
+		const startEval = await evaluatePosition(c.fen(), 12, 120);
+		if (startEval?.result) {
+			prevScoreCp = startEval.result.scoreCp;
+			prevWinChance = startEval.result.winChance;
+			if (startEval.result.bestMove) prevBestMoveUci = startEval.result.bestMove;
+		}
+	} catch (e) {
+		console.warn('[Engine] Initial pos eval error:', e);
+	}
+
+	evalGraph.push({ ply: 0, scoreCp: prevScoreCp, san: '' });
 
 	for (let i = 0; i < moves.length; i++) {
 		const m = moves[i];
 		const ply = i + 1;
 		const moveNumber = Math.floor(i / 2) + 1;
 		const color = i % 2 === 0 ? 'white' : 'black';
+		const isWhite = color === 'white';
 		const fenBefore = c.fen();
 
+		// Candidate legal moves before the move
+		const legalMoves = c.moves({ verbose: true });
+		const isForced = legalMoves.length === 1;
+
+		// Best move recommendation from fenBefore
+		const bestMoveUci = prevBestMoveUci;
+		const matchingBest = legalMoves.find(
+			(lm) => `${lm.from}${lm.to}` === bestMoveUci.slice(0, 4)
+		);
+		const bestMoveSan = matchingBest ? matchingBest.san : bestMoveUci;
+
 		// Apply move to chess.js
-		c.move({ from: m.from, to: m.to });
+		const promo = m.san.includes('=') ? m.san.split('=')[1][0].toLowerCase() : undefined;
+		let moveObj: any = null;
+		try {
+			moveObj = c.move({ from: m.from, to: m.to, promotion: promo });
+		} catch {
+			try {
+				moveObj = c.move(m.san);
+			} catch {}
+		}
 		const fenAfter = c.fen();
 
-		// Evaluate position after move at depth 8
+		// Deep evaluation after move with Stockfish 19 at depth 12
 		let scoreCp = prevScoreCp;
 		let winChance = prevWinChance;
-		let bestMoveSan = m.san;
-		let bestMoveUci = `${m.from}${m.to}`;
 
 		try {
-			const evalRes = await evaluatePosition(fenAfter, 6, 75);
+			const evalRes = await evaluatePosition(fenAfter, 12, 120);
 			if (evalRes?.result) {
 				scoreCp = evalRes.result.scoreCp;
 				winChance = evalRes.result.winChance;
-				bestMoveUci = evalRes.result.bestMove || bestMoveUci;
+				if (evalRes.result.bestMove) {
+					prevBestMoveUci = evalRes.result.bestMove;
+				}
 			}
 		} catch (e) {
 			console.warn('[Engine] Local review eval error at ply', ply, e);
@@ -686,44 +732,89 @@ export async function reviewGameLocally(
 
 		evalGraph.push({ ply, scoreCp, san: m.san });
 
-		// Calculate classification
-		let classification: any = 'good';
-		let explanation = 'Solid, natural move.';
+		// Calculate win chance delta for active player
+		const playerWinBefore = isWhite ? prevWinChance : 100 - prevWinChance;
+		const playerWinAfter = isWhite ? winChance : 100 - winChance;
+		const winDelta = Math.max(0, playerWinBefore - playerWinAfter);
 
-		if (ply <= 4) {
+		const playedUci = `${m.from}${m.to}`;
+		const isBest = playedUci === bestMoveUci.slice(0, 4);
+
+		// Tactical motifs
+		const isCheckmate = c.isCheckmate();
+		const isCheck = c.inCheck();
+		const oppMoves = c.moves({ verbose: true });
+		const pieceName = moveObj ? getPieceName(moveObj.piece) : 'piece';
+		const isUnderAttack = oppMoves.some((om) => om.to === m.to);
+		const isSacrifice =
+			moveObj &&
+			['n', 'b', 'r', 'q'].includes(moveObj.piece) &&
+			isUnderAttack &&
+			!moveObj.captured;
+
+		// Hanging piece detection
+		const isHangingBlunder =
+			moveObj &&
+			['n', 'b', 'r', 'q'].includes(moveObj.piece) &&
+			isUnderAttack &&
+			winDelta > 15;
+
+		let classification: any = 'good';
+		let explanation = 'Good move. Solid play that preserves the position.';
+
+		if (isForced) {
+			classification = 'forced';
+			explanation = `Forced move. ${m.san} is the only legal response available.`;
+		} else if (isCheckmate) {
+			classification = 'best';
+			explanation = `Checkmate! ${m.san} delivers the final winning blow.`;
+		} else if (ply <= 6 && winDelta <= 3) {
 			classification = 'book';
-			explanation = 'Standard opening theory.';
-		} else {
-			const delta = color === 'white' ? prevWinChance - winChance : winChance - prevWinChance;
-			if (delta <= -2) {
-				classification = 'great';
-				explanation = 'Exceptional move improving your position!';
-			} else if (delta <= 1) {
-				classification = 'best';
-				explanation = 'The engine finds this to be the optimal move.';
-			} else if (delta <= 3) {
-				classification = 'excellent';
-				explanation = 'A very strong tactical response.';
-			} else if (delta <= 7) {
-				classification = 'good';
-				explanation = 'Keeps the game balanced.';
-			} else if (delta <= 14) {
-				classification = 'inaccuracy';
-				explanation = 'Slight inaccuracy that gives away some edge.';
-			} else if (delta <= 24) {
-				classification = 'mistake';
-				explanation = 'A mistake altering the game dynamics.';
+			explanation = 'Book move. Standard opening theory.';
+		} else if (isBest && isSacrifice && playerWinAfter >= 52) {
+			classification = 'brilliant';
+			explanation = `Brilliant move!! You sacrificed your ${pieceName} on ${m.to} to seize a decisive advantage.`;
+		} else if (isBest && playerWinBefore < 55 && playerWinAfter >= 60 && winDelta <= 0.2) {
+			classification = 'great';
+			explanation = `Great move! ${m.san} was the solitary winning continuation in a complex position.`;
+		} else if ((prevScoreCp >= 9000 || playerWinBefore >= 70) && playerWinAfter < 50) {
+			classification = 'miss';
+			explanation = `Missed win! You had a decisive winning opportunity with ${bestMoveSan}.`;
+		} else if (winDelta > 21) {
+			classification = 'blunder';
+			if (isHangingBlunder) {
+				explanation = `Blunder?? ${m.san} leaves your ${pieceName} on ${m.to} undefended. ${bestMoveSan} was best.`;
 			} else {
-				classification = 'blunder';
-				explanation = 'A serious blunder that significantly harms the position.';
+				explanation = `Blunder?? ${m.san} significantly alters the game. ${bestMoveSan} was best.`;
 			}
+		} else if (winDelta > 11.5) {
+			classification = 'mistake';
+			explanation = `Mistake? ${m.san} gives away the edge. ${bestMoveSan} was a much stronger continuation.`;
+		} else if (winDelta > 5.0) {
+			classification = 'inaccuracy';
+			explanation = `Inaccuracy?! ${bestMoveSan} would have maintained a tighter grip on the position.`;
+		} else if (isBest) {
+			classification = 'best';
+			if (isCheck) {
+				explanation = `Best move! ${m.san} puts the enemy King in check with tempo.`;
+			} else {
+				explanation = `Best move! ${m.san} is the top engine recommendation.`;
+			}
+		} else if (winDelta <= 1.5) {
+			classification = 'excellent';
+			explanation = 'Excellent move! A very strong choice that keeps the pressure.';
+		} else {
+			classification = 'good';
+			explanation = 'Good move. Solid play that preserves the position.';
 		}
 
 		// Accuracy calculation
-		const delta = Math.max(0, color === 'white' ? prevWinChance - winChance : winChance - prevWinChance);
-		const accuracy = Math.max(0, Math.min(100, 100 - delta * 3.2));
+		let accuracy = Math.max(0, Math.min(100, 100 - winDelta * 3.2));
+		if (['book', 'forced', 'brilliant', 'great'].includes(classification)) {
+			accuracy = 100;
+		}
 
-		if (color === 'white') {
+		if (isWhite) {
 			whiteAccSum += accuracy;
 			whiteAccCount++;
 			// @ts-ignore
@@ -760,7 +851,7 @@ export async function reviewGameLocally(
 		prevWinChance = winChance;
 
 		const pct = Math.round(10 + ((i + 1) / total) * 88);
-		onProgress?.(pct, `Evaluating move ${ply} of ${total} with local Stockfish...`);
+		onProgress?.(pct, `Evaluating move ${ply} of ${total} with Stockfish 19...`);
 	}
 
 	onProgress?.(100, 'Local review complete!');

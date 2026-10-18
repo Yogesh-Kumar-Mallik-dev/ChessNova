@@ -312,7 +312,7 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 
 	currentPos := chess.InitialPosition()
 	prevFEN := chess.StartingFEN
-	prevEval, _ := s.engine.EvaluateFen(ctx, prevFEN, 10)
+	prevEval, _ := s.engine.EvaluateFen(ctx, prevFEN, 14)
 
 	evalGraph = append(evalGraph, EvalPoint{
 		Ply:     0,
@@ -371,10 +371,10 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 			}
 		}
 
-		// Depth scaling: Boost evaluation depth to 14 when <= 10 pieces remain (Endgame precision)
-		evalDepth := 10
+		// Depth scaling: Boost evaluation depth to 14 by default, 16 in endgames (<= 10 pieces)
+		evalDepth := 14
 		if countPiecesInFen(m.FEN) <= 10 {
-			evalDepth = 14
+			evalDepth = 16
 		}
 
 		afterEval, _ := s.engine.EvaluateFen(ctx, m.FEN, evalDepth)
@@ -382,21 +382,7 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 		winBefore := CentipawnsToWinChance(prevEval.ScoreCp)
 		winAfter := CentipawnsToWinChance(afterEval.ScoreCp)
 
-		playerWinBefore := winBefore
-		playerWinAfter := winAfter
-		if !isWhite {
-			playerWinBefore = 100.0 - winBefore
-			playerWinAfter = 100.0 - winAfter
-		}
-
-		winDelta := playerWinBefore - playerWinAfter
-		if winDelta < 0 {
-			winDelta = 0
-		}
-
 		bestUCI := prevEval.BestMove
-		playedUCI := m.From + m.To
-		isBest := playedUCI == bestUCI
 		isBook := openings.IsBookMove(sans, i)
 
 		// Determine best move in SAN for clear human coaching
@@ -421,50 +407,32 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 			isForced = true
 		}
 
-		mObj, _ := chess.ParseUCIMove(playedUCI)
-		isSacrifice := hasPrevPos && isPieceSacrifice(prevPos, mObj)
-
-		classification := ClassGood
-		explanation := "Good move. Solid play that preserves the position."
-
-		if isForced {
-			classification = ClassForced
-			explanation = fmt.Sprintf("Forced move. %s is the only legal response available.", m.SAN)
-		} else if isBook {
-			classification = ClassBook
-			if openingInfo != nil {
-				explanation = fmt.Sprintf("Book move. Standard opening theory (%s).", openingInfo.Name)
-			} else {
-				explanation = "Book move. Standard opening theory."
+		playedUCI := m.From + m.To
+		var mObj chess.Move
+		if hasPrevPos && m.SAN != "" {
+			if pm, err := chess.ParseSAN(prevPos, m.SAN); err == nil {
+				mObj = pm
+				playedUCI = pm.UCI()
+			} else if parsed, err := chess.ParseUCIMove(playedUCI); err == nil {
+				mObj = parsed
 			}
-		} else if isBest && isSacrifice && playerWinAfter >= 50.0 {
-			classification = ClassBrilliant
-			explanation = fmt.Sprintf("Brilliant move!! You sacrificed material on %s to seize a decisive advantage.", m.To)
-		} else if isBest && playerWinBefore < 55.0 && playerWinAfter >= 60.0 && winDelta <= 0.2 {
-			classification = ClassGreat
-			explanation = fmt.Sprintf("Great move! %s was the solitary winning continuation in a complex position.", m.SAN)
-		} else if isBest {
-			classification = ClassBest
-			explanation = fmt.Sprintf("Best move! You found the optimal continuation (%s).", m.SAN)
-		} else if winDelta <= 1.5 {
-			classification = ClassExcellent
-			explanation = "Excellent move! A very strong choice that keeps the pressure."
-		} else if winDelta <= 5.0 {
-			classification = ClassGood
-			explanation = "Good move. Solid choice that preserves the balance."
-		} else if winDelta <= 11.5 {
-			classification = ClassInaccuracy
-			explanation = fmt.Sprintf("Inaccuracy. %s would have maintained a stronger grip on the position.", bestSAN)
-		} else if winDelta <= 21.0 {
-			classification = ClassMistake
-			explanation = fmt.Sprintf("Mistake. %s was a better choice to preserve your advantage.", bestSAN)
-		} else if playerWinBefore >= 68 && playerWinAfter < 50 {
-			classification = ClassMiss
-			explanation = fmt.Sprintf("Missed win! You had a decisive winning opportunity with %s.", bestSAN)
-		} else {
-			classification = ClassBlunder
-			explanation = fmt.Sprintf("Blunder! %s gives away the advantage. %s was best.", m.SAN, bestSAN)
+		} else if parsed, err := chess.ParseUCIMove(playedUCI); err == nil {
+			mObj = parsed
 		}
+
+		openingName := ""
+		if openingInfo != nil {
+			openingName = openingInfo.Name
+		}
+
+		classification, explanation := ClassifyAndExplain(
+			prevPos, currentPos, mObj, m.SAN, isWhite,
+			prevEval.ScoreCp, afterEval.ScoreCp,
+			winBefore, winAfter,
+			bestSAN, bestUCI,
+			isForced, isBook,
+			openingName,
+		)
 
 		acc := calculateMoveAccuracy(winBefore, winAfter, isWhite)
 		if classification == ClassBook || classification == ClassForced || classification == ClassBrilliant || classification == ClassGreat {
