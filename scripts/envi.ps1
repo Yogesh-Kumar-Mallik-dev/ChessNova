@@ -18,8 +18,12 @@ if (-not (Test-Path $EnvFile)) {
 if (Get-Command docker -ErrorAction SilentlyContinue) {
     Write-Host "==> [envi] Starting MongoDB and Redis via Docker Compose..." -ForegroundColor Cyan
     Set-Location $RootDir
-    docker compose up -d
-    Write-Host "✅ [envi] Infrastructure containers started." -ForegroundColor Green
+    try {
+        docker compose up -d mongodb redis
+        Write-Host "✅ [envi] Infrastructure containers started." -ForegroundColor Green
+    } catch {
+        Write-Warning "Docker compose encountered a non-fatal issue. Continuing if local services are available..."
+    }
 } else {
     Write-Warning "Docker not detected. Please ensure MongoDB (27017) and Redis (6379) are running."
 }

@@ -29,8 +29,11 @@ if command -v docker >/dev/null 2>&1; then
     fi
   done
 
-  docker compose up -d
-  echo "✅ [envi] Infrastructure containers started."
+  if docker compose up -d mongodb redis; then
+    echo "✅ [envi] Infrastructure containers started."
+  else
+    echo "⚠️ [envi] Docker compose encountered a non-fatal issue. Continuing if local services are available..."
+  fi
 else
   echo "⚠️ Docker not detected. Please ensure MongoDB (27017) and Redis (6379) are running."
 fi
