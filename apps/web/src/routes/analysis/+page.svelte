@@ -7,6 +7,7 @@
 	import MoveList from '$lib/components/game/MoveList.svelte';
 	import GameReview from '$lib/components/chess/GameReview.svelte';
 	import ReviewBadge from '$lib/components/chess/ReviewBadge.svelte';
+	import CapturedPieces from '$lib/components/game/CapturedPieces.svelte';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { api } from '$lib/api/client';
@@ -208,6 +209,17 @@
 				classification: currentReviewedMove.classification,
 				bestMoveUci: currentReviewedMove.bestMoveUci
 			}
+		: null;
+
+	$: topAnalysisColor = (orientation === 'white' ? 'black' : 'white') as Color;
+	$: bottomAnalysisColor = (orientation === 'white' ? 'white' : 'black') as Color;
+	$: topAnalysisPlayer = orientation === 'white' ? blackPlayerName : whitePlayerName;
+	$: bottomAnalysisPlayer = orientation === 'white' ? whitePlayerName : blackPlayerName;
+	$: topAnalysisAccuracy = reviewResult
+		? (topAnalysisColor === 'white' ? reviewResult.whiteAccuracy : reviewResult.blackAccuracy)
+		: null;
+	$: bottomAnalysisAccuracy = reviewResult
+		? (bottomAnalysisColor === 'white' ? reviewResult.whiteAccuracy : reviewResult.blackAccuracy)
 		: null;
 
 	let liveEval: {
@@ -569,6 +581,20 @@
 		<!-- Left: Board with Eval Bar & Universal Stepper Bar -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
 			<div class="w-full max-w-[min(100%,calc(100dvh-200px),600px)] flex flex-col items-center">
+				<!-- Top Player Strip -->
+				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mb-1">
+					<div class="flex items-center gap-2 min-w-0">
+						<div class="w-2.5 h-2.5 rounded-full shrink-0 {topAnalysisColor === 'white' ? 'bg-[#f4f4f6] border border-border' : 'bg-[#18181b] border border-border'}"></div>
+						<span class="font-bold text-foreground text-xs truncate max-w-[120px] sm:max-w-none">{topAnalysisPlayer}</span>
+						<CapturedPieces {fen} forColor={topAnalysisColor} />
+					</div>
+					{#if topAnalysisAccuracy !== null}
+						<span class="px-1.5 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums shrink-0" title="{topAnalysisPlayer} Accuracy">
+							{topAnalysisAccuracy}%
+						</span>
+					{/if}
+				</div>
+
 				<div class="flex items-center justify-center gap-1.5 sm:gap-2.5 w-full pt-6 sm:pt-7">
 					<!-- Slim Eval Bar -->
 					<div class="flex self-stretch shrink-0 py-0.5">
@@ -588,6 +614,20 @@
 							on:move={handleMove}
 						/>
 					</div>
+				</div>
+
+				<!-- Bottom Player Strip -->
+				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mt-1">
+					<div class="flex items-center gap-2 min-w-0">
+						<div class="w-2.5 h-2.5 rounded-full shrink-0 {bottomAnalysisColor === 'white' ? 'bg-[#f4f4f6] border border-border' : 'bg-[#18181b] border border-border'}"></div>
+						<span class="font-bold text-foreground text-xs truncate max-w-[120px] sm:max-w-none">{bottomAnalysisPlayer}</span>
+						<CapturedPieces {fen} forColor={bottomAnalysisColor} />
+					</div>
+					{#if bottomAnalysisAccuracy !== null}
+						<span class="px-1.5 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums shrink-0" title="{bottomAnalysisPlayer} Accuracy">
+							{bottomAnalysisAccuracy}%
+						</span>
+					{/if}
 				</div>
 
 				<!-- Coach Feedback Banner (when game review is active) -->

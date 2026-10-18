@@ -13,6 +13,7 @@
 	import { authStore } from '$lib/stores/auth';
 	import UserBadge from '$lib/components/ui/UserBadge.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import CapturedPieces from '$lib/components/game/CapturedPieces.svelte';
 	import { saveLocalGame, stageGameForReview } from '$lib/stores/localGames';
 	import { generateBotMove } from '$lib/engine/localEngine';
 
@@ -99,6 +100,8 @@
 	$: isGameOver = new Chess(fen).isGameOver();
 
 	$: orientation = gameMode === 'vs_computer' ? playerColor : orientation;
+	$: topColor = (gameMode === 'vs_computer' ? (playerColor === 'white' ? 'black' : 'white') : (orientation === 'white' ? 'black' : 'white')) as Color;
+	$: bottomColor = (gameMode === 'vs_computer' ? playerColor : orientation) as Color;
 
 	function getGamePgn(resultStr = '*'): string {
 		const c = new Chess();
@@ -465,6 +468,9 @@
 								<span>Opponent</span>
 							</div>
 						{/if}
+						<div class="ml-1">
+							<CapturedPieces {fen} forColor={topColor} />
+						</div>
 					</div>
 
 					{#if isBotThinking}
@@ -513,6 +519,9 @@
 								<span>You</span>
 							</div>
 						{/if}
+						<div class="ml-1">
+							<CapturedPieces {fen} forColor={bottomColor} />
+						</div>
 					</div>
 
 					<!-- Turn Indicator -->

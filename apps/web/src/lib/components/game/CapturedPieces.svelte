@@ -4,6 +4,7 @@
 
 	export let fen: string;
 	export let forColor: Color; // The player color we are calculating captured pieces for
+	export let showDeficit: boolean = true; // Show -N when behind
 
 	const INITIAL_COUNTS: Record<PieceType, number> = {
 		p: 8,
@@ -49,7 +50,7 @@
 		const result: PieceType[] = [];
 		const oppRemaining = remaining[opponentColor];
 		for (const pt of ['q', 'r', 'b', 'n', 'p'] as PieceType[]) {
-			const diff = INITIAL_COUNTS[pt] - oppRemaining[pt];
+			const diff = Math.max(0, INITIAL_COUNTS[pt] - oppRemaining[pt]);
 			for (let i = 0; i < diff; i++) {
 				result.push(pt);
 			}
@@ -69,21 +70,27 @@
 	})();
 </script>
 
-<div class="flex items-center gap-1 sm:gap-1.5 h-6 overflow-hidden max-w-[80px] xs:max-w-[130px] sm:max-w-none shrink">
-	<div class="flex items-center -space-x-1.5">
-		{#each capturedByUs as pt}
-			{@const svgKey = opponentColor === 'white' ? pt.toUpperCase() : pt.toLowerCase()}
-			<div class="w-4 h-4 opacity-85 inline-block piece-{opponentColor}">
-				{@html PIECE_SVGS[svgKey]}
-			</div>
-		{/each}
+{#if capturedByUs.length > 0 || (materialAdvantage !== 0 && (materialAdvantage > 0 || showDeficit))}
+	<div class="flex items-center gap-1 sm:gap-1.5 h-6 overflow-hidden max-w-[120px] xs:max-w-[160px] sm:max-w-none shrink select-none">
+		<div class="flex items-center -space-x-1 sm:-space-x-1.5">
+			{#each capturedByUs as pt}
+				{@const svgKey = opponentColor === 'white' ? pt.toUpperCase() : pt.toLowerCase()}
+				<div class="w-4 h-4 sm:w-4.5 sm:h-4.5 opacity-90 inline-block piece-{opponentColor} shrink-0 transition-transform">
+					{@html PIECE_SVGS[svgKey]}
+				</div>
+			{/each}
+		</div>
+		{#if materialAdvantage > 0}
+			<span class="text-[10px] sm:text-[11px] font-mono font-bold text-foreground bg-secondary border border-border px-1.5 py-0.2 rounded shadow-xs ml-1 shrink-0 tabular-nums">
+				+{materialAdvantage}
+			</span>
+		{:else if materialAdvantage < 0 && showDeficit}
+			<span class="text-[10px] sm:text-[11px] font-mono font-semibold text-muted-foreground bg-secondary/60 border border-border/50 px-1.5 py-0.2 rounded ml-1 shrink-0 tabular-nums">
+				{materialAdvantage}
+			</span>
+		{/if}
 	</div>
-	{#if materialAdvantage > 0}
-		<span class="text-[11px] font-mono font-bold text-foreground bg-secondary border border-border px-1.5 py-0.5 rounded ml-1.5">
-			+{materialAdvantage}
-		</span>
-	{/if}
-</div>
+{/if}
 
 <style>
 	.piece-white :global(svg) {
