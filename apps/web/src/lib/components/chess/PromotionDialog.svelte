@@ -33,7 +33,7 @@
 					on:click={() => dispatch('select', opt.type)}
 					title={opt.label}
 				>
-					<div class="w-full h-full flex items-center justify-center group-hover:scale-110 transition-transform">
+					<div class="w-full h-full flex items-center justify-center group-hover:scale-110 transition-transform piece-{color}">
 						{@html getPieceSvg(opt.type)}
 					</div>
 				</button>
@@ -41,3 +41,12 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	.piece-white :global(svg) {
+		filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+	}
+	.piece-black :global(svg) {
+		filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.35)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+	}
+</style>

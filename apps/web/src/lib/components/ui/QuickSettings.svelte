@@ -27,9 +27,9 @@
 	});
 
 	const boardThemes: { id: BoardTheme; name: string; light: string; dark: string }[] = [
-		{ id: 'monochrome', name: 'Monochrome', light: '#ffffff', dark: '#2b2c34' },
+		{ id: 'monochrome', name: 'Monochrome', light: '#f4f4f6', dark: '#30323d' },
 		{ id: 'slate', name: 'Slate', light: '#dcdde1', dark: '#404552' },
-		{ id: 'charcoal', name: 'Charcoal', light: '#e4e4e7', dark: '#27272a' },
+		{ id: 'charcoal', name: 'Charcoal', light: '#e4e4e7', dark: '#313238' },
 		{ id: 'wood', name: 'Wood', light: '#eedbc5', dark: '#9b7653' },
 		{ id: 'emerald', name: 'Classic', light: '#eeeed2', dark: '#69884a' },
 		{ id: 'ocean', name: 'Ocean', light: '#dbeafe', dark: '#467499' }

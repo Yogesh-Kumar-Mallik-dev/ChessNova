@@ -458,8 +458,8 @@
 				{@const isLastTo = lastMove?.to === sq}
 				{@const targetInfo = legalTargetMap.get(sq)}
 				{@const isLegal = legalTargetSquares.has(sq)}
-				{@const isCapture = legalCaptureSquares.has(sq)}
-				{@const legalCategory = targetInfo?.category || 'normal'}
+				{@const isCapture = legalCaptureSquares.has(sq) || (isLegal && piece !== null && piece.color !== turn)}
+				{@const legalCategory = targetInfo?.category || (isCapture ? 'capture' : 'normal')}
 				{@const isCheckSquare = kingInCheckSquare === sq}
 				{@const anim = animatingMap.get(sq)}
 				{@const showRank = fIndex === 0}

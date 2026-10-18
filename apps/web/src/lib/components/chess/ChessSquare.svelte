@@ -53,9 +53,9 @@
 	$: squareColorClass = (() => {
 		switch (theme) {
 			case 'monochrome':
-				return isLight ? 'bg-[#f4f4f6]' : 'bg-[#2b2c34]';
+				return isLight ? 'bg-[#f4f4f6]' : 'bg-[#30323d]';
 			case 'charcoal':
-				return isLight ? 'bg-[#e4e4e7]' : 'bg-[#27272a]';
+				return isLight ? 'bg-[#e4e4e7]' : 'bg-[#313238]';
 			case 'slate':
 				return isLight ? 'bg-[#dcdde1]' : 'bg-[#404552]';
 			case 'wood':
@@ -75,9 +75,9 @@
 	$: coordColorClass = (() => {
 		switch (theme) {
 			case 'monochrome':
-				return isLight ? 'text-[#2b2c34]' : 'text-[#f4f4f6]';
+				return isLight ? 'text-[#30323d]' : 'text-[#f4f4f6]';
 			case 'charcoal':
-				return isLight ? 'text-[#27272a]' : 'text-[#e4e4e7]';
+				return isLight ? 'text-[#313238]' : 'text-[#e4e4e7]';
 			case 'slate':
 				return isLight ? 'text-[#404552]' : 'text-[#dcdde1]';
 			case 'wood':
@@ -197,7 +197,7 @@
 
 	<!-- Legal Move reticle -->
 	{#if isLegal}
-		<MoveIndicator category={legalCategory} {isCapture} />
+		<MoveIndicator category={legalCategory} {isCapture} {isLight} />
 	{/if}
 </div>
 

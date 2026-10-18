@@ -73,7 +73,7 @@
 	<div class="flex items-center -space-x-1.5">
 		{#each capturedByUs as pt}
 			{@const svgKey = opponentColor === 'white' ? pt.toUpperCase() : pt.toLowerCase()}
-			<div class="w-4 h-4 opacity-75 inline-block">
+			<div class="w-4 h-4 opacity-85 inline-block piece-{opponentColor}">
 				{@html PIECE_SVGS[svgKey]}
 			</div>
 		{/each}
@@ -84,3 +84,12 @@
 		</span>
 	{/if}
 </div>
+
+<style>
+	.piece-white :global(svg) {
+		filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
+	}
+	.piece-black :global(svg) {
+		filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+	}
+</style>
