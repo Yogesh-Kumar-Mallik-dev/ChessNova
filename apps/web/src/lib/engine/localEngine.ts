@@ -26,11 +26,10 @@ export interface EngineState {
 	error: string | null;
 }
 
-const CACHE_NAME = 'chessnova-engine-v1';
+const CACHE_NAME = 'chessnova-engine-v2-sf19';
 const ENGINE_FILES = [
 	'/engine/stockfish.js',
-	'/engine/stockfish.wasm',
-	'/engine/stockfish.wasm.js'
+	'/engine/stockfish.wasm'
 ];
 
 export const engineStore = writable<EngineState>({

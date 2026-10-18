@@ -73,7 +73,7 @@
 						</span>
 					{:else if $engineStore.source === 'wasm'}
 						<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-							<Icon name="zap" size={10} /> Local Browser WASM (0ms)
+							<Icon name="zap" size={10} /> Local Stockfish 19 WASM (0ms)
 						</span>
 					{:else}
 						<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-400 border border-sky-500/30">
@@ -129,7 +129,7 @@
 						<div class="flex items-center justify-between pt-1">
 							<div class="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
 								<Icon name="check" size={13} />
-								<span>Stored locally (~655 KB)</span>
+								<span>Stored locally (Stockfish 19, ~1.8 MB)</span>
 							</div>
 
 							<button
@@ -142,7 +142,7 @@
 					{:else if $engineStore.status === 'downloading'}
 						<div class="flex flex-col gap-1.5 pt-1">
 							<div class="flex justify-between text-xs text-slate-300 font-medium">
-								<span>Downloading engine in background...</span>
+								<span>Downloading Stockfish 19 in background...</span>
 								<span>{$engineStore.downloadProgress}%</span>
 							</div>
 							<div class="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
@@ -162,7 +162,7 @@
 								on:click={handleDownload}
 							>
 								<Icon name="download" size={12} />
-								<span>Download (~655 KB)</span>
+								<span>Download Stockfish 19 (~1.8 MB)</span>
 							</button>
 						</div>
 					{/if}

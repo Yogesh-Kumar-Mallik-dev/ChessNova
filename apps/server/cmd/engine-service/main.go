@@ -39,7 +39,7 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "ok",
 			"service": "chessnova-engine",
-			"engine":  "Stockfish 16",
+			"engine":  "Stockfish 19",
 			"time":    time.Now().UTC().Format(time.RFC3339),
 		})
 	})
