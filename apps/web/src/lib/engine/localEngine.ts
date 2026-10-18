@@ -390,7 +390,7 @@ function handleWorkerMessage(line: string) {
 /**
  * Evaluates a FEN position using the local Web Worker.
  */
-async function evaluateViaWorker(fen: string, depth = 12): Promise<EvaluationResult> {
+async function evaluateViaWorker(fen: string, depth = 12, movetimeMs?: number): Promise<EvaluationResult> {
 	if (!engineWorker) {
 		startWorker();
 	}
@@ -409,15 +409,20 @@ async function evaluateViaWorker(fen: string, depth = 12): Promise<EvaluationRes
 		currentReject = reject;
 		lastInfoParsed = { depth: 0, scoreCp: 0, isMate: false, pv: [] };
 
+		const timeoutMs = movetimeMs ? movetimeMs + 1000 : 8000;
 		evaluationTimeout = setTimeout(() => {
 			if (engineWorker) {
 				engineWorker.postMessage('stop');
 			}
-		}, 8000);
+		}, timeoutMs);
 
 		engineWorker.postMessage('stop');
 		engineWorker.postMessage(`position fen ${fen}`);
-		engineWorker.postMessage(`go depth ${Math.min(depth, 16)}`);
+		if (movetimeMs && movetimeMs > 0) {
+			engineWorker.postMessage(`go depth ${Math.min(depth, 16)} movetime ${movetimeMs}`);
+		} else {
+			engineWorker.postMessage(`go depth ${Math.min(depth, 16)}`);
+		}
 	});
 }
 
@@ -429,7 +434,8 @@ async function evaluateViaWorker(fen: string, depth = 12): Promise<EvaluationRes
  */
 export async function evaluatePosition(
 	fen: string,
-	depth = 12
+	depth = 12,
+	movetimeMs?: number
 ): Promise<{ result: EvaluationResult; source: EngineSource }> {
 	const state = get(engineStore);
 
@@ -452,7 +458,7 @@ export async function evaluatePosition(
 	// 2. Try Browser Local Stockfish (WASM)
 	if (state.isCached && state.isEnabled) {
 		try {
-			const localRes = await evaluateViaWorker(fen, depth);
+			const localRes = await evaluateViaWorker(fen, depth, movetimeMs);
 			if (localRes && localRes.bestMove) {
 				localRes.fen = fen;
 				return { result: localRes, source: 'wasm' };
@@ -666,7 +672,7 @@ export async function reviewGameLocally(
 		let bestMoveUci = `${m.from}${m.to}`;
 
 		try {
-			const evalRes = await evaluatePosition(fenAfter, 8);
+			const evalRes = await evaluatePosition(fenAfter, 6, 75);
 			if (evalRes?.result) {
 				scoreCp = evalRes.result.scoreCp;
 				winChance = evalRes.result.winChance;

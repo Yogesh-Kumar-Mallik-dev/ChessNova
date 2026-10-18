@@ -577,10 +577,10 @@
 	</div>
 
 	<!-- Main Board & Side Panel Grid -->
-	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-5 items-center justify-center my-auto min-h-0">
+	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-start justify-center min-h-0">
 		<!-- Left: Board with Eval Bar & Universal Stepper Bar -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
-			<div class="w-full max-w-[min(100%,calc(100dvh-200px),600px)] flex flex-col items-center">
+			<div class="w-full max-w-[min(100%,calc(100dvh-170px),560px)] flex flex-col items-center">
 				<!-- Top Player Strip -->
 				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mb-1 gap-2">
 					<div class="flex items-center gap-2 min-w-0">
@@ -634,9 +634,9 @@
 					{/if}
 				</div>
 
-				<!-- Coach Feedback Banner (when game review is active) -->
+				<!-- Coach Feedback Banner (when game review is active) - Mobile Only (< lg) -->
 				{#if reviewResult}
-					<div class="w-full mt-2 bg-card border border-border rounded-xl p-2.5 sm:p-3 shadow-md h-[122px] sm:h-[126px] flex flex-col justify-between shrink-0 select-none overflow-hidden animate-in fade-in duration-150">
+					<div class="lg:hidden w-full mt-2 bg-card border border-border rounded-xl p-2.5 sm:p-3 shadow-md h-[122px] sm:h-[126px] flex flex-col justify-between shrink-0 select-none overflow-hidden animate-in fade-in duration-150">
 						{#if currentReviewedMove}
 							<!-- Row 1: Header (Classification Badge + Move Name + Accuracy & Eval Pills) -->
 							<div class="flex items-center justify-between gap-2 h-6 shrink-0">
@@ -824,7 +824,7 @@
 		</div>
 
 		<!-- Right: Analysis Panel -->
-		<div class="lg:col-span-5 xl:col-span-4 h-[440px] lg:h-[min(calc(100dvh-110px),640px)] flex flex-col">
+		<div class="lg:col-span-5 xl:col-span-4 h-[480px] lg:h-[min(calc(100dvh-130px),620px)] flex flex-col">
 			<!-- Panel Tab Navigation -->
 			<div class="flex items-center p-1 bg-card border border-border rounded-xl mb-2.5 shrink-0 overflow-x-auto">
 				<button
@@ -884,7 +884,7 @@
 						{whitePlayerName}
 						{blackPlayerName}
 						{currentPly}
-						on:selectPly={(e) => goToPly(e.detail)}
+						on:selectPly={(e: CustomEvent<number>) => goToPly(e.detail)}
 					/>
 				{:else if rightPanelTab === 'moves'}
 					<!-- 2. Moves Tab -->

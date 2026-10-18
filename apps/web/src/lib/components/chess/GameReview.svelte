@@ -350,263 +350,232 @@
 	</div>
 
 	<!-- Body Content -->
-	<div class="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3.5">
-		{#if isAnalyzing}
-			<!-- Smooth Multi-Step Accurate Progress Bar -->
-			<div class="flex flex-col items-center justify-center py-12 gap-3 text-center">
-				<div class="w-12 h-12 rounded-2xl bg-secondary border border-border flex items-center justify-center text-foreground animate-pulse shadow-xs">
-					<Icon name="search" size={22} />
-				</div>
-				<div>
-					<h3 class="text-sm font-bold text-foreground">Analyzing Game Moves</h3>
-					<p class="text-xs text-muted-foreground mt-1 max-w-[280px] min-h-[32px] flex items-center justify-center">
-						{progressText}
-					</p>
-				</div>
-				<!-- Progress bar container -->
-				<div class="w-full max-w-[280px] h-2 bg-secondary rounded-full overflow-hidden border border-border mt-1">
-					<div
-						class="h-full bg-foreground transition-all duration-300 ease-out"
-						style="width: {progressPercent}%"
-					></div>
-				</div>
-				<span class="text-xs font-mono font-bold text-foreground tabular-nums">{progressPercent}%</span>
+	{#if isAnalyzing}
+		<!-- Smooth Multi-Step Accurate Progress Bar -->
+		<div class="flex-1 flex flex-col items-center justify-center p-6 gap-3 text-center">
+			<div class="w-12 h-12 rounded-2xl bg-secondary border border-border flex items-center justify-center text-foreground animate-pulse shadow-xs">
+				<Icon name="search" size={22} />
 			</div>
-		{:else if !reviewResult}
-			<!-- No Review Yet -->
-			<div class="flex flex-col items-center justify-center py-12 gap-3 text-center">
-				<div class="w-12 h-12 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground">
-					<Icon name="search" size={22} />
-				</div>
-				<h3 class="text-sm font-bold text-foreground">No Review Available</h3>
-				<Button
-					variant="primary"
-					size="sm"
-					className="text-xs font-bold uppercase tracking-wider"
-					on:click={startReview}
-				>
-					<Icon name="search" size={14} />
-					<span>Start Game Review</span>
-				</Button>
+			<div>
+				<h3 class="text-sm font-bold text-foreground">Analyzing Game Moves</h3>
+				<p class="text-xs text-muted-foreground mt-1 max-w-[280px] min-h-[32px] flex items-center justify-center">
+					{progressText}
+				</p>
 			</div>
-		{:else if activeTab === 'review'}
-			<!-- COACH / MOVE-BY-MOVE REVIEW TAB -->
-			<div class="flex flex-col gap-3">
-				<!-- Coach Avatar & Summary Speech Bubble -->
-				<div class="bg-secondary/40 border border-border rounded-xl p-3 shadow-xs flex items-center gap-3">
-					<div class="w-9 h-9 rounded-lg bg-secondary border border-border flex items-center justify-center shrink-0 text-foreground shadow-xs">
-						<Icon name="crown" size={18} />
+			<!-- Progress bar container -->
+			<div class="w-full max-w-[280px] h-2 bg-secondary rounded-full overflow-hidden border border-border mt-1">
+				<div
+					class="h-full bg-foreground transition-all duration-300 ease-out"
+					style="width: {progressPercent}%"
+				></div>
+			</div>
+			<span class="text-xs font-mono font-bold text-foreground tabular-nums">{progressPercent}%</span>
+		</div>
+	{:else if !reviewResult}
+		<!-- No Review Yet -->
+		<div class="flex-1 flex flex-col items-center justify-center p-6 gap-3 text-center">
+			<div class="w-12 h-12 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground">
+				<Icon name="search" size={22} />
+			</div>
+			<h3 class="text-sm font-bold text-foreground">No Review Available</h3>
+			<Button
+				variant="primary"
+				size="sm"
+				className="text-xs font-bold uppercase tracking-wider"
+				on:click={startReview}
+			>
+				<Icon name="search" size={14} />
+				<span>Start Game Review</span>
+			</Button>
+		</div>
+	{:else if activeTab === 'review'}
+		<!-- MOVE-BY-MOVE REVIEW TAB: Non-nested, single-scrollbar, full-height ledger -->
+		<div class="flex-1 flex flex-col min-h-0 overflow-hidden p-2.5 sm:p-3 gap-2.5">
+			<!-- Header: Accuracy Comparison & Opening -->
+			<div class="flex items-center justify-between px-2.5 py-1.5 bg-secondary/30 border border-border rounded-lg text-xs shrink-0">
+				<div class="flex items-center gap-3">
+					<div class="flex items-center gap-1.5">
+						<span class="w-2.5 h-2.5 rounded-full bg-foreground border border-border"></span>
+						<span class="font-bold text-foreground text-xs">{whitePlayerName}</span>
+						<span class="font-mono text-[11px] font-bold text-foreground bg-secondary px-1.5 py-0.2 rounded border border-border">
+							{reviewResult.whiteAccuracy}%
+						</span>
 					</div>
-					<div class="flex-1 min-w-0">
-						<div class="flex items-center gap-1.5 mb-0.5">
-							<span class="text-xs font-bold text-foreground">Coach Nova</span>
-							<span class="px-1.5 py-0.2 rounded bg-secondary text-foreground text-[9px] font-mono font-bold border border-border">Analysis</span>
-						</div>
-						<p class="text-[11px] text-muted-foreground leading-snug">
-							{coachQuote}
-						</p>
+					<span class="text-muted-foreground text-xs font-mono">•</span>
+					<div class="flex items-center gap-1.5">
+						<span class="w-2.5 h-2.5 rounded-full bg-background border border-border"></span>
+						<span class="font-bold text-foreground text-xs">{blackPlayerName}</span>
+						<span class="font-mono text-[11px] font-bold text-foreground bg-secondary px-1.5 py-0.2 rounded border border-border">
+							{reviewResult.blackAccuracy}%
+						</span>
 					</div>
 				</div>
+				{#if reviewResult.opening}
+					<span class="text-[10px] font-mono text-muted-foreground hidden sm:inline truncate max-w-[150px]">
+						{reviewResult.opening.eco} {reviewResult.opening.name}
+					</span>
+				{/if}
+			</div>
 
-				<!-- Current Move Coach Card -->
-				{#if currentReviewedMove}
-					<div class="bg-secondary/30 border border-border rounded-xl p-3.5 shadow-xs flex flex-col gap-2.5">
-						<!-- Header with Badge + Move Name + Eval -->
-						<div class="flex items-center justify-between">
-							<div class="flex items-center gap-2">
-								<ReviewBadge classification={currentReviewedMove.classification} size="md" />
-								<div>
-									<div class="flex items-center gap-1.5">
-										<h4 class="text-xs font-bold text-foreground capitalize leading-tight">
-											{currentReviewedMove.classification.replace('_', ' ')}
-										</h4>
-										{#if currentReviewedMove.phase}
-											<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-secondary text-muted-foreground border border-border uppercase">
-												{currentReviewedMove.phase}
-											</span>
-										{/if}
-									</div>
-									<span class="text-[11px] font-mono font-bold text-muted-foreground">
-										Move {currentReviewedMove.moveNumber}{currentReviewedMove.color === 'white' ? '.' : '...'} {currentReviewedMove.san}
-									</span>
-								</div>
-							</div>
-
-							<!-- Accuracy pill & Evaluation pill -->
-							<div class="flex items-center gap-1.5">
-								<div class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[10px] font-mono font-bold text-foreground tabular-nums">
-									{formatScore(currentReviewedMove.evalAfter)}
-								</div>
-								<div class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[10px] font-mono font-bold text-foreground tabular-nums">
-									{currentReviewedMove.accuracy}%
-								</div>
-							</div>
-						</div>
-
-						<!-- Coach Message Explanation -->
-						<p class="text-xs text-foreground leading-relaxed font-normal bg-card border border-border p-2.5 rounded-lg">
-							{currentReviewedMove.explanation}
-						</p>
-
-						<!-- Best Move Comparison (if move was not best) -->
-						{#if currentReviewedMove.bestMoveSan && currentReviewedMove.bestMoveSan !== currentReviewedMove.san}
-							<div class="flex items-center justify-between text-xs bg-secondary/60 border border-border px-2.5 py-1.5 rounded-lg text-foreground">
-								<div class="flex items-center gap-1.5">
-									<ReviewBadge classification="best" size="sm" />
-									<span class="font-bold text-foreground">Best was:</span>
-									<span class="font-mono font-bold text-foreground">{currentReviewedMove.bestMoveSan}</span>
-								</div>
-								<span class="text-[10px] text-muted-foreground font-mono tabular-nums">
-									{formatScore(currentReviewedMove.evalBefore)}
+			<!-- Current Move Coach Card -->
+			{#if currentReviewedMove}
+				<div class="bg-secondary/30 border border-border rounded-xl p-2.5 sm:p-3 shadow-xs flex flex-col gap-2 shrink-0 select-none">
+					<!-- Row 1: Header (Badge + Move + Accuracy & Eval) -->
+					<div class="flex items-center justify-between gap-2">
+						<div class="flex items-center gap-2 min-w-0">
+							<ReviewBadge classification={currentReviewedMove.classification} size="md" />
+							<div class="flex items-center gap-1.5 truncate">
+								<span class="text-xs font-bold text-foreground capitalize">
+									{currentReviewedMove.classification.replace('_', ' ')}
+								</span>
+								<span class="text-[11px] font-mono font-bold text-muted-foreground">
+									{currentReviewedMove.moveNumber}{currentReviewedMove.color === 'white' ? '.' : '...'} {currentReviewedMove.san}
 								</span>
 							</div>
-						{/if}
-					</div>
-				{:else}
-					<!-- Starting position message -->
-					<div class="bg-secondary/30 border border-border rounded-xl p-3 text-center">
-						<h4 class="text-xs font-bold text-foreground">Starting Position</h4>
-						<p class="text-[11px] text-muted-foreground mt-0.5">Use the stepper or select any move below to inspect the game.</p>
-					</div>
-				{/if}
-
-				<!-- Interactive Stepper & Navigation Controls -->
-				<div class="bg-secondary/30 border border-border rounded-xl p-2.5 flex flex-col gap-2">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-1">
-							<button
-								class="w-8 h-8 rounded-lg bg-secondary hover:bg-muted text-foreground flex items-center justify-center transition border border-border disabled:opacity-30 active:translate-y-px"
-								on:click={() => jumpToPly(0)}
-								disabled={currentPly <= 0}
-								title="Start of Game"
-							>
-								<Icon name="chevrons-left" size={14} />
-							</button>
-							<button
-								class="w-8 h-8 rounded-lg bg-secondary hover:bg-muted text-foreground flex items-center justify-center transition border border-border disabled:opacity-30 active:translate-y-px"
-								on:click={handlePrev}
-								disabled={currentPly <= 0}
-								title="Previous Move (Left Arrow)"
-							>
-								<Icon name="chevron-left" size={14} />
-							</button>
 						</div>
-
-						<button
-							class="px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition active:translate-y-px {isAutoPlaying
-								? 'bg-foreground text-background shadow-xs'
-								: 'bg-secondary hover:bg-muted text-foreground border border-border'}"
-							on:click={toggleAutoPlay}
-						>
-							<Icon name={isAutoPlaying ? 'clock' : 'play'} size={12} />
-							<span>{isAutoPlaying ? 'Pause' : 'Auto'}</span>
-						</button>
-
-						<div class="flex items-center gap-1">
-							<button
-								class="w-8 h-8 rounded-lg bg-secondary hover:bg-muted text-foreground flex items-center justify-center transition border border-border disabled:opacity-30 active:translate-y-px"
-								on:click={handleNext}
-								disabled={currentPly >= moves.length}
-								title="Next Move (Right Arrow)"
-							>
-								<Icon name="chevron-right" size={14} />
-							</button>
-							<button
-								class="w-8 h-8 rounded-lg bg-secondary hover:bg-muted text-foreground flex items-center justify-center transition border border-border disabled:opacity-30 active:translate-y-px"
-								on:click={() => jumpToPly(moves.length)}
-								disabled={currentPly >= moves.length}
-								title="End of Game"
-							>
-								<Icon name="chevrons-right" size={14} />
-							</button>
+						<div class="flex items-center gap-1.5 shrink-0">
+							<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums">
+								{formatScore(currentReviewedMove.evalAfter)}
+							</span>
+							<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums">
+								{currentReviewedMove.accuracy}%
+							</span>
 						</div>
 					</div>
 
-					<!-- Fast Jump To Key Moments -->
-					<div class="grid grid-cols-2 gap-2 pt-1.5 border-t border-border">
-						<button
-							class="py-1.5 px-2 rounded-lg bg-card hover:bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center gap-1 transition border border-border active:translate-y-px"
-							on:click={jumpToPrevKeyMove}
-							title="Jump to Previous Turning Point"
-						>
-							<Icon name="chevron-left" size={12} />
-							<span>Prev Key Move</span>
-						</button>
-						<button
-							class="py-1.5 px-2 rounded-lg bg-card hover:bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center gap-1 transition border border-border active:translate-y-px"
-							on:click={jumpToNextKeyMove}
-							title="Jump to Next Turning Point"
-						>
-							<span>Next Key Move</span>
-							<Icon name="chevron-right" size={12} />
-						</button>
+					<!-- Row 2: Coach Explanation -->
+					<p class="text-xs text-foreground/90 leading-tight font-normal bg-card border border-border/80 px-2.5 py-1.5 rounded-lg">
+						{currentReviewedMove.explanation}
+					</p>
+
+					<!-- Row 3: Best Move Comparison -->
+					{#if currentReviewedMove.bestMoveSan && currentReviewedMove.bestMoveSan !== currentReviewedMove.san}
+						<div class="flex items-center justify-between text-[11px] bg-secondary/60 border border-border px-2.5 py-1 rounded-lg">
+							<div class="flex items-center gap-1.5 truncate">
+								<ReviewBadge classification="best" size="sm" />
+								<span class="text-muted-foreground font-medium">Best was:</span>
+								<span class="font-mono font-bold text-foreground">{currentReviewedMove.bestMoveSan}</span>
+							</div>
+							<span class="font-mono text-[10px] text-muted-foreground tabular-nums">
+								{formatScore(currentReviewedMove.evalBefore)}
+							</span>
+						</div>
+					{/if}
+				</div>
+			{:else}
+				<!-- Starting Position Card -->
+				<div class="bg-secondary/30 border border-border rounded-xl p-2.5 flex items-center justify-between gap-2 shrink-0">
+					<div class="flex items-center gap-2">
+						<div class="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center text-foreground shrink-0">
+							<Icon name="search" size={12} />
+						</div>
+						<span class="text-xs font-bold text-foreground">Starting Position</span>
+					</div>
+					<button
+						class="font-bold text-foreground hover:underline flex items-center gap-1 text-[11px] cursor-pointer"
+						on:click={() => jumpToPly(1)}
+					>
+						<span>Start Review</span>
+						<Icon name="chevron-right" size={12} />
+					</button>
+				</div>
+			{/if}
+
+			<!-- Move Ledger (Takes all remaining vertical space cleanly!) -->
+			<div class="bg-card border border-border rounded-xl overflow-hidden shadow-xs flex flex-col flex-1 min-h-0">
+				<!-- Ledger Column Headers -->
+				<div class="grid grid-cols-[38px_1fr_1fr] items-center px-3 py-1.5 bg-secondary/50 border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
+					<span class="text-center font-mono">#</span>
+					<div class="flex items-center gap-1.5 pl-1.5">
+						<span class="w-2 h-2 rounded-full bg-foreground border border-border"></span>
+						<span class="truncate">{whitePlayerName}</span>
+					</div>
+					<div class="flex items-center gap-1.5 pl-1.5">
+						<span class="w-2 h-2 rounded-full bg-background border border-border"></span>
+						<span class="truncate">{blackPlayerName}</span>
 					</div>
 				</div>
 
-				<!-- CLEAR PAIRED MOVE LEDGER: White vs Black Side by Side -->
-				<div class="bg-card border border-border rounded-xl overflow-hidden shadow-xs flex flex-col">
-					<!-- Ledger Column Headers -->
-					<div class="grid grid-cols-[38px_1fr_1fr] items-center px-3 py-1.5 bg-secondary/50 border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
-						<span class="text-center font-mono">#</span>
-						<div class="flex items-center gap-1.5 pl-1.5">
-							<span class="w-2 h-2 rounded-full bg-foreground border border-border"></span>
-							<span class="truncate">{whitePlayerName}</span>
-						</div>
-						<div class="flex items-center gap-1.5 pl-1.5">
-							<span class="w-2 h-2 rounded-full bg-background border border-border"></span>
-							<span class="truncate">{blackPlayerName}</span>
-						</div>
-					</div>
+				<!-- Scrollable Paired Move Rows -->
+				<div bind:this={moveContainer} class="flex-1 overflow-y-auto p-1 divide-y divide-border/60 font-mono text-xs">
+					{#each pairedReviewedMoves as pair}
+						{@const black = pair.black}
+						<div class="grid grid-cols-[38px_1fr_1fr] items-center py-0.5 px-1 rounded-lg hover:bg-muted/40 transition">
+							<!-- Turn Number -->
+							<span class="text-center text-muted-foreground font-semibold text-[11px] tabular-nums">{pair.turnNumber}.</span>
+							
+							<!-- White Move -->
+							<button
+								data-active={currentPly === pair.white.ply}
+								class="flex items-center gap-1.5 px-2 py-1 rounded-md text-left transition {currentPly === pair.white.ply
+									? 'bg-foreground text-background font-bold shadow-xs'
+									: 'text-foreground hover:bg-muted'}"
+								on:click={() => jumpToPly(pair.white.ply)}
+							>
+								<ReviewBadge classification={pair.white.classification} size="sm" />
+								<span class="font-bold">{pair.white.san}</span>
+								<span class="ml-auto text-[10px] opacity-75 font-normal tabular-nums">
+									{pair.white.accuracy}%
+								</span>
+							</button>
 
-					<!-- Scrollable Paired Move Rows -->
-					<div bind:this={moveContainer} class="max-h-48 overflow-y-auto p-1 divide-y divide-border/60 font-mono text-xs">
-						{#each pairedReviewedMoves as pair}
-							{@const black = pair.black}
-							<div class="grid grid-cols-[38px_1fr_1fr] items-center py-0.5 px-1 rounded-lg hover:bg-muted/40 transition">
-								<!-- Turn Number -->
-								<span class="text-center text-muted-foreground font-semibold text-[11px] tabular-nums">{pair.turnNumber}.</span>
-								
-								<!-- White Move -->
+							<!-- Black Move -->
+							{#if black}
 								<button
-									data-active={currentPly === pair.white.ply}
-									class="flex items-center gap-1.5 px-2 py-1 rounded-md text-left transition {currentPly === pair.white.ply
+									data-active={currentPly === black.ply}
+									class="flex items-center gap-1.5 px-2 py-1 rounded-md text-left transition {currentPly === black.ply
 										? 'bg-foreground text-background font-bold shadow-xs'
 										: 'text-foreground hover:bg-muted'}"
-									on:click={() => jumpToPly(pair.white.ply)}
+									on:click={() => jumpToPly(black.ply)}
 								>
-									<ReviewBadge classification={pair.white.classification} size="sm" />
-									<span class="font-bold">{pair.white.san}</span>
+									<ReviewBadge classification={black.classification} size="sm" />
+									<span class="font-bold">{black.san}</span>
 									<span class="ml-auto text-[10px] opacity-75 font-normal tabular-nums">
-										{pair.white.accuracy}%
+										{black.accuracy}%
 									</span>
 								</button>
-
-								<!-- Black Move -->
-								{#if black}
-									<button
-										data-active={currentPly === black.ply}
-										class="flex items-center gap-1.5 px-2 py-1 rounded-md text-left transition {currentPly === black.ply
-											? 'bg-foreground text-background font-bold shadow-xs'
-											: 'text-foreground hover:bg-muted'}"
-										on:click={() => jumpToPly(black.ply)}
-									>
-										<ReviewBadge classification={black.classification} size="sm" />
-										<span class="font-bold">{black.san}</span>
-										<span class="ml-auto text-[10px] opacity-75 font-normal tabular-nums">
-											{black.accuracy}%
-										</span>
-									</button>
-								{:else}
-									<span></span>
-								{/if}
-							</div>
-						{/each}
-					</div>
+							{:else}
+								<span></span>
+							{/if}
+						</div>
+					{/each}
 				</div>
 			</div>
-		{:else}
-			<!-- OVERVIEW TAB -->
-			<div class="flex flex-col gap-3.5">
+
+			<!-- Bottom Quick Actions: Key Moves & Auto-Play -->
+			<div class="flex items-center justify-between gap-2 p-1.5 bg-secondary/30 border border-border rounded-xl shrink-0">
+				<button
+					class="flex-1 py-1 px-2 rounded-lg bg-card hover:bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center gap-1 transition border border-border active:translate-y-px"
+					on:click={jumpToPrevKeyMove}
+					title="Previous Turning Point"
+				>
+					<Icon name="chevron-left" size={12} />
+					<span>Prev Key</span>
+				</button>
+
+				<button
+					class="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-px {isAutoPlaying
+						? 'bg-foreground text-background shadow-xs'
+						: 'bg-card hover:bg-muted text-foreground border border-border'}"
+					on:click={toggleAutoPlay}
+				>
+					<Icon name={isAutoPlaying ? 'clock' : 'play'} size={12} />
+					<span>{isAutoPlaying ? 'Pause' : 'Auto'}</span>
+				</button>
+
+				<button
+					class="flex-1 py-1 px-2 rounded-lg bg-card hover:bg-muted text-foreground text-[11px] font-semibold flex items-center justify-center gap-1 transition border border-border active:translate-y-px"
+					on:click={jumpToNextKeyMove}
+					title="Next Turning Point"
+				>
+					<span>Next Key</span>
+					<Icon name="chevron-right" size={12} />
+				</button>
+			</div>
+		</div>
+	{:else}
+		<!-- OVERVIEW TAB -->
+		<div class="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3.5">
 				<!-- Accuracy Comparison Cards -->
 				<div class="grid grid-cols-2 gap-2.5">
 					<!-- White Player -->
@@ -806,4 +775,3 @@
 			</div>
 		{/if}
 	</div>
-</div>
