@@ -35,12 +35,13 @@
 
 	$: currentPath = $page.url.pathname;
 
-	const navItems: Array<{ href: string; label: string; icon: 'swords' | 'zap' | 'puzzle' | 'search' | 'trophy' }> = [
+	const navItems: Array<{ href: string; label: string; icon: 'swords' | 'zap' | 'puzzle' | 'search' | 'trophy' | 'download' }> = [
 		{ href: '/play', label: 'Play', icon: 'swords' },
 		{ href: '/play/online', label: 'Online', icon: 'zap' },
 		{ href: '/puzzles', label: 'Puzzles', icon: 'puzzle' },
 		{ href: '/analysis', label: 'Analysis', icon: 'search' },
-		{ href: '/leaderboard', label: 'Leaderboard', icon: 'trophy' }
+		{ href: '/leaderboard', label: 'Leaderboard', icon: 'trophy' },
+		{ href: '/download', label: 'Desktop', icon: 'download' }
 	];
 </script>
 

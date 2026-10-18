@@ -98,6 +98,13 @@
 						<span>Spar with Bot</span>
 					</Button>
 				</a>
+
+				<a href="/download" class="w-full sm:w-auto">
+					<Button variant="outline" size="lg" className="w-full sm:w-auto border-foreground/30 hover:border-foreground">
+						<Icon name="download" size={16} />
+						<span>Get Desktop App</span>
+					</Button>
+				</a>
 			</div>
 
 			<!-- Live Platform Stats -->

@@ -10,7 +10,7 @@ on:
         description: 'Publish as Draft Release on GitHub'
         required: true
         type: boolean
-        default: true
+        default: false
 
 jobs:
   build-desktop:
@@ -82,8 +82,40 @@ jobs:
           projectPath: './apps/desktop'
           tagName: ${{ github.ref_name }}
           releaseName: 'ChessNova Desktop ${{ github.ref_name }}'
-          releaseBody: 'Cross-platform desktop native release of ChessNova with frameless window styling and native system tray.'
-          releaseDraft: ${{ github.event_name == 'workflow_dispatch' && inputs.release_draft || true }}
+          releaseBody: |
+            ## ♟ ChessNova Desktop (${{ github.ref_name }})
+
+            Welcome to the official cross-platform desktop release of **ChessNova** — a modern, distraction-free chess platform and tactical analysis laboratory engineered with **Rust** and **Tauri v2**.
+
+            ---
+
+            ### 📦 Download Packages by Operating System
+
+            | Platform | File | Type | Architecture |
+            | :--- | :--- | :--- | :--- |
+            | 🐧 **Linux** | `ChessNova_${{ github.ref_name }}_amd64.AppImage` | Portable (Zero Install) | x86_64 / amd64 |
+            | 🐧 **Linux** | `chessnova_${{ github.ref_name }}_amd64.deb` | Debian / Ubuntu Package | x86_64 / amd64 |
+            | 🪟 **Windows** | `ChessNova_${{ github.ref_name }}_x64-setup.exe` | Standard Windows Installer | x64 (Windows 10/11) |
+            | 🪟 **Windows** | `ChessNova_${{ github.ref_name }}_x64_en-US.msi` | MSI Enterprise Package | x64 (Windows 10/11) |
+            | 🍏 **macOS** | `ChessNova_${{ github.ref_name }}_universal.dmg` | Disk Image (Universal) | Apple Silicon (M1/M2/M3/M4) & Intel |
+
+            ---
+
+            ### ✨ Highlights in this Release
+            - 🧠 **Dual Stockfish 19 Engine**: Integrated native Stockfish 19 UCI engine with baseline depth 14 search (depth 16 endgame scaling) and client-side Stockfish 19 Lite WASM with embedded NNUE neural network (`nn-61e7af4bb97d.nnue`).
+            - 🔬 **Grandmaster Tactical Review Coach**: Real-time evaluation curves with tactical motif classification (Forks, Pins, Hanging Blunders, Discovered Checks, Queen Trades, Sacrifices, and Missed Wins).
+            - ⚡ **Ultra-Lightweight & Blazing Fast**: Engineered with Rust and native webview components, consuming under 60 MB RAM compared to heavy Electron alternatives.
+            - 🎨 **Frameless Studio Noir Design**: Custom desktop window titlebar with system controls, bespoke Staunton vector SVG pieces, and dynamic multi-theme engine (Dark Slate, Chess Classic, OLED Black, Emerald Studio).
+            - 📶 **100% Offline Capable**: Play against AI bots, enjoy local pass-and-play, and analyze games with zero internet connection required.
+
+            ---
+
+            ### 🚀 Installation Notes
+            - **Linux AppImage**: Run `chmod +x ChessNova_*.AppImage && ./ChessNova_*.AppImage`.
+            - **Linux DEB**: Run `sudo dpkg -i chessnova_*.deb` or double-click to install via your software center.
+            - **Windows**: Launch the `.exe` or `.msi`. If Windows Defender SmartScreen displays a warning, click **More info** -> **Run anyway**.
+            - **macOS**: Mount the `.dmg` and drag ChessNova into your `Applications` folder. On first launch, right-click (or Control-click) and select **Open** to approve the Gatekeeper security prompt.
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
