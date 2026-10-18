@@ -54,6 +54,9 @@ type Router struct {
 	externalService *external.Service
 	wsHub           *websocket.Hub
 	corsOrigin      string
+	adminSecret     string
+	authLimiter     *ipRateLimiter
+	engineLimiter   *ipRateLimiter
 }
 
 func NewRouter(
@@ -93,9 +96,15 @@ func NewRouter(
 		externalService: externalService,
 		wsHub:           wsHub,
 		corsOrigin:      corsOrigin,
+		authLimiter:     newIPRateLimiter(10, time.Minute),
+		engineLimiter:   newIPRateLimiter(30, 10*time.Second),
 	}
 	r.routes()
 	return r
+}
+
+func (rt *Router) SetAdminSecret(secret string) {
+	rt.adminSecret = secret
 }
 
 func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -104,11 +113,12 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
 	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+	w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 
 	// Global CORS Handler
 	w.Header().Set("Access-Control-Allow-Origin", rt.corsOrigin)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With, X-Admin-Secret")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 	if r.Method == http.MethodOptions {
@@ -124,14 +134,14 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("GET /health", rt.handleHealth)
 	rt.mux.HandleFunc("GET /metrics", observability.DefaultMetrics.PrometheusHandler())
 	rt.mux.HandleFunc("GET /api/v1/metrics", observability.DefaultMetrics.JSONHandler())
-	rt.mux.HandleFunc("GET /api/v1/logs", observability.DefaultLogger.HTTPHandler())
+	rt.mux.HandleFunc("GET /api/v1/logs", rt.withAdminAuth(observability.DefaultLogger.HTTPHandler()))
 
 	// Auth
-	rt.mux.HandleFunc("POST /api/v1/auth/register", rt.handleRegister)
-	rt.mux.HandleFunc("POST /api/v1/auth/register/send-otp", rt.handleRegisterSendOTP)
+	rt.mux.HandleFunc("POST /api/v1/auth/register", rt.authLimiter.Middleware(rt.handleRegister))
+	rt.mux.HandleFunc("POST /api/v1/auth/register/send-otp", rt.authLimiter.Middleware(rt.handleRegisterSendOTP))
 	rt.mux.HandleFunc("POST /api/v1/auth/register/verify-otp", rt.handleRegisterVerifyOTP)
-	rt.mux.HandleFunc("POST /api/v1/auth/register/resend-otp", rt.handleRegisterResendOTP)
-	rt.mux.HandleFunc("POST /api/v1/auth/login", rt.handleLogin)
+	rt.mux.HandleFunc("POST /api/v1/auth/register/resend-otp", rt.authLimiter.Middleware(rt.handleRegisterResendOTP))
+	rt.mux.HandleFunc("POST /api/v1/auth/login", rt.authLimiter.Middleware(rt.handleLogin))
 	rt.mux.HandleFunc("POST /api/v1/auth/refresh", rt.handleRefresh)
 	rt.mux.HandleFunc("POST /api/v1/auth/logout", rt.handleLogout)
 
@@ -165,17 +175,17 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/draw-accept", rt.withAuth(rt.handleAcceptDraw))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/draw-decline", rt.withAuth(rt.handleDeclineDraw))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/claim-draw", rt.withAuth(rt.handleClaimDraw))
-	rt.mux.HandleFunc("POST /api/v1/games/close-all", rt.handleCloseAllGames)
+	rt.mux.HandleFunc("POST /api/v1/games/close-all", rt.withAdminAuth(rt.handleCloseAllGames))
 
 	// Authoritative Chess Engine & Legal Move Rules
 	rt.mux.HandleFunc("POST /api/v1/chess/legal-moves", rt.handleLegalMoves)
 	rt.mux.HandleFunc("POST /api/v1/chess/move", rt.handleExecuteMove)
-	rt.mux.HandleFunc("POST /api/v1/chess/bot-move", rt.handleBotMove)
+	rt.mux.HandleFunc("POST /api/v1/chess/bot-move", rt.engineLimiter.Middleware(rt.handleBotMove))
 
 	// Authoritative Stockfish Analysis & Game Review
-	rt.mux.HandleFunc("POST /api/v1/analysis/evaluate", rt.handleEvaluatePosition)
-	rt.mux.HandleFunc("POST /api/v1/analysis/review", rt.handleReviewGame)
-	rt.mux.HandleFunc("POST /api/v1/games/{id}/review", rt.handleReviewGameByID)
+	rt.mux.HandleFunc("POST /api/v1/analysis/evaluate", rt.engineLimiter.Middleware(rt.handleEvaluatePosition))
+	rt.mux.HandleFunc("POST /api/v1/analysis/review", rt.engineLimiter.Middleware(rt.handleReviewGame))
+	rt.mux.HandleFunc("POST /api/v1/games/{id}/review", rt.engineLimiter.Middleware(rt.handleReviewGameByID))
 
 	// Leaderboards
 	rt.mux.HandleFunc("GET /api/v1/leaderboard", rt.handleLeaderboard)

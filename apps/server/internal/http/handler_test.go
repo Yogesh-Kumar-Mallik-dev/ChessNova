@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"chess-platform/server/internal/engine"
 	"chess-platform/server/internal/game"
@@ -360,6 +361,70 @@ func TestHandleReviewGameByID_CachedAndEvaluated(t *testing.T) {
 	_ = json.Unmarshal(w2.Body.Bytes(), &res)
 	if res.WhiteAccuracy != 99.9 {
 		t.Fatalf("expected cached review with WhiteAccuracy 99.9, got %f", res.WhiteAccuracy)
+	}
+}
+
+func TestAdminAuth(t *testing.T) {
+	router := setupTestRouter()
+	router.SetAdminSecret("test-secret-12345")
+
+	// 1. Without secret -> 401
+	req := httptest.NewRequest("POST", "/api/v1/games/close-all", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 without secret, got %d", w.Code)
+	}
+
+	// 2. With wrong secret -> 401
+	req = httptest.NewRequest("POST", "/api/v1/games/close-all", nil)
+	req.Header.Set("X-Admin-Secret", "wrong-secret")
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 with wrong secret, got %d", w.Code)
+	}
+
+	// 3. With correct secret -> 200
+	req = httptest.NewRequest("POST", "/api/v1/games/close-all", nil)
+	req.Header.Set("X-Admin-Secret", "test-secret-12345")
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 with correct secret, got %d", w.Code)
+	}
+
+	// 4. Test logs route with query secret
+	req = httptest.NewRequest("GET", "/api/v1/logs?secret=test-secret-12345", nil)
+	w = httptest.NewRecorder()
+	// Just start request to verify it does not reject with 401
+	router.ServeHTTP(w, req)
+	if w.Code == http.StatusUnauthorized {
+		t.Errorf("expected authorized access with query secret, got 401")
+	}
+}
+
+func TestRateLimiter(t *testing.T) {
+	limiter := newIPRateLimiter(3, 500*time.Millisecond)
+
+	ip := "192.168.1.100"
+	if !limiter.allow(ip) {
+		t.Fatalf("first request should be allowed")
+	}
+	if !limiter.allow(ip) {
+		t.Fatalf("second request should be allowed")
+	}
+	if !limiter.allow(ip) {
+		t.Fatalf("third request should be allowed")
+	}
+	if limiter.allow(ip) {
+		t.Fatalf("fourth request should exceed rate limit")
+	}
+
+	// Wait for window to reset
+	time.Sleep(550 * time.Millisecond)
+	if !limiter.allow(ip) {
+		t.Fatalf("request after window expiry should be allowed")
 	}
 }
 

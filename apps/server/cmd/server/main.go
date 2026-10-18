@@ -228,6 +228,8 @@ func main() {
 		wsHub,
 		corsOrigin,
 	)
+	adminSecret := getEnv("ADMIN_SECRET", jwtAccessSecret)
+	router.SetAdminSecret(adminSecret)
 
 	loggedHandler := observability.HTTPLoggingMiddleware(observability.DefaultLogger, observability.DefaultMetrics, router)
 
