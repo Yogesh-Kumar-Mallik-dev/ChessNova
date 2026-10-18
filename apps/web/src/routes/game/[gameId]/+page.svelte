@@ -453,8 +453,8 @@
 				{/if}
 
 				<!-- Top Player Bar (Opponent) -->
-				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mb-1">
-					<div class="flex items-center gap-2">
+				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mb-1 gap-2">
+					<div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
 						{#if topPlayer?.username && topPlayer.username !== 'guest-opponent' && topPlayer.username !== 'Opponent'}
 							<UserBadge
 								username={topPlayer.username}
@@ -466,18 +466,16 @@
 							/>
 						{:else}
 							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
-								<div class="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-muted-foreground shadow-xs">
+								<div class="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-muted-foreground shadow-xs shrink-0">
 									<Icon name="user" size={13} />
 								</div>
-								<span class="truncate max-w-[140px] sm:max-w-none">{topPlayer?.username || 'Opponent'}</span>
-								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border">
+								<span class="truncate max-w-[120px] sm:max-w-none">{topPlayer?.username || 'Opponent'}</span>
+								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border shrink-0">
 									{topPlayer?.rating || 400}
 								</span>
 							</div>
 						{/if}
-						<div class="ml-1">
-							<CapturedPieces fen={$gameStore.fen} forColor={topColor} />
-						</div>
+						<CapturedPieces fen={$gameStore.fen} forColor={topColor} />
 					</div>
 
 					<GameClock timeMs={topTimeMs} isActive={isTopTurn} />
@@ -504,8 +502,8 @@
 				/>
 
 				<!-- Bottom Player Bar (Self) -->
-				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mt-1">
-					<div class="flex items-center gap-2">
+				<div class="w-full flex items-center justify-between py-1 px-1 text-sm font-semibold select-none mt-1 gap-2">
+					<div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
 						{#if bottomPlayer?.username && bottomPlayer.username !== 'guest-opponent'}
 							<UserBadge
 								username={bottomPlayer.username}
@@ -517,18 +515,16 @@
 							/>
 						{:else}
 							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
-								<div class="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-foreground shadow-xs">
+								<div class="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-foreground shadow-xs shrink-0">
 									<Icon name="crown" size={13} />
 								</div>
-								<span class="truncate max-w-[140px] sm:max-w-none">{bottomPlayer?.username || (isPlayer ? 'You' : 'White')}</span>
-								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground border border-border">
+								<span class="truncate max-w-[120px] sm:max-w-none">{bottomPlayer?.username || (isPlayer ? 'You' : 'White')}</span>
+								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground border border-border shrink-0">
 									{bottomPlayer?.rating || 400}
 								</span>
 							</div>
 						{/if}
-						<div class="ml-1">
-							<CapturedPieces fen={$gameStore.fen} forColor={bottomColor} />
-						</div>
+						<CapturedPieces fen={$gameStore.fen} forColor={bottomColor} />
 					</div>
 
 					<GameClock timeMs={bottomTimeMs} isActive={isBottomTurn} />

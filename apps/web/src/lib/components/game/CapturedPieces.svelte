@@ -45,18 +45,20 @@
 		return counts;
 	})();
 
-	// Pieces of opponent that we captured
-	$: capturedByUs = (() => {
-		const result: PieceType[] = [];
+	// Group captured opponent pieces by piece type: Q, R, B, N, P
+	$: capturedGroups = (() => {
+		const groups: Array<{ type: PieceType; count: number }> = [];
 		const oppRemaining = remaining[opponentColor];
 		for (const pt of ['q', 'r', 'b', 'n', 'p'] as PieceType[]) {
 			const diff = Math.max(0, INITIAL_COUNTS[pt] - oppRemaining[pt]);
-			for (let i = 0; i < diff; i++) {
-				result.push(pt);
+			if (diff > 0) {
+				groups.push({ type: pt, count: diff });
 			}
 		}
-		return result;
+		return groups;
 	})();
+
+	$: totalCapturedCount = capturedGroups.reduce((acc, g) => acc + g.count, 0);
 
 	// Calculate material advantage
 	$: materialAdvantage = (() => {
@@ -70,22 +72,29 @@
 	})();
 </script>
 
-{#if capturedByUs.length > 0 || (materialAdvantage !== 0 && (materialAdvantage > 0 || showDeficit))}
-	<div class="flex items-center gap-1 sm:gap-1.5 h-6 overflow-hidden max-w-[120px] xs:max-w-[160px] sm:max-w-none shrink select-none">
-		<div class="flex items-center -space-x-1 sm:-space-x-1.5">
-			{#each capturedByUs as pt}
-				{@const svgKey = opponentColor === 'white' ? pt.toUpperCase() : pt.toLowerCase()}
-				<div class="w-4 h-4 sm:w-4.5 sm:h-4.5 opacity-90 inline-block piece-{opponentColor} shrink-0 transition-transform">
-					{@html PIECE_SVGS[svgKey]}
-				</div>
-			{/each}
-		</div>
+{#if totalCapturedCount > 0 || (materialAdvantage !== 0 && (materialAdvantage > 0 || showDeficit))}
+	<div class="inline-flex items-center gap-1 sm:gap-1.5 h-6 select-none shrink-0">
+		{#if totalCapturedCount > 0}
+			<div class="flex items-center gap-1 bg-secondary/40 border border-border/40 px-1.5 py-0.5 rounded-md shadow-xs">
+				{#each capturedGroups as group}
+					<div class="flex items-center -space-x-1.5 sm:-space-x-2">
+						{#each Array(group.count) as _, i}
+							{@const svgKey = opponentColor === 'white' ? group.type.toUpperCase() : group.type.toLowerCase()}
+							<div class="w-3.5 h-3.5 sm:w-4 sm:h-4 piece-item piece-{opponentColor} shrink-0">
+								{@html PIECE_SVGS[svgKey]}
+							</div>
+						{/each}
+					</div>
+				{/each}
+			</div>
+		{/if}
+
 		{#if materialAdvantage > 0}
-			<span class="text-[10px] sm:text-[11px] font-mono font-bold text-foreground bg-secondary border border-border px-1.5 py-0.2 rounded shadow-xs ml-1 shrink-0 tabular-nums">
+			<span class="text-[10px] sm:text-[11px] font-mono font-bold text-foreground bg-secondary border border-border px-1.5 py-0.5 rounded shadow-xs tabular-nums shrink-0">
 				+{materialAdvantage}
 			</span>
 		{:else if materialAdvantage < 0 && showDeficit}
-			<span class="text-[10px] sm:text-[11px] font-mono font-semibold text-muted-foreground bg-secondary/60 border border-border/50 px-1.5 py-0.2 rounded ml-1 shrink-0 tabular-nums">
+			<span class="text-[10px] sm:text-[11px] font-mono font-semibold text-muted-foreground bg-secondary/60 border border-border/50 px-1.5 py-0.5 rounded tabular-nums shrink-0">
 				{materialAdvantage}
 			</span>
 		{/if}
@@ -93,10 +102,20 @@
 {/if}
 
 <style>
-	.piece-white :global(svg) {
-		filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
+	.piece-item :global(svg) {
+		width: 100%;
+		height: 100%;
+		display: block;
+		pointer-events: none;
 	}
+
+	/* White captured piece: high contrast shadow for dark and light surfaces */
+	.piece-white :global(svg) {
+		filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6));
+	}
+
+	/* Black captured piece: luminous white contour rim so it is razor sharp on dark/pitch backgrounds */
 	.piece-black :global(svg) {
-		filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+		filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.35)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
 	}
 </style>

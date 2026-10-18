@@ -449,8 +449,8 @@
 			<div class="w-full max-w-[min(100%,calc(100dvh-200px),580px)] flex flex-col items-center">
 				
 				<!-- Opponent Indicator Bar -->
-				<div class="w-full flex items-center justify-between py-1 px-1 text-xs select-none mb-1">
-					<div class="flex items-center gap-2">
+				<div class="w-full flex items-center justify-between py-1 px-1 text-xs select-none mb-1 gap-2">
+					<div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
 						{#if gameMode === 'vs_computer'}
 							<UserBadge
 								username={activeBot.name}
@@ -462,24 +462,22 @@
 							/>
 						{:else}
 							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
-								<div class="w-6 h-6 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground">
+								<div class="w-6 h-6 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground shrink-0">
 									<Icon name="user" size={13} />
 								</div>
-								<span>Opponent</span>
+								<span class="truncate">Opponent</span>
 							</div>
 						{/if}
-						<div class="ml-1">
-							<CapturedPieces {fen} forColor={topColor} />
-						</div>
+						<CapturedPieces {fen} forColor={topColor} />
 					</div>
 
 					{#if isBotThinking}
-						<div class="flex items-center gap-1.5 text-[11px] font-mono text-foreground animate-pulse font-bold">
+						<div class="flex items-center gap-1.5 text-[11px] font-mono text-foreground animate-pulse font-bold shrink-0">
 							<span class="w-2 h-2 rounded-full bg-foreground"></span>
 							<span>Thinking...</span>
 						</div>
 					{:else}
-						<span class="text-[11px] text-muted-foreground font-mono">
+						<span class="text-[11px] text-muted-foreground font-mono shrink-0">
 							{turn === (gameMode === 'vs_computer' && playerColor === 'white' ? 'black' : 'white') ? 'Their turn' : 'Waiting'}
 						</span>
 					{/if}
@@ -500,8 +498,8 @@
 				/>
 
 				<!-- Self Indicator Bar -->
-				<div class="w-full flex items-center justify-between py-1 px-1 text-xs select-none mt-1">
-					<div class="flex items-center gap-2">
+				<div class="w-full flex items-center justify-between py-1 px-1 text-xs select-none mt-1 gap-2">
+					<div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
 						{#if $authStore.user}
 							<UserBadge
 								username={$authStore.user.username}
@@ -513,19 +511,17 @@
 							/>
 						{:else}
 							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
-								<div class="w-6 h-6 rounded-lg bg-secondary border border-border text-foreground flex items-center justify-center">
+								<div class="w-6 h-6 rounded-lg bg-secondary border border-border text-foreground flex items-center justify-center shrink-0">
 									<Icon name="crown" size={13} />
 								</div>
-								<span>You</span>
+								<span class="truncate">You</span>
 							</div>
 						{/if}
-						<div class="ml-1">
-							<CapturedPieces {fen} forColor={bottomColor} />
-						</div>
+						<CapturedPieces {fen} forColor={bottomColor} />
 					</div>
 
 					<!-- Turn Indicator -->
-					<div class="flex items-center gap-1.5">
+					<div class="flex items-center gap-1.5 shrink-0">
 						<span class="text-[11px] font-mono {turn === playerColor ? 'text-foreground font-bold' : 'text-muted-foreground'}">
 							{turn === playerColor ? 'Your turn' : 'Waiting...'}
 						</span>

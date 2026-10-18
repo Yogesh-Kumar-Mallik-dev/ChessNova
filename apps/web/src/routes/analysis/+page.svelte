@@ -582,10 +582,12 @@
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
 			<div class="w-full max-w-[min(100%,calc(100dvh-200px),600px)] flex flex-col items-center">
 				<!-- Top Player Strip -->
-				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mb-1">
+				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mb-1 gap-2">
 					<div class="flex items-center gap-2 min-w-0">
-						<div class="w-2.5 h-2.5 rounded-full shrink-0 {topAnalysisColor === 'white' ? 'bg-[#f4f4f6] border border-border' : 'bg-[#18181b] border border-border'}"></div>
-						<span class="font-bold text-foreground text-xs truncate max-w-[120px] sm:max-w-none">{topAnalysisPlayer}</span>
+						<div class="flex items-center gap-1.5 shrink-0">
+							<div class="w-2.5 h-2.5 rounded-full shrink-0 {topAnalysisColor === 'white' ? 'bg-[#f4f4f6] border border-border' : 'bg-[#18181b] border border-border'}"></div>
+							<span class="font-bold text-foreground text-xs truncate max-w-[90px] sm:max-w-none">{topAnalysisPlayer}</span>
+						</div>
 						<CapturedPieces {fen} forColor={topAnalysisColor} />
 					</div>
 					{#if topAnalysisAccuracy !== null}
@@ -617,10 +619,12 @@
 				</div>
 
 				<!-- Bottom Player Strip -->
-				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mt-1">
+				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mt-1 gap-2">
 					<div class="flex items-center gap-2 min-w-0">
-						<div class="w-2.5 h-2.5 rounded-full shrink-0 {bottomAnalysisColor === 'white' ? 'bg-[#f4f4f6] border border-border' : 'bg-[#18181b] border border-border'}"></div>
-						<span class="font-bold text-foreground text-xs truncate max-w-[120px] sm:max-w-none">{bottomAnalysisPlayer}</span>
+						<div class="flex items-center gap-1.5 shrink-0">
+							<div class="w-2.5 h-2.5 rounded-full shrink-0 {bottomAnalysisColor === 'white' ? 'bg-[#f4f4f6] border border-border' : 'bg-[#18181b] border border-border'}"></div>
+							<span class="font-bold text-foreground text-xs truncate max-w-[90px] sm:max-w-none">{bottomAnalysisPlayer}</span>
+						</div>
 						<CapturedPieces {fen} forColor={bottomAnalysisColor} />
 					</div>
 					{#if bottomAnalysisAccuracy !== null}
