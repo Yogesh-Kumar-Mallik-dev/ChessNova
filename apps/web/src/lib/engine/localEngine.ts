@@ -456,11 +456,14 @@ export async function evaluatePosition(
 	}
 
 	// 2. Try Browser Local Stockfish (WASM)
-	if (state.isCached && state.isEnabled) {
+	if (state.isEnabled && (state.isCached || typeof window !== 'undefined')) {
 		try {
 			const localRes = await evaluateViaWorker(fen, depth, movetimeMs);
 			if (localRes && localRes.bestMove) {
 				localRes.fen = fen;
+				if (state.source !== 'wasm') {
+					engineStore.update((s) => ({ ...s, source: 'wasm', status: 'ready' }));
+				}
 				return { result: localRes, source: 'wasm' };
 			}
 		} catch (e) {

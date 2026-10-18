@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { afterUpdate, createEventDispatcher, onDestroy, onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ReviewBadge from './ReviewBadge.svelte';
 	import { api } from '$lib/api/client';
-	import { reviewGameLocally } from '$lib/engine/localEngine';
+	import { reviewGameLocally, engineStore } from '$lib/engine/localEngine';
 	import {
 		type GameReviewResult,
 		type ReviewedMove,
@@ -92,27 +93,33 @@
 
 		const isLocalStaged = typeof window !== 'undefined' && sessionStorage.getItem('review_is_local') === 'true';
 		const hasGameId = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('gameId');
+		const engineState = get(engineStore);
+		const prefersLocal = !hasGameId && (isLocalStaged || engineState.isEnabled);
 
-		// 1. Cost-effective and instant local Stockfish evaluation for Bot & Pass-and-Play games
-		if (!hasGameId && isLocalStaged && moves && moves.length > 0) {
-			if (progressInterval) clearInterval(progressInterval);
+		// 1. Cost-effective and instant local Stockfish evaluation (WASM or Native)
+		if (prefersLocal && moves && moves.length > 0) {
 			try {
 				progressText = 'Starting local Stockfish game review...';
 				const localRes = await reviewGameLocally(
 					moves,
 					{ white: whitePlayerName, black: blackPlayerName, pgn },
 					(pct, txt) => {
+						if (progressInterval) clearInterval(progressInterval);
 						progressPercent = pct;
 						progressText = txt;
 					}
 				);
 				if (localRes) {
+					if (progressInterval) clearInterval(progressInterval);
 					progressPercent = 100;
 					progressText = 'Local review complete!';
 					reviewResult = localRes;
 					if (reviewResult?.white) whitePlayerName = reviewResult.white;
 					if (reviewResult?.black) blackPlayerName = reviewResult.black;
 					if (reviewResult?.pgn) pgn = reviewResult.pgn;
+					setTimeout(() => {
+						isAnalyzing = false;
+					}, 250);
 					return;
 				}
 			} catch (err) {
@@ -122,6 +129,7 @@
 
 		// 2. Authoritative server Stockfish for rated multiplayer games or fallback
 		try {
+			progressText = 'Requesting server Stockfish review...';
 			const payload = pgn ? { pgn, moves } : moves;
 			const res = (await api.analysis.review(payload)) as GameReviewResult;
 			if (progressInterval) clearInterval(progressInterval);

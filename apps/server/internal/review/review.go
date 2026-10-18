@@ -289,6 +289,12 @@ func (s *ReviewService) AnalyzePGN(ctx context.Context, pgnStr string) (*ReviewR
 }
 
 func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*ReviewResult, error) {
+	if s.engine != nil && s.engine.RemoteURL() != "" {
+		if res, err := s.analyzeRemote(ctx, "", moves); err == nil && res != nil {
+			return res, nil
+		}
+	}
+
 	sans := make([]string, len(moves))
 	for i, m := range moves {
 		sans[i] = m.SAN

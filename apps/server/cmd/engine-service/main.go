@@ -139,8 +139,8 @@ func main() {
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      mux,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 45 * time.Second,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 90 * time.Second,
 	}
 
 	go func() {

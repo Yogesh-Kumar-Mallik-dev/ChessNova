@@ -75,7 +75,7 @@ func NewStockfishEngine() *StockfishEngine {
 		binaryPath:   bin,
 		remoteURL:    remoteURL,
 		remoteSecret: remoteSecret,
-		httpClient:   &http.Client{Timeout: 15 * time.Second},
+		httpClient:   &http.Client{Timeout: 90 * time.Second},
 		pool:         make(chan *stockfishWorker, poolSize),
 		maxWorkers:   poolSize,
 		cacheKeys:    make([]string, 0, 5000),
