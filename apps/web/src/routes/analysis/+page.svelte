@@ -569,7 +569,7 @@
 		<!-- Left: Board with Eval Bar & Universal Stepper Bar -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
 			<div class="w-full max-w-[min(100%,calc(100dvh-200px),600px)] flex flex-col items-center">
-				<div class="flex items-center justify-center gap-1.5 sm:gap-2.5 w-full">
+				<div class="flex items-center justify-center gap-1.5 sm:gap-2.5 w-full pt-6 sm:pt-7">
 					<!-- Slim Eval Bar -->
 					<div class="flex self-stretch shrink-0 py-0.5">
 						<EvalBar scoreCp={activeScoreCp} isMate={activeIsMate} mateIn={activeMateIn} {orientation} />
