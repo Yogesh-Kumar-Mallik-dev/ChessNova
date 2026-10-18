@@ -12,6 +12,13 @@
 	import type { GameReviewResult } from '$lib/chess/review';
 	import { soundEffects } from '$lib/audio/sounds';
 	import {
+		initEngineSystem,
+		evaluatePosition,
+		engineStore,
+		type EngineSource
+	} from '$lib/engine/localEngine';
+	import EngineSettingsModal from '$lib/components/chess/EngineSettingsModal.svelte';
+	import {
 		getLocalGames,
 		saveLocalGame,
 		deleteLocalGame,
@@ -39,6 +46,8 @@
 
 	let reviewResult: GameReviewResult | null = null;
 	let showPgnModal = false;
+	let showEngineModal = false;
+	let currentEngineSource: EngineSource = 'cloud';
 	let copiedPgn = false;
 	let copiedFen = false;
 	let currentPgn = '';
@@ -115,6 +124,8 @@
 
 	onMount(async () => {
 		if (typeof window !== 'undefined') {
+			initEngineSystem();
+
 			const advPref = localStorage.getItem('chessnova_show_advanced');
 			if (advPref === '1') {
 				showAdvanced = true;
@@ -201,8 +212,9 @@
 
 	async function fetchLiveEval(targetFen: string) {
 		try {
-			const res = await api.analysis.evaluate(targetFen, 12);
+			const { result: res, source } = await evaluatePosition(targetFen, 12);
 			if (res && fen === targetFen) {
+				currentEngineSource = source;
 				liveEval = {
 					scoreCp: res.scoreCp,
 					isMate: res.isMate,
@@ -455,6 +467,25 @@
 
 		<!-- Action Buttons & Advanced Toggle -->
 		<div class="flex items-center gap-1.5">
+			<!-- Engine Settings & Source Badge -->
+			<button
+				class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition border cursor-pointer active:translate-y-px bg-slate-900/80 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-850"
+				on:click={() => (showEngineModal = true)}
+				title="Stockfish Engine Settings & Local Cache"
+			>
+				<Icon name="zap" size={12} className={$engineStore.source === 'cloud' ? 'text-sky-400' : 'text-emerald-400'} />
+				<span class="text-[11px] hidden sm:inline">
+					{$engineStore.source === 'tauri'
+						? 'Desktop Native'
+						: $engineStore.source === 'wasm'
+							? 'Local WASM'
+							: 'Cloud Engine'}
+				</span>
+				<span
+					class="w-1.5 h-1.5 rounded-full {$engineStore.source === 'cloud' ? 'bg-sky-400' : 'bg-emerald-400'}"
+				></span>
+			</button>
+
 			<!-- Advanced Mode Toggle -->
 			<button
 				class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition border cursor-pointer active:translate-y-px {showAdvanced
@@ -914,3 +945,6 @@
 		</div>
 	</div>
 {/if}
+
+<EngineSettingsModal open={showEngineModal} on:close={() => (showEngineModal = false)} />
+

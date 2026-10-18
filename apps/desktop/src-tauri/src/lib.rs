@@ -4,10 +4,17 @@ use tauri::{
     Manager,
 };
 
+mod engine;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .invoke_handler(tauri::generate_handler![
+            engine::native_engine_info,
+            engine::native_engine_evaluate,
+            engine::native_engine_bot_move,
+        ])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
