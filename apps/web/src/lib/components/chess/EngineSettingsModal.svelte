@@ -107,6 +107,7 @@
 					on:click={handleToggle}
 					role="switch"
 					aria-checked={$engineStore.isEnabled}
+					aria-label="Toggle local engine"
 				>
 					<span
 						class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {$engineStore.isEnabled

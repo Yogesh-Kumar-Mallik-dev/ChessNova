@@ -107,7 +107,7 @@ export function clearAllLocalGames(): void {
 /**
  * Stage a game into sessionStorage and URL for instant Game Review launch.
  */
-export function stageGameForReview(pgn: string, white = 'White', black = 'Black'): void {
+export function stageGameForReview(pgn: string, white = 'White', black = 'Black', isLocal = false): void {
 	if (typeof window === 'undefined') return;
 	try {
 		sessionStorage.setItem('review_pgn', pgn.trim());
@@ -118,6 +118,7 @@ export function stageGameForReview(pgn: string, white = 'White', black = 'Black'
 				black
 			})
 		);
+		sessionStorage.setItem('review_is_local', isLocal ? 'true' : 'false');
 	} catch (e) {
 		console.warn('Failed to stage game for review:', e);
 	}

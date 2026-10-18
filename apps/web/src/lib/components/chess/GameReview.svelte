@@ -3,6 +3,7 @@
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import ReviewBadge from './ReviewBadge.svelte';
 	import { api } from '$lib/api/client';
+	import { reviewGameLocally } from '$lib/engine/localEngine';
 	import {
 		type GameReviewResult,
 		type ReviewedMove,
@@ -88,6 +89,37 @@
 			}
 		}, 380);
 
+		const isLocalStaged = typeof window !== 'undefined' && sessionStorage.getItem('review_is_local') === 'true';
+		const hasGameId = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('gameId');
+
+		// 1. Cost-effective and instant local Stockfish evaluation for Bot & Pass-and-Play games
+		if (!hasGameId && isLocalStaged && moves && moves.length > 0) {
+			if (progressInterval) clearInterval(progressInterval);
+			try {
+				progressText = 'Starting local Stockfish game review...';
+				const localRes = await reviewGameLocally(
+					moves,
+					{ white: whitePlayerName, black: blackPlayerName, pgn },
+					(pct, txt) => {
+						progressPercent = pct;
+						progressText = txt;
+					}
+				);
+				if (localRes) {
+					progressPercent = 100;
+					progressText = 'Local review complete!';
+					reviewResult = localRes;
+					if (reviewResult?.white) whitePlayerName = reviewResult.white;
+					if (reviewResult?.black) blackPlayerName = reviewResult.black;
+					if (reviewResult?.pgn) pgn = reviewResult.pgn;
+					return;
+				}
+			} catch (err) {
+				console.warn('[Review] Local review error, falling back to server:', err);
+			}
+		}
+
+		// 2. Authoritative server Stockfish for rated multiplayer games or fallback
 		try {
 			const payload = pgn ? { pgn, moves } : moves;
 			const res = (await api.analysis.review(payload)) as GameReviewResult;

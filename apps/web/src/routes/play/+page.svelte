@@ -13,6 +13,7 @@
 	import { authStore } from '$lib/stores/auth';
 	import UserBadge from '$lib/components/ui/UserBadge.svelte';
 	import { saveLocalGame, stageGameForReview } from '$lib/stores/localGames';
+	import { generateBotMove } from '$lib/engine/localEngine';
 
 	// Game Modes
 	type GameMode = 'pass_and_play' | 'vs_computer';
@@ -126,7 +127,7 @@
 		isBotThinking = true;
 
 		try {
-			const res = await api.chess.botMove(currentFen, botLevel);
+			const res = await generateBotMove(currentFen, botLevel);
 
 			if (res && res.valid) {
 				const cap = res.isCapture || res.san?.includes('x') || false;
@@ -292,7 +293,7 @@
 				pgn,
 				startFen: INITIAL_FEN
 			});
-			stageGameForReview(pgn, whiteName, blackName);
+			stageGameForReview(pgn, whiteName, blackName, true);
 		}
 		goto('/analysis?review=1');
 	}
