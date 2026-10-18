@@ -592,41 +592,43 @@
 
 				<!-- Coach Feedback Banner (when game review is active) -->
 				{#if reviewResult}
-					<div class="w-full mt-2 bg-card border border-border rounded-xl p-2.5 sm:p-3 shadow-md animate-in fade-in duration-150">
+					<div class="w-full mt-2 bg-card border border-border rounded-xl p-2.5 sm:p-3 shadow-md h-[122px] sm:h-[126px] flex flex-col justify-between shrink-0 select-none overflow-hidden animate-in fade-in duration-150">
 						{#if currentReviewedMove}
-							<div class="flex flex-col gap-1.5">
-								<!-- Header: Classification Badge + Move Name + Accuracy & Eval Pills -->
-								<div class="flex items-center justify-between gap-2">
-									<div class="flex items-center gap-2 min-w-0">
-										<ReviewBadge classification={currentReviewedMove.classification} size="md" />
-										<div class="flex items-center gap-1.5 truncate">
-											<span class="text-xs font-bold text-foreground capitalize">
-												{currentReviewedMove.classification.replace('_', ' ')}
-											</span>
-											<span class="text-[11px] font-mono font-bold text-muted-foreground">
-												{currentReviewedMove.moveNumber}{currentReviewedMove.color === 'white' ? '.' : '...'} {currentReviewedMove.san}
-											</span>
-										</div>
-									</div>
-
-									<div class="flex items-center gap-1.5 shrink-0">
-										<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums" title="Evaluation after move">
-											{formatEval(currentReviewedMove.evalAfter)}
+							<!-- Row 1: Header (Classification Badge + Move Name + Accuracy & Eval Pills) -->
+							<div class="flex items-center justify-between gap-2 h-6 shrink-0">
+								<div class="flex items-center gap-2 min-w-0">
+									<ReviewBadge classification={currentReviewedMove.classification} size="md" />
+									<div class="flex items-center gap-1.5 truncate">
+										<span class="text-xs font-bold text-foreground capitalize">
+											{currentReviewedMove.classification.replace('_', ' ')}
 										</span>
-										<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums" title="Move accuracy">
-											{currentReviewedMove.accuracy}%
+										<span class="text-[11px] font-mono font-bold text-muted-foreground">
+											{currentReviewedMove.moveNumber}{currentReviewedMove.color === 'white' ? '.' : '...'} {currentReviewedMove.san}
 										</span>
 									</div>
 								</div>
 
-								<!-- Coach Commentary Explanation -->
-								<p class="text-xs text-foreground/90 leading-snug font-normal bg-secondary/40 border border-border/80 px-2.5 py-1.5 rounded-lg">
+								<div class="flex items-center gap-1.5 shrink-0">
+									<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums" title="Evaluation after move">
+										{formatEval(currentReviewedMove.evalAfter)}
+									</span>
+									<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums" title="Move accuracy">
+										{currentReviewedMove.accuracy}%
+									</span>
+								</div>
+							</div>
+
+							<!-- Row 2: Coach Commentary Explanation (Fixed height with line-clamp-2) -->
+							<div class="h-9 sm:h-10 flex items-center shrink-0 overflow-hidden">
+								<p class="text-xs text-foreground/90 leading-tight font-normal line-clamp-2 bg-secondary/30 border border-border/60 px-2.5 py-1.5 rounded-lg w-full">
 									{currentReviewedMove.explanation}
 								</p>
+							</div>
 
-								<!-- Best Move Suggestion if move was not best -->
+							<!-- Row 3: Suboptimal Comparison OR Confirmation Row (Constant height across all moves) -->
+							<div class="h-6 flex items-center shrink-0">
 								{#if currentReviewedMove.bestMoveSan && currentReviewedMove.bestMoveSan !== currentReviewedMove.san}
-									<div class="flex items-center justify-between text-[11px] bg-secondary/60 border border-border px-2.5 py-1 rounded-lg">
+									<div class="flex items-center justify-between text-[11px] bg-secondary/60 border border-border px-2.5 py-0.5 rounded-lg w-full">
 										<div class="flex items-center gap-1.5 truncate">
 											<ReviewBadge classification="best" size="sm" />
 											<span class="text-muted-foreground font-medium">Best was:</span>
@@ -636,25 +638,59 @@
 											{formatEval(currentReviewedMove.evalBefore)}
 										</span>
 									</div>
+								{:else}
+									<div class="flex items-center justify-between text-[11px] bg-secondary/30 border border-border/50 px-2.5 py-0.5 rounded-lg w-full text-muted-foreground">
+										<div class="flex items-center gap-1.5 truncate text-foreground font-medium">
+											{#if currentReviewedMove.classification === 'best'}
+												<ReviewBadge classification="best" size="sm" />
+												<span>Optimal engine move played</span>
+											{:else if currentReviewedMove.classification === 'book'}
+												<ReviewBadge classification="book" size="sm" />
+												<span>Official opening book theory</span>
+											{:else}
+												<ReviewBadge classification={currentReviewedMove.classification} size="sm" />
+												<span>Solid tactical continuation</span>
+											{/if}
+										</div>
+										<span class="font-mono text-[10px] text-muted-foreground uppercase">
+											{currentReviewedMove.phase || 'analyzed'}
+										</span>
+									</div>
 								{/if}
 							</div>
 						{:else}
-							<!-- Starting Position -->
-							<div class="flex items-center justify-between gap-2 py-0.5">
+							<!-- Starting Position: Exact identical 3-row layout -->
+							<div class="flex items-center justify-between gap-2 h-6 shrink-0">
 								<div class="flex items-center gap-2">
-									<div class="w-6 h-6 rounded-md bg-secondary border border-border flex items-center justify-center text-foreground shrink-0">
-										<Icon name="search" size={13} />
+									<div class="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center text-foreground shrink-0">
+										<Icon name="search" size={12} />
 									</div>
-									<div>
-										<span class="text-xs font-bold text-foreground">Starting Position</span>
-										<p class="text-[11px] text-muted-foreground">Step through moves below to inspect the game review.</p>
-									</div>
+									<span class="text-xs font-bold text-foreground">Starting Position</span>
 								</div>
+								<div class="flex items-center gap-1.5 shrink-0">
+									<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums">
+										0.0
+									</span>
+									<span class="px-2 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-muted-foreground tabular-nums">
+										0/{moves.length}
+									</span>
+								</div>
+							</div>
+
+							<div class="h-9 sm:h-10 flex items-center shrink-0 overflow-hidden">
+								<p class="text-xs text-muted-foreground leading-tight font-normal bg-secondary/30 border border-border/60 px-2.5 py-1.5 rounded-lg w-full truncate sm:line-clamp-2">
+									Step through moves using the controls below to inspect evaluations, accuracy, and turning points.
+								</p>
+							</div>
+
+							<div class="h-6 flex items-center justify-between text-[11px] bg-secondary/30 border border-border/50 px-2.5 py-0.5 rounded-lg shrink-0">
+								<span class="font-mono text-[10px] text-muted-foreground">White to move</span>
 								<button
-									class="px-2.5 py-1 rounded-lg bg-secondary hover:bg-muted text-foreground text-xs font-semibold border border-border transition cursor-pointer"
+									class="font-bold text-foreground hover:underline flex items-center gap-1 text-[11px] cursor-pointer"
 									on:click={() => goToPly(1)}
 								>
-									Start &rarr;
+									<span>Start Review</span>
+									<Icon name="chevron-right" size={12} />
 								</button>
 							</div>
 						{/if}
