@@ -584,14 +584,14 @@
 				<!-- Top Player Strip -->
 				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mb-1 gap-2">
 					<div class="flex items-center gap-2 min-w-0">
-						<div class="flex items-center gap-1.5 shrink-0">
+						<div class="flex items-center gap-1.5 px-2 rounded-lg bg-secondary/50 border border-border shadow-xs h-7 shrink-0">
 							<div class="w-2.5 h-2.5 rounded-full shrink-0 {topAnalysisColor === 'white' ? 'bg-[#f4f4f6] border border-border' : 'bg-[#18181b] border border-border'}"></div>
 							<span class="font-bold text-foreground text-xs truncate max-w-[90px] sm:max-w-none">{topAnalysisPlayer}</span>
 						</div>
 						<CapturedPieces {fen} forColor={topAnalysisColor} />
 					</div>
 					{#if topAnalysisAccuracy !== null}
-						<span class="px-1.5 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums shrink-0" title="{topAnalysisPlayer} Accuracy">
+						<span class="px-2 rounded-lg bg-secondary/50 border border-border shadow-xs text-xs font-mono font-bold text-foreground tabular-nums shrink-0 h-7 flex items-center" title="{topAnalysisPlayer} Accuracy">
 							{topAnalysisAccuracy}%
 						</span>
 					{/if}
@@ -621,14 +621,14 @@
 				<!-- Bottom Player Strip -->
 				<div class="w-full flex items-center justify-between text-xs py-0.5 px-1 select-none mt-1 gap-2">
 					<div class="flex items-center gap-2 min-w-0">
-						<div class="flex items-center gap-1.5 shrink-0">
+						<div class="flex items-center gap-1.5 px-2 rounded-lg bg-secondary/50 border border-border shadow-xs h-7 shrink-0">
 							<div class="w-2.5 h-2.5 rounded-full shrink-0 {bottomAnalysisColor === 'white' ? 'bg-[#f4f4f6] border border-border' : 'bg-[#18181b] border border-border'}"></div>
 							<span class="font-bold text-foreground text-xs truncate max-w-[90px] sm:max-w-none">{bottomAnalysisPlayer}</span>
 						</div>
 						<CapturedPieces {fen} forColor={bottomAnalysisColor} />
 					</div>
 					{#if bottomAnalysisAccuracy !== null}
-						<span class="px-1.5 py-0.5 rounded-md bg-secondary border border-border text-[11px] font-mono font-bold text-foreground tabular-nums shrink-0" title="{bottomAnalysisPlayer} Accuracy">
+						<span class="px-2 rounded-lg bg-secondary/50 border border-border shadow-xs text-xs font-mono font-bold text-foreground tabular-nums shrink-0 h-7 flex items-center" title="{bottomAnalysisPlayer} Accuracy">
 							{bottomAnalysisAccuracy}%
 						</span>
 					{/if}

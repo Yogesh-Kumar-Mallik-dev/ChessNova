@@ -461,9 +461,9 @@
 								interactive={false}
 							/>
 						{:else}
-							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
-								<div class="w-6 h-6 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground shrink-0">
-									<Icon name="user" size={13} />
+							<div class="flex items-center gap-1.5 h-7 px-2 rounded-lg bg-secondary/50 border border-border shadow-xs text-foreground font-bold leading-tight shrink-0">
+								<div class="w-4 h-4 rounded bg-secondary border border-border flex items-center justify-center text-muted-foreground shrink-0">
+									<Icon name="user" size={11} />
 								</div>
 								<span class="truncate">Opponent</span>
 							</div>
@@ -510,9 +510,9 @@
 								target="_blank"
 							/>
 						{:else}
-							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
-								<div class="w-6 h-6 rounded-lg bg-secondary border border-border text-foreground flex items-center justify-center shrink-0">
-									<Icon name="crown" size={13} />
+							<div class="flex items-center gap-1.5 h-7 px-2 rounded-lg bg-secondary/50 border border-border shadow-xs text-foreground font-bold leading-tight shrink-0">
+								<div class="w-4 h-4 rounded bg-secondary border border-border text-foreground flex items-center justify-center shrink-0">
+									<Icon name="crown" size={11} />
 								</div>
 								<span class="truncate">You</span>
 							</div>

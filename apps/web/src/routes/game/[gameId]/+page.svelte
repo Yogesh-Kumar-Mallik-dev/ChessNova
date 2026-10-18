@@ -465,12 +465,12 @@
 								target="_blank"
 							/>
 						{:else}
-							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
-								<div class="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-muted-foreground shadow-xs shrink-0">
-									<Icon name="user" size={13} />
+							<div class="flex items-center gap-1.5 h-7 px-2 rounded-lg bg-secondary/50 border border-border shadow-xs text-foreground font-bold text-xs shrink-0">
+								<div class="w-4 h-4 rounded bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-muted-foreground shadow-xs shrink-0">
+									<Icon name="user" size={11} />
 								</div>
 								<span class="truncate max-w-[120px] sm:max-w-none">{topPlayer?.username || 'Opponent'}</span>
-								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border shrink-0">
+								<span class="text-[10px] sm:text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-card border border-border text-muted-foreground shrink-0">
 									{topPlayer?.rating || 400}
 								</span>
 							</div>
@@ -514,12 +514,12 @@
 								target="_blank"
 							/>
 						{:else}
-							<div class="flex items-center gap-2 text-foreground font-bold leading-tight">
-								<div class="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-foreground shadow-xs shrink-0">
-									<Icon name="crown" size={13} />
+							<div class="flex items-center gap-1.5 h-7 px-2 rounded-lg bg-secondary/50 border border-border shadow-xs text-foreground font-bold text-xs shrink-0">
+								<div class="w-4 h-4 rounded bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold text-foreground shadow-xs shrink-0">
+									<Icon name="crown" size={11} />
 								</div>
 								<span class="truncate max-w-[120px] sm:max-w-none">{bottomPlayer?.username || (isPlayer ? 'You' : 'White')}</span>
-								<span class="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground border border-border shrink-0">
+								<span class="text-[10px] sm:text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-card border border-border text-foreground shrink-0">
 									{bottomPlayer?.rating || 400}
 								</span>
 							</div>

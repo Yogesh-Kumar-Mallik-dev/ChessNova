@@ -73,14 +73,14 @@
 </script>
 
 {#if totalCapturedCount > 0 || (materialAdvantage !== 0 && (materialAdvantage > 0 || showDeficit))}
-	<div class="inline-flex items-center gap-1 select-none shrink-0 leading-none py-0.5">
+	<div class="inline-flex items-center rounded-lg bg-secondary/50 border border-border shadow-xs select-none h-7 px-2 gap-1.5 shrink-0">
 		{#if totalCapturedCount > 0}
-			<div class="flex items-center gap-0.5 shrink-0">
+			<div class="flex items-center gap-1 shrink-0">
 				{#each capturedGroups as group}
-					<div class="flex items-center -space-x-1 sm:-space-x-1.5">
+					<div class="flex items-center -space-x-1.5 sm:-space-x-2">
 						{#each Array(group.count) as _, i}
 							{@const svgKey = opponentColor === 'white' ? group.type.toUpperCase() : group.type.toLowerCase()}
-							<div class="w-3 h-3 sm:w-3.5 sm:h-3.5 piece-item piece-{opponentColor} shrink-0">
+							<div class="w-4 h-4 sm:w-4.5 sm:h-4.5 piece-item piece-{opponentColor} shrink-0">
 								{@html PIECE_SVGS[svgKey]}
 							</div>
 						{/each}
@@ -90,11 +90,11 @@
 		{/if}
 
 		{#if materialAdvantage > 0}
-			<span class="text-[9px] sm:text-[10px] font-mono font-bold text-foreground bg-secondary border border-border px-1 py-0.2 rounded shadow-xs leading-none tabular-nums shrink-0">
+			<span class="text-[10px] sm:text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-card border border-border text-foreground shadow-xs tabular-nums shrink-0">
 				+{materialAdvantage}
 			</span>
 		{:else if materialAdvantage < 0 && showDeficit}
-			<span class="text-[9px] sm:text-[10px] font-mono font-semibold text-muted-foreground bg-secondary/60 border border-border/50 px-1 py-0.2 rounded leading-none tabular-nums shrink-0">
+			<span class="text-[10px] sm:text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-card/60 border border-border/50 text-muted-foreground tabular-nums shrink-0">
 				{materialAdvantage}
 			</span>
 		{/if}
@@ -111,11 +111,11 @@
 
 	/* White captured piece: high contrast shadow for dark and light surfaces */
 	.piece-white :global(svg) {
-		filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+		filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6));
 	}
 
 	/* Black captured piece: luminous white contour rim so it is razor sharp on dark/pitch backgrounds */
 	.piece-black :global(svg) {
-		filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.35)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7));
+		filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.35)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
 	}
 </style>
