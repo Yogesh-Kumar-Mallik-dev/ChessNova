@@ -202,8 +202,11 @@ CONF_EOF
   echo "✅ Added [${REPO_NAME}] repository to ${REPO_CONF}."
 fi
 
+echo "==> Cleaning any stale or corrupted cache..."
+rm -f /var/lib/pacman/sync/chesspasant.* /var/cache/pacman/pkg/chesspasant* 2>/dev/null || true
+
 echo "==> Synchronizing repository and installing ChessPasant..."
-pacman -Sy --noconfirm "${REPO_NAME}"
+pacman -Syy --noconfirm "${REPO_NAME}"
 
 echo "=================================================================="
 echo "🎉 ChessPasant installed successfully!"
