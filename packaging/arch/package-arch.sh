@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-VERSION="${1:-0.1.1}"
+VERSION="${1:-0.1.2}"
 OUTPUT_DIR="${2:-$ROOT_DIR/dist/arch}"
 
 echo "==> [arch] Building Arch Linux release package for ChessPasant v${VERSION}..."
@@ -46,7 +46,7 @@ fi
 if [ -z "$BINARY_PATH" ] || [ ! -f "$BINARY_PATH" ]; then
     echo "==> [arch] No existing release binary found. Building desktop via npm/cargo..."
     cd "$ROOT_DIR/apps/desktop"
-    npm run build
+    npm run build -- --no-bundle
     BINARY_PATH="$ROOT_DIR/apps/desktop/src-tauri/target/release/chesspasant"
     if [ ! -f "$BINARY_PATH" ]; then
         BINARY_PATH="$ROOT_DIR/apps/desktop/src-tauri/target/release/ChessPasant"

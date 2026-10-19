@@ -30,7 +30,7 @@ case "$ACTION" in
     ;;
   arch|package-arch)
     echo "==> [desktop] Packaging ChessPasant for Arch Linux (.pkg.tar.zst & .tar.gz)..."
-    "$ROOT_DIR/packaging/arch/package-arch.sh" "0.1.1" "$ROOT_DIR/dist/arch"
+    "$ROOT_DIR/packaging/arch/package-arch.sh" "0.1.2" "$ROOT_DIR/dist/arch"
     ;;
   deploy-arch|deploy-repo)
     echo "==> [desktop] Deploying Arch Linux repository to production VPS..."
