@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./logo.png" alt="ChessNova" width="110" height="110" />
+</p>
+
 # ChessNova — Next-Generation Online Chess Platform
 
 A production-grade, server-authoritative online chess platform featuring a custom pure-Go chess engine, Stockfish 19 UCI Game Review Laboratory, real-time WebSockets, modern SvelteKit + TypeScript frontend, MongoDB persistence, and Redis matchmaking/caching.
@@ -8,16 +12,16 @@ A production-grade, server-authoritative online chess platform featuring a custo
 
 Comprehensive architectural specifications, mathematical formulations, and operational guides are documented in the [`docs/`](./docs/README.md) directory:
 
-- 📖 **[Documentation Portal (`docs/README.md`)](./docs/README.md)** — Master guide, technology stack, and high-level topology.
-- 🏗️ **[System Architecture (`docs/ARCHITECTURE.md`)](./docs/ARCHITECTURE.md)** — Modular Go monolith, concurrency model, data flow, MongoDB and Redis schemas.
-- ♟️ **[Chess Engine & FIDE Rules (`docs/ENGINE_AND_RULES.md`)](./docs/ENGINE_AND_RULES.md)** — Pure Go rules engine: move generation, castling lifecycle, en passant, promotions, check/checkmate/stalemate, terminal detection, SAN disambiguation, and PGN.
-- 🔬 **[Game Review & Evaluation Laboratory (`docs/GAME_REVIEW_AND_EVALUATION.md`)](./docs/GAME_REVIEW_AND_EVALUATION.md)** — Stockfish 19 UCI integration, move classifications (Brilliant, Great, Best, etc.), CAPS win-chance curves, ECO opening book, phase accuracies, and calibrated platform Elo rating.
-- 📈 **[Rating & Matchmaking (`docs/RATING_AND_MATCHMAKING.md`)](./docs/RATING_AND_MATCHMAKING.md)** — Chess.com-adapted Elo formulas (400 default, 100 floor, K-32), time categories, Redis matchmaking queues, and expanding tolerance windows.
-- 🔌 **[REST API & WebSocket Protocol (`docs/API_AND_WEBSOCKET_PROTOCOL.md`)](./docs/API_AND_WEBSOCKET_PROTOCOL.md)** — Complete specification of HTTP REST endpoints, external platforms integration, and real-time bidirectional WebSocket events.
-- 🔒 **[Security & Data Practices (`docs/SECURITY_AND_DATA_PRACTICES.md`)](./docs/SECURITY_AND_DATA_PRACTICES.md)** — JWT authentication, bcrypt passwords, ownership authorization, S3-compatible avatar storage, magic-byte sniffing, and security headers.
-- 🎨 **[Frontend & UI/UX Design System (`docs/FRONTEND_AND_UI_DESIGN.md`)](./docs/FRONTEND_AND_UI_DESIGN.md)** — SvelteKit client architecture, dynamic multi-theme engine (Dark Slate, Chess Classic, OLED Black, Emerald Studio), bespoke vector Staunton SVG pieces, viewport clamping, and local guest archives.
-- 🤖 **[Bot Persona & Personality Blueprint (`docs/BOT_PERSONA_BLUEPRINT.md`)](./docs/BOT_PERSONA_BLUEPRINT.md)** — Architecture for human-like bots, phase blunder curves, sacrifice biases, tactical vs positional heuristics, and trash-talk engine.
-- 🛠️ **[Operations & Orchestration (`docs/OPERATIONS_AND_SCRIPTS.md`)](./docs/OPERATIONS_AND_SCRIPTS.md)** — Developer lifecycle runbook via `./script.sh` (`dev`, `build`, `check`, `test`, `deps`, `envi`, `uenvi`, `flush`), Docker Compose, and environment variables.
+- **[Documentation Portal (`docs/README.md`)](./docs/README.md)** — Master guide, technology stack, and high-level topology.
+- **[System Architecture (`docs/ARCHITECTURE.md`)](./docs/ARCHITECTURE.md)** — Modular Go monolith, concurrency model, data flow, MongoDB and Redis schemas.
+- **[Chess Engine & FIDE Rules (`docs/ENGINE_AND_RULES.md`)](./docs/ENGINE_AND_RULES.md)** — Pure Go rules engine: move generation, castling lifecycle, en passant, promotions, check/checkmate/stalemate, terminal detection, SAN disambiguation, and PGN.
+- **[Game Review & Evaluation Laboratory (`docs/GAME_REVIEW_AND_EVALUATION.md`)](./docs/GAME_REVIEW_AND_EVALUATION.md)** — Stockfish 19 UCI integration, move classifications (Brilliant, Great, Best, etc.), CAPS win-chance curves, ECO opening book, phase accuracies, and calibrated platform Elo rating.
+- **[Rating & Matchmaking (`docs/RATING_AND_MATCHMAKING.md`)](./docs/RATING_AND_MATCHMAKING.md)** — Chess.com-adapted Elo formulas (400 default, 100 floor, K-32), time categories, Redis matchmaking queues, and expanding tolerance windows.
+- **[REST API & WebSocket Protocol (`docs/API_AND_WEBSOCKET_PROTOCOL.md`)](./docs/API_AND_WEBSOCKET_PROTOCOL.md)** — Complete specification of HTTP REST endpoints, external platforms integration, and real-time bidirectional WebSocket events.
+- **[Security & Data Practices (`docs/SECURITY_AND_DATA_PRACTICES.md`)](./docs/SECURITY_AND_DATA_PRACTICES.md)** — JWT authentication, bcrypt passwords, ownership authorization, S3-compatible avatar storage, magic-byte sniffing, and security headers.
+- **[Frontend & UI/UX Design System (`docs/FRONTEND_AND_UI_DESIGN.md`)](./docs/FRONTEND_AND_UI_DESIGN.md)** — SvelteKit client architecture, dynamic multi-theme engine (Dark Slate, Chess Classic, OLED Black, Emerald Studio), bespoke vector Staunton SVG pieces, viewport clamping, and local guest archives.
+- **[Bot Persona & Personality Blueprint (`docs/BOT_PERSONA_BLUEPRINT.md`)](./docs/BOT_PERSONA_BLUEPRINT.md)** — Architecture for human-like bots, phase blunder curves, sacrifice biases, tactical vs positional heuristics, and trash-talk engine.
+- **[Operations & Orchestration (`docs/OPERATIONS_AND_SCRIPTS.md`)](./docs/OPERATIONS_AND_SCRIPTS.md)** — Developer lifecycle runbook via `./script.sh` (`dev`, `build`, `check`, `test`, `deps`, `envi`, `uenvi`, `flush`, `desktop`, `desktop-build`, `desktop-arch`), Docker Compose, and environment variables.
 
 ---
 
@@ -191,6 +195,7 @@ All lifecycle tasks are orchestrated through the root entrypoint:
 | `flush` | Flush Redis cache and reset MongoDB database |
 | `desktop` | Launch ChessNova Tauri v2 desktop application in development mode |
 | `desktop-build` | Compile native desktop application release bundle (.AppImage, .deb, etc.) |
+| `desktop-arch` | Package ChessNova for Arch Linux (.pkg.tar.zst & .tar.gz) |
 
 ---
 
@@ -201,7 +206,9 @@ ChessNova includes a dedicated desktop shell in [`apps/desktop/`](file:///home/y
 - **Custom Frameless Titlebar:** Seamless window header matching the theme palette with drag region (`data-tauri-drag-region`), minimize, maximize/restore, and close buttons.
 - **Native System Tray:** Persistent system tray icon with "Show ChessNova" and "Quit ChessNova" context menus.
 - **Desktop Notifications:** Real-time native system notifications for match start, opponent moves, draw offers, and game completion.
-- **Cross-Platform CI Compilation:** Automated matrix builds via GitHub Actions ([`.github/workflows/desktop-release.yml`](file:///home/yogesh/ChessNova/.github/workflows/desktop-release.yml)) packaging:
-  - **Linux:** `.deb` and `.AppImage`
-  - **Windows:** `.msi` and `.exe` (NSIS)
-  - **macOS:** `.dmg` and `.app` (Universal Darwin)
+- **Cross-Platform Compilation & Official Packages:** Automated matrix builds via GitHub Actions ([`.github/workflows/desktop-release.yml`](file:///home/yogesh/ChessNova/.github/workflows/desktop-release.yml)) packaging:
+  - **Arch Linux:** Native Pacman package (`.pkg.tar.zst`), AUR PKGBUILD, and standalone archive (`.tar.gz`).
+  - **Linux (Universal):** Portable zero-install `.AppImage`.
+  - **Debian / Ubuntu:** Native `.deb` package.
+  - **Windows:** Standard `.exe` installer (NSIS) and enterprise `.msi` package.
+  - **macOS:** Universal `.dmg` disk image (optimized natively for Apple Silicon M1–M4 & Intel).

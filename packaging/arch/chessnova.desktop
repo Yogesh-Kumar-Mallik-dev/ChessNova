@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=ChessNova
+Comment=Modern Chess Platform and Stockfish 19 Game Review Studio
+Exec=chessnova %U
+Icon=chessnova
+Terminal=false
+Type=Application
+Categories=Game;BoardGame;
+StartupWMClass=chessnova
+Keywords=chess;game;stockfish;board;analysis;

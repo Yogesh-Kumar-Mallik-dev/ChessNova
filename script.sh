@@ -26,6 +26,7 @@ function show_help() {
   echo "  uenvi    Tear down local Docker containers"
   echo "  desktop  Launch ChessNova Tauri desktop application in dev mode"
   echo "  desktop-build Build ChessNova Tauri desktop native release binary"
+  echo "  desktop-arch  Package ChessNova for Arch Linux (.pkg.tar.zst & .tar.gz)"
   echo "  engine   Launch standalone Stockfish 19 engine microservice (port 8081)"
   echo "  flush    Flush database (MongoDB) and Redis caches"
   echo "  help     Display this help message"
@@ -108,6 +109,14 @@ case "$COMMAND" in
   desktop-build)
     if [ -f "$SCRIPT_DIR/scripts/desktop.sh" ]; then
       exec "$SCRIPT_DIR/scripts/desktop.sh" build "$@"
+    else
+      echo "scripts/desktop.sh not found"
+      exit 1
+    fi
+    ;;
+  desktop-arch)
+    if [ -f "$SCRIPT_DIR/scripts/desktop.sh" ]; then
+      exec "$SCRIPT_DIR/scripts/desktop.sh" arch "$@"
     else
       echo "scripts/desktop.sh not found"
       exit 1

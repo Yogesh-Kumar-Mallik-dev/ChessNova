@@ -1,0 +1,33 @@
+# Maintainer: Yogesh Kumar Mallik <yogeshkumarmallikdev@gmail.com>
+pkgname=chessnova-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Modern, distraction-free chess platform and Stockfish 19 Game Review Studio"
+arch=('x86_64')
+url="https://github.com/Yogesh-Kumar-Mallik-dev/ChessNova"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'glib2' 'openssl' 'libayatana-appindicator')
+optdepends=('stockfish: for external UCI system engine calculation')
+provides=('chessnova')
+conflicts=('chessnova')
+source=("chessnova-${pkgver}-x86_64.tar.gz::https://github.com/Yogesh-Kumar-Mallik-dev/ChessNova/releases/download/v${pkgver}/ChessNova_${pkgver}_x86_64.tar.gz"
+        "chessnova.desktop")
+sha256sums=('SKIP'
+            'SKIP')
+
+package() {
+    cd "${srcdir}"
+    
+    install -Dm755 "chessnova" "${pkgdir}/usr/bin/chessnova"
+    install -Dm644 "chessnova.desktop" "${pkgdir}/usr/share/applications/chessnova.desktop"
+    
+    if [ -f "icons/512x512.png" ]; then
+        install -Dm644 "icons/512x512.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/chessnova.png"
+    fi
+    if [ -f "icons/128x128.png" ]; then
+        install -Dm644 "icons/128x128.png" "${pkgdir}/usr/share/icons/hicolor/128x128/apps/chessnova.png"
+    fi
+    if [ -f "icons/32x32.png" ]; then
+        install -Dm644 "icons/32x32.png" "${pkgdir}/usr/share/icons/hicolor/32x32/apps/chessnova.png"
+    fi
+}
