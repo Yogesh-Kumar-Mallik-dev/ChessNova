@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "ChessPasant",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "com.chesspasant.desktop",
   "build": {
     "frontendDist": "../../web/build",
@@ -20,7 +20,7 @@
         "minHeight": 650,
         "resizable": true,
         "fullscreen": false,
-        "decorations": false,
+        "decorations": true,
         "center": true
       }
     ],

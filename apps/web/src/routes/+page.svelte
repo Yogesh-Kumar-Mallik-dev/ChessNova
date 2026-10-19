@@ -7,6 +7,7 @@
 	import ChessBoard from '$lib/components/chess/ChessBoard.svelte';
 	import { INITIAL_FEN, type Color, type PieceType } from '$lib/chess/engine';
 	import { soundEffects } from '$lib/audio/sounds';
+	import { isTauriEnvironment } from '$lib/config';
 
 	// Interactive hero board state
 	let heroChess = new Chess();
@@ -99,12 +100,14 @@
 					</Button>
 				</a>
 
-				<a href="/download" class="w-full sm:w-auto">
-					<Button variant="outline" size="lg" className="w-full sm:w-auto border-foreground/30 hover:border-foreground">
-						<Icon name="download" size={16} />
-						<span>Get Desktop App</span>
-					</Button>
-				</a>
+				{#if !isTauriEnvironment()}
+					<a href="/download" class="w-full sm:w-auto">
+						<Button variant="outline" size="lg" className="w-full sm:w-auto border-foreground/30 hover:border-foreground">
+							<Icon name="download" size={16} />
+							<span>Get Desktop App</span>
+						</Button>
+					</a>
+				{/if}
 			</div>
 
 			<!-- Live Platform Stats -->

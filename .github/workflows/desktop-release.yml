@@ -93,13 +93,13 @@ jobs:
 
             | Platform | Package | Architecture | Target |
             | :--- | :--- | :--- | :--- |
-            | **Arch Linux** | `chesspasant-${{ github.ref_name }}-1-x86_64.pkg.tar.zst` | x86_64 | Pacman (`sudo pacman -U`) |
-            | **Arch Linux / AUR** | `ChessPasant_${{ github.ref_name }}_x86_64.tar.gz` | x86_64 | Standalone / `makepkg` |
-            | **Linux (Universal)** | `ChessPasant_${{ github.ref_name }}_amd64.AppImage` | x86_64 / amd64 | Portable (All distributions) |
-            | **Linux (Debian/Ubuntu)** | `chesspasant_${{ github.ref_name }}_amd64.deb` | x86_64 / amd64 | APT / dpkg |
-            | **Windows** | `ChessPasant_${{ github.ref_name }}_x64-setup.exe` | x64 | Windows 10 & 11 Setup |
-            | **Windows** | `ChessPasant_${{ github.ref_name }}_x64_en-US.msi` | x64 | Enterprise MSI Installer |
-            | **macOS** | `ChessPasant_${{ github.ref_name }}_universal.dmg` | Universal Binary | Apple Silicon (M1/M2/M3/M4) & Intel |
+            | <img src="https://raw.githubusercontent.com/Yogesh-Kumar-Mallik-dev/ChessPasant/main/apps/web/static/icons/archlinux.svg" width="16" height="16" valign="middle" /> **Arch Linux** | `chesspasant-${{ github.ref_name }}-1-x86_64.pkg.tar.zst` | x86_64 | Pacman (`sudo pacman -U`) |
+            | <img src="https://raw.githubusercontent.com/Yogesh-Kumar-Mallik-dev/ChessPasant/main/apps/web/static/icons/archlinux.svg" width="16" height="16" valign="middle" /> **Arch Linux / AUR** | `ChessPasant_${{ github.ref_name }}_x86_64.tar.gz` | x86_64 | Standalone / `makepkg` |
+            | <img src="https://raw.githubusercontent.com/Yogesh-Kumar-Mallik-dev/ChessPasant/main/apps/web/static/icons/tux.svg" width="16" height="16" valign="middle" /> **Linux (Universal)** | `ChessPasant_${{ github.ref_name }}_amd64.AppImage` | x86_64 / amd64 | Portable (All distributions) |
+            | <img src="https://raw.githubusercontent.com/Yogesh-Kumar-Mallik-dev/ChessPasant/main/apps/web/static/icons/tux.svg" width="16" height="16" valign="middle" /> **Linux (Debian/Ubuntu)** | `chesspasant_${{ github.ref_name }}_amd64.deb` | x86_64 / amd64 | APT / dpkg |
+            | <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/windows11.svg" width="16" height="16" valign="middle" /> **Windows** | `ChessPasant_${{ github.ref_name }}_x64-setup.exe` | x64 | Windows 10 & 11 Setup |
+            | <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/windows11.svg" width="16" height="16" valign="middle" /> **Windows** | `ChessPasant_${{ github.ref_name }}_x64_en-US.msi` | x64 | Enterprise MSI Installer |
+            | <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/apple.svg" width="16" height="16" valign="middle" /> **macOS** | `ChessPasant_${{ github.ref_name }}_universal.dmg` | Universal Binary | Apple Silicon (M1/M2/M3/M4) & Intel |
 
             ---
 
@@ -107,7 +107,7 @@ jobs:
             - Dual Stockfish 19 Engine: Integrated native Stockfish 19 UCI engine with baseline depth 14 search (depth 16 endgame scaling) and client-side Stockfish 19 Lite WASM with embedded NNUE neural network (`nn-61e7af4bb97d.nnue`).
             - Grandmaster Tactical Review Coach: Real-time evaluation curves with tactical motif classification (Forks, Pins, Hanging Blunders, Discovered Checks, Queen Trades, Sacrifices, and Missed Wins).
             - Ultra-Lightweight & Blazing Fast: Engineered with Rust and native webview components, consuming under 60 MB RAM compared to heavy Electron alternatives.
-            - Frameless Studio Noir Design: Custom desktop window titlebar with system controls, bespoke Staunton vector SVG pieces, and dynamic multi-theme engine (Dark Slate, Chess Classic, OLED Black, Emerald Studio).
+            - Native Window Manager & Tiling Integration: Seamlessly integrates with system window managers and tiling setups (Hyprland, Sway, i3) with native OS controls on Windows and macOS.
             - 100% Offline Capable: Play against AI bots, enjoy local pass-and-play, and analyze games with zero internet connection required.
 
             ---

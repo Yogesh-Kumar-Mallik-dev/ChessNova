@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { isTauriEnvironment } from '$lib/config';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 
 	const GITHUB_REPO = 'https://github.com/Yogesh-Kumar-Mallik-dev/ChessPasant';
-	const RELEASE_TAG = 'v0.1.0';
-	const VERSION_NUM = '0.1.0';
+	const RELEASE_TAG = 'v0.1.1';
+	const VERSION_NUM = '0.1.1';
 	const RELEASE_BASE = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}`;
 	const RELEASES_PAGE = `${GITHUB_REPO}/releases`;
 
@@ -45,6 +47,11 @@
 	}
 
 	onMount(() => {
+		if (isTauriEnvironment()) {
+			goto('/play');
+			return;
+		}
+
 		if (typeof window !== 'undefined' && navigator) {
 			const ua = navigator.userAgent.toLowerCase();
 			if (ua.includes('win')) {
@@ -102,8 +109,8 @@
 
 			<div>
 				<div class="flex items-center justify-between mb-4">
-					<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center text-foreground font-bold shadow-2xs">
-						<Icon name="brand-arch" size={24} className="text-foreground" />
+					<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center p-2.5 shadow-2xs">
+						<img src="/icons/archlinux.svg" alt="Arch Linux" class="w-full h-full object-contain" />
 					</div>
 					<span class="text-xs font-mono text-muted-foreground">x86_64</span>
 				</div>
@@ -164,8 +171,8 @@
 			{/if}
 			<div>
 				<div class="flex items-center justify-between mb-4">
-					<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center text-foreground font-bold shadow-2xs">
-						<Icon name="brand-linux" size={24} className="text-foreground" />
+					<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center p-2 shadow-2xs">
+						<img src="/icons/tux.svg" alt="Linux Tux" class="w-full h-full object-contain" />
 					</div>
 					<span class="text-xs font-mono text-muted-foreground">amd64</span>
 				</div>

@@ -4,7 +4,6 @@
 	import { authStore } from '$lib/stores/auth';
 	import { appThemeStore } from '$lib/stores/preferences';
 	import Navbar from '$lib/components/ui/Navbar.svelte';
-	import DesktopTitlebar from '$lib/components/ui/DesktopTitlebar.svelte';
 
 	onMount(() => {
 		authStore.init();
@@ -18,7 +17,6 @@
 </script>
 
 <div class="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-foreground selection:text-background relative overflow-x-hidden">
-	<DesktopTitlebar />
 	<Navbar />
 	<main class="flex-1 flex flex-col min-h-0">
 		<slot />
