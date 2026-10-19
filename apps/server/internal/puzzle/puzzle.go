@@ -29,6 +29,7 @@ type PublicPuzzle struct {
 	ID         primitive.ObjectID `json:"id"`
 	LichessID  string             `json:"lichessId,omitempty"`
 	FEN        string             `json:"fen"`
+	Solution   []string           `json:"solution,omitempty"`
 	Rating     int                `json:"rating"`
 	Themes     []string           `json:"themes"`
 	Category   string             `json:"category"`

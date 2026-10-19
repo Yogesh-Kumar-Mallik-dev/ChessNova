@@ -52,3 +52,16 @@ export function getWsBase(): string {
 	const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 	return `${protocol}//${window.location.host}/ws`;
 }
+
+export function resolveMediaUrl(url: string | null | undefined): string {
+	if (!url) return '';
+	if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+		return url;
+	}
+	if (isTauriEnvironment()) {
+		const base = `https://${PRODUCTION_DOMAIN}`;
+		return url.startsWith('/') ? `${base}${url}` : `${base}/${url}`;
+	}
+	return url;
+}
+

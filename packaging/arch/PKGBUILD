@@ -1,6 +1,6 @@
 # Maintainer: Yogesh Kumar Mallik <yogeshkumarmallikdev@gmail.com>
 pkgname=chesspasant-bin
-pkgver=0.1.2
+pkgver=0.1.3
 pkgrel=1
 pkgdesc="Modern, distraction-free chess platform and Stockfish 19 Game Review Studio"
 arch=('x86_64')
@@ -17,6 +17,9 @@ package() {
     cd "${srcdir}/chesspasant-${pkgver}"
     
     install -Dm755 "chesspasant" "${pkgdir}/usr/bin/chesspasant"
+    if [ -f "stockfish" ]; then
+        install -Dm755 "stockfish" "${pkgdir}/usr/lib/chesspasant/stockfish"
+    fi
     install -Dm644 "chesspasant.desktop" "${pkgdir}/usr/share/applications/chesspasant.desktop"
     
     if [ -f "icons/512x512.png" ]; then

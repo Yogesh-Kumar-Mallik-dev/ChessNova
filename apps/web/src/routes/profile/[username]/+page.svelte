@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api/client';
-	import { getApiBase } from '$lib/config';
+	import { getApiBase, resolveMediaUrl } from '$lib/config';
 	import { authStore } from '$lib/stores/auth';
 	import { stageGameForReview } from '$lib/stores/localGames';
 	import Icon from '$lib/components/icons/Icon.svelte';
@@ -204,7 +204,7 @@
 					<div class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-secondary border border-border shadow-md overflow-hidden flex items-center justify-center">
 						{#if profileData.user.avatar}
 							<img
-								src={profileData.user.avatar}
+								src={resolveMediaUrl(profileData.user.avatar)}
 								alt={profileData.user.username}
 								class="w-full h-full object-cover"
 								on:error={() => (profileData.user.avatar = '')}
@@ -219,7 +219,7 @@
 					{#if isOwnProfile}
 						<input
 							type="file"
-							accept="image/jpeg,image/png,image/webp,image/gif"
+							accept="image/*"
 							class="hidden"
 							bind:this={avatarInput}
 							on:change={handleAvatarSelect}

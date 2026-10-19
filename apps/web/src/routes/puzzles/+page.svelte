@@ -20,6 +20,8 @@
 	let loading = true;
 	let orientation: Color = 'white';
 	let turn: Color = 'white';
+	let puzzlePlayerColor: Color = 'white';
+	let isOpponentReplying = false;
 	let lastMove: { from: string; to: string; san?: string; isCapture?: boolean; isPromotion?: boolean } | null = null;
 	let userRating = 400;
 	let ratingDiff: number | null = null;
@@ -62,6 +64,7 @@
 		hintCount = 0;
 		isSolutionRevealed = false;
 		solutionMoves = [];
+		isOpponentReplying = false;
 
 		try {
 			let p: any = null;
@@ -89,7 +92,17 @@
 			// Determine whose turn it is in FEN
 			const parts = p.fen.split(' ');
 			turn = parts[1] === 'w' ? 'white' : 'black';
+			puzzlePlayerColor = turn;
 			orientation = turn;
+
+			// If solution is not yet included, prefetch in background so moves are checked instantly
+			if (!p.solution || p.solution.length === 0) {
+				api.puzzles.getSolution(p.id).then((solRes) => {
+					if (currentPuzzle && currentPuzzle.id === p.id && solRes?.solution) {
+						currentPuzzle.solution = solRes.solution;
+					}
+				}).catch(() => {});
+			}
 		} catch (e: any) {
 			statusMessage = 'Failed to load tactical puzzle.';
 			statusType = 'error';
@@ -132,6 +145,7 @@
 		try {
 			hasAssistance = true;
 			isSolutionRevealed = true;
+			isOpponentReplying = false;
 
 			// Reset board to initial puzzle state so solution moves apply validly
 			currentFen = currentPuzzle.fen;
@@ -140,13 +154,19 @@
 			hintArrow = null;
 			const parts = currentPuzzle.fen.split(' ');
 			turn = parts[1] === 'w' ? 'white' : 'black';
+			puzzlePlayerColor = turn;
 			solutionIndex = 0;
 
 			statusType = 'info';
 			statusMessage = 'Solution revealed. Playing through the winning moves...';
 
-			const solRes = await api.puzzles.getSolution(currentPuzzle.id);
-			solutionMoves = solRes.solution;
+			if (currentPuzzle.solution && currentPuzzle.solution.length > 0) {
+				solutionMoves = currentPuzzle.solution;
+			} else {
+				const solRes = await api.puzzles.getSolution(currentPuzzle.id);
+				solutionMoves = solRes.solution;
+				currentPuzzle.solution = solRes.solution;
+			}
 
 			// Step through each move starting from the beginning (0)
 			playSolutionStep(0);
@@ -197,8 +217,10 @@
 		hintArrow = null;
 		lastMove = null;
 		isSolutionRevealed = false;
+		isOpponentReplying = false;
 		const parts = currentPuzzle.fen.split(' ');
 		turn = parts[1] === 'w' ? 'white' : 'black';
+		puzzlePlayerColor = turn;
 		statusMessage = 'Position reset. Find the optimal tactical combination!';
 		statusType = 'info';
 	}
@@ -211,7 +233,9 @@
 	}
 
 	async function handleMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
-		if (!currentPuzzle || statusType === 'success' || isSolutionRevealed) return;
+		if (!currentPuzzle || statusType === 'success' || isSolutionRevealed || isOpponentReplying) return;
+		if (turn !== puzzlePlayerColor) return; // Disallow controlling opponent pieces!
+
 		const { from, to, promotion } = event.detail;
 		const uci = `${from}${to}${promotion ? promotion.toLowerCase() : ''}`;
 
@@ -227,6 +251,113 @@
 		const chk = new Chess(res.newFen);
 		const isMate = chk.isCheckmate();
 
+		// Local instantaneous check (0ms latency) if puzzle solution is available
+		if (currentPuzzle.solution && currentPuzzle.solution.length > solutionIndex) {
+			const expectedMove = currentPuzzle.solution[solutionIndex];
+			if (uci === expectedMove) {
+				const isFinished = solutionIndex + 1 >= currentPuzzle.solution.length;
+				if (isFinished) {
+					finishedWithMate = isMate;
+					statusType = 'success';
+					soundEffects.playGameStart();
+					if (isMate) {
+						statusMessage = hasAssistance || isRetrying
+							? 'Checkmate! Puzzle solved with practice/assistance.'
+							: 'Checkmate! You discovered the winning mating sequence.';
+					} else {
+						statusMessage = hasAssistance || isRetrying
+							? 'Puzzle solved with practice/assistance! (Rating unaffected)'
+							: 'Brilliant! Tactical combination completed successfully.';
+					}
+
+					// Sync solved puzzle with backend in background
+					api.puzzles.solve(currentPuzzle.id, {
+						move: uci,
+						plyIndex: solutionIndex,
+						isRetry: isRetrying,
+						hasAssistance: hasAssistance
+					}).then((check) => {
+						if (!hasAssistance && !isRetrying && check.newRating) {
+							userRating = check.newRating;
+							ratingDiff = check.diff;
+							solvedCount++;
+							if ($authStore.user) {
+								authStore.updateRating('puzzles', check.newRating);
+							}
+						}
+					}).catch(() => {});
+				} else {
+					statusMessage = 'Best move found! Continue the tactical sequence...';
+					statusType = 'info';
+					const replyUci = currentPuzzle.solution[solutionIndex + 1];
+					const prevIndex = solutionIndex;
+					solutionIndex += 2;
+
+					// Background sync move
+					api.puzzles.solve(currentPuzzle.id, {
+						move: uci,
+						plyIndex: prevIndex,
+						isRetry: isRetrying,
+						hasAssistance: hasAssistance
+					}).catch(() => {});
+
+					if (replyUci) {
+						isOpponentReplying = true;
+						setTimeout(() => {
+							const replyFrom = replyUci.slice(0, 2);
+							const replyTo = replyUci.slice(2, 4);
+							const replyPromo = (replyUci.slice(4) as PieceType) || undefined;
+							const replyRes = executeMoveClient(currentFen, replyFrom, replyTo, replyPromo);
+							if (replyRes) {
+								currentFen = replyRes.newFen;
+								lastMove = { from: replyFrom, to: replyTo, san: replyRes.san, isCapture: replyRes.isCapture, isPromotion: replyRes.isPromotion };
+								turn = replyRes.turn;
+							}
+							isOpponentReplying = false;
+						}, 250);
+					}
+				}
+			} else {
+				statusMessage = 'Not the optimal move. Resetting position...';
+				statusType = 'error';
+				soundEffects.playIllegal();
+
+				api.puzzles.solve(currentPuzzle.id, {
+					move: uci,
+					plyIndex: solutionIndex,
+					isRetry: isRetrying,
+					hasAssistance: hasAssistance
+				}).then((check) => {
+					if (!isRetrying && !hasAssistance && check.newRating) {
+						userRating = check.newRating;
+						ratingDiff = check.diff;
+						if ($authStore.user) {
+							authStore.updateRating('puzzles', check.newRating);
+						}
+					}
+				}).catch(() => {});
+
+				isRetrying = true;
+
+				setTimeout(() => {
+					if (currentPuzzle && statusType === 'error') {
+						currentFen = currentPuzzle.fen;
+						lastMove = null;
+						hintSquare = null;
+						hintArrow = null;
+						const parts = currentPuzzle.fen.split(' ');
+						turn = parts[1] === 'w' ? 'white' : 'black';
+						puzzlePlayerColor = turn;
+						isOpponentReplying = false;
+						statusMessage = 'Try another tactical combination!';
+						statusType = 'info';
+					}
+				}, 850);
+			}
+			return;
+		}
+
+		// Fallback: server verification if solution not yet preloaded
 		try {
 			const check = await api.puzzles.solve(currentPuzzle.id, {
 				move: uci,
@@ -271,16 +402,18 @@
 					solutionIndex += 2;
 					if (check.replyMove) {
 						const replyUci = check.replyMove;
+						isOpponentReplying = true;
 						setTimeout(() => {
 							const replyFrom = replyUci.slice(0, 2);
 							const replyTo = replyUci.slice(2, 4);
-							const replyPromo = replyUci.slice(4) || undefined;
+							const replyPromo = (replyUci.slice(4) as PieceType) || undefined;
 							const replyRes = executeMoveClient(currentFen, replyFrom, replyTo, replyPromo);
 							if (replyRes) {
 								currentFen = replyRes.newFen;
 								lastMove = { from: replyFrom, to: replyTo, san: replyRes.san, isCapture: replyRes.isCapture, isPromotion: replyRes.isPromotion };
 								turn = replyRes.turn;
 							}
+							isOpponentReplying = false;
 						}, 350);
 					}
 				}
@@ -297,7 +430,6 @@
 				}
 				isRetrying = true;
 
-				// Inform the user, then auto-reset the board so they can try again without manual clicks
 				setTimeout(() => {
 					if (currentPuzzle && statusType === 'error') {
 						currentFen = currentPuzzle.fen;
@@ -306,6 +438,8 @@
 						hintArrow = null;
 						const parts = currentPuzzle.fen.split(' ');
 						turn = parts[1] === 'w' ? 'white' : 'black';
+						puzzlePlayerColor = turn;
+						isOpponentReplying = false;
 						statusMessage = 'Try another tactical combination!';
 						statusType = 'info';
 					}
@@ -493,7 +627,7 @@
 						{hintSquare}
 						{hintArrow}
 						mode="puzzle"
-						interactive={!isSolutionRevealed && statusType !== 'success'}
+						interactive={!isSolutionRevealed && statusType !== 'success' && !isOpponentReplying && turn === puzzlePlayerColor}
 						boardSizeClass="w-full"
 						on:move={handleMove}
 					/>

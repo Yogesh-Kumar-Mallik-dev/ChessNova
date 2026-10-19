@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-VERSION="${1:-0.1.2}"
+VERSION="${1:-0.1.3}"
 OUTPUT_DIR="${2:-$ROOT_DIR/dist/arch}"
 
 echo "==> [arch] Building Arch Linux release package for ChessPasant v${VERSION}..."
@@ -71,6 +71,16 @@ mkdir -p "$PKG_DIR/usr/share/icons/hicolor/32x32/apps"
 cp "$BINARY_PATH" "$PKG_DIR/usr/bin/chesspasant"
 chmod 755 "$PKG_DIR/usr/bin/chesspasant"
 
+# 1b. Install bundled Stockfish 19 NNUE engine
+mkdir -p "$PKG_DIR/usr/lib/chesspasant"
+if [ -f "$ROOT_DIR/apps/server/bin/stockfish" ]; then
+    cp "$ROOT_DIR/apps/server/bin/stockfish" "$PKG_DIR/usr/lib/chesspasant/stockfish"
+    chmod 755 "$PKG_DIR/usr/lib/chesspasant/stockfish"
+elif [ -f "$ROOT_DIR/apps/desktop/src-tauri/bin/stockfish" ]; then
+    cp "$ROOT_DIR/apps/desktop/src-tauri/bin/stockfish" "$PKG_DIR/usr/lib/chesspasant/stockfish"
+    chmod 755 "$PKG_DIR/usr/lib/chesspasant/stockfish"
+fi
+
 # 2. Install desktop entry
 cp "$SCRIPT_DIR/chesspasant.desktop" "$PKG_DIR/usr/share/applications/chesspasant.desktop"
 chmod 644 "$PKG_DIR/usr/share/applications/chesspasant.desktop"
@@ -124,6 +134,9 @@ tar --zstd -cf "$PKG_FILE" .PKGINFO usr/
 TAR_DIR="$WORK_DIR/tarball/chesspasant-${VERSION}"
 mkdir -p "$TAR_DIR/icons"
 cp "$BINARY_PATH" "$TAR_DIR/chesspasant"
+if [ -f "$PKG_DIR/usr/lib/chesspasant/stockfish" ]; then
+    cp "$PKG_DIR/usr/lib/chesspasant/stockfish" "$TAR_DIR/stockfish"
+fi
 cp "$SCRIPT_DIR/chesspasant.desktop" "$TAR_DIR/"
 cp "$PKG_DIR/usr/share/icons/hicolor/512x512/apps/chesspasant.png" "$TAR_DIR/icons/512x512.png" || true
 cp "$PKG_DIR/usr/share/icons/hicolor/128x128/apps/chesspasant.png" "$TAR_DIR/icons/128x128.png" || true
@@ -135,6 +148,9 @@ set -e
 PREFIX="${PREFIX:-/usr/local}"
 echo "Installing ChessPasant to $PREFIX..."
 install -Dm755 chesspasant "$PREFIX/bin/chesspasant"
+if [ -f "stockfish" ]; then
+    install -Dm755 stockfish "$PREFIX/lib/chesspasant/stockfish"
+fi
 install -Dm644 chesspasant.desktop "$PREFIX/share/applications/chesspasant.desktop"
 if [ -d "icons" ]; then
     install -Dm644 icons/512x512.png "$PREFIX/share/icons/hicolor/512x512/apps/chesspasant.png" 2>/dev/null || true

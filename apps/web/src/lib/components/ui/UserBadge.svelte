@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import Icon from '$lib/components/icons/Icon.svelte';
+	import { resolveMediaUrl } from '$lib/config';
 
 	export let username: string = '';
 	export let rating: number | string | null | undefined = null;
@@ -90,7 +91,7 @@
 				)}>
 					{#if avatar && !imgError}
 						<img
-							src={avatar}
+							src={resolveMediaUrl(avatar)}
 							alt={username}
 							class="w-full h-full object-cover"
 							on:error={() => (imgError = true)}
@@ -154,7 +155,7 @@
 				)}>
 					{#if avatar && !imgError}
 						<img
-							src={avatar}
+							src={resolveMediaUrl(avatar)}
 							alt={username}
 							class="w-full h-full object-cover"
 							on:error={() => (imgError = true)}

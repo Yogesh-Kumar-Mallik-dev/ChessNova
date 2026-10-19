@@ -46,6 +46,10 @@ pub fn find_stockfish() -> Option<PathBuf> {
                 parent.join("bin").join("stockfish"),
                 parent.join("bin").join("stockfish.exe"),
                 parent.join("resources").join("stockfish"),
+                parent.join("resources").join("bin").join("stockfish"),
+                parent.join("resources").join("bin").join("stockfish.exe"),
+                parent.join("..").join("lib").join("chesspasant").join("stockfish"),
+                parent.join("..").join("share").join("chesspasant").join("stockfish"),
             ];
             for candidate in bundled_candidates {
                 if candidate.exists() {
@@ -57,7 +61,9 @@ pub fn find_stockfish() -> Option<PathBuf> {
 
     // 3. Check standard system locations per OS
     let system_candidates = [
-        // Linux / Unix
+        // Linux / Unix standard and package paths
+        "/usr/lib/chesspasant/stockfish",
+        "/usr/share/chesspasant/stockfish",
         "/usr/games/stockfish",
         "/usr/bin/stockfish",
         "/usr/local/bin/stockfish",
