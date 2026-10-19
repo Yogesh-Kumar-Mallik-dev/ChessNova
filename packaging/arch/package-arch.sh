@@ -42,9 +42,9 @@ if [ -z "$BINARY_PATH" ] && [ -d "${CANDIDATE_PATHS[4]}" ]; then
     fi
 fi
 
-# If binary not found, attempt to build via desktop release if requested
-if [ -z "$BINARY_PATH" ] || [ ! -f "$BINARY_PATH" ]; then
-    echo "==> [arch] No existing release binary found. Building desktop via npm/cargo..."
+# If force rebuild or binary not found, build via desktop release
+if [ "${FORCE_REBUILD:-0}" = "1" ] || [ -z "$BINARY_PATH" ] || [ ! -f "$BINARY_PATH" ]; then
+    echo "==> [arch] Building desktop via npm/cargo..."
     cd "$ROOT_DIR/apps/desktop"
     npm run build -- --no-bundle
     BINARY_PATH="$ROOT_DIR/apps/desktop/src-tauri/target/release/chesspasant"

@@ -110,6 +110,15 @@ class ChessSoundPlayer {
 		if (!this.enabled || typeof window === 'undefined') return;
 		const finalVol = Math.max(0, Math.min(1, volume * this.masterVolume));
 
+		// 0. Native Desktop Fallback: In Tauri desktop environment, invoke native Rust audio (pw-play / system audio)
+		if ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) {
+			import('@tauri-apps/api/core')
+				.then(({ invoke }) => {
+					invoke('native_play_sound', { name: key }).catch(() => {});
+				})
+				.catch(() => {});
+		}
+
 		// 1. Primary Strategy: Web Audio API (Hardware-direct, 0ms latency, bypasses GStreamer URI routing)
 		if (this.audioContext) {
 			if (this.audioContext.state === 'suspended') {

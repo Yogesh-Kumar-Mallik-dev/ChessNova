@@ -5,6 +5,7 @@ use tauri::{
 };
 
 mod engine;
+mod sound;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -14,6 +15,7 @@ pub fn run() {
             engine::native_engine_info,
             engine::native_engine_evaluate,
             engine::native_engine_bot_move,
+            sound::native_play_sound,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
