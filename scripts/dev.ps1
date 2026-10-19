@@ -29,7 +29,7 @@ Write-Host "==> [dev] Starting SvelteKit frontend on http://localhost:5173..." -
 $FrontendJob = Start-Process -FilePath "npm" -ArgumentList "run", "dev" -WorkingDirectory (Join-Path $RootDir "apps\web") -PassThru
 
 Write-Host "==================================================================" -ForegroundColor Cyan
-Write-Host "  ♟ ChessNova Platform is running in dev mode!" -ForegroundColor Cyan
+Write-Host "  ♟ ChessPasant Platform is running in dev mode!" -ForegroundColor Cyan
 Write-Host "  Frontend: http://localhost:5173" -ForegroundColor Cyan
 Write-Host "  Backend:  http://localhost:8080" -ForegroundColor Cyan
 Write-Host "  Press Ctrl+C to stop all services." -ForegroundColor Cyan

@@ -22,7 +22,7 @@ if command -v docker >/dev/null 2>&1; then
   for CNAME in chess-mongo chess-redis chess-minio; do
     if docker ps -a --format '{{.Names}}' | grep -Eq "^${CNAME}$"; then
       PROJ=$(docker inspect "$CNAME" --format '{{index .Config.Labels "com.docker.compose.project"}}' 2>/dev/null || true)
-      if [ "$PROJ" != "chessnova" ]; then
+      if [ "$PROJ" != "chesspasant" ] && [ "$PROJ" != "chessnova" ]; then
         echo "==> [envi] Cleaning up conflicting container $CNAME (project: '${PROJ:-none}')..."
         docker rm -f "$CNAME" >/dev/null 2>&1 || true
       fi

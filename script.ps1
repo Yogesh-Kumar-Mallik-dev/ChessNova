@@ -17,7 +17,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 function Show-Help {
     Write-Host "==================================================================" -ForegroundColor Cyan
-    Write-Host "  ♟ ChessNova Platform Lifecycle Orchestrator" -ForegroundColor Cyan
+    Write-Host "  ♟ ChessPasant Platform Lifecycle Orchestrator" -ForegroundColor Cyan
     Write-Host "==================================================================" -ForegroundColor Cyan
     Write-Host "Usage: .\script.ps1 <command> [args...]" -ForegroundColor Cyan
     Write-Host ""
@@ -29,8 +29,8 @@ function Show-Help {
     Write-Host "  deps     Install Go and npm dependencies"
     Write-Host "  envi     Initialize local environment and start Docker services"
     Write-Host "  uenvi    Tear down local Docker containers"
-    Write-Host "  desktop  Launch ChessNova Tauri desktop application in dev mode"
-    Write-Host "  desktop-build Build ChessNova Tauri desktop native release binary"
+    Write-Host "  desktop  Launch ChessPasant Tauri desktop application in dev mode"
+    Write-Host "  desktop-build Build ChessPasant Tauri desktop native release binary"
     Write-Host "  engine   Launch standalone Stockfish 19 engine microservice (port 8081)"
     Write-Host "  flush    Flush database (MongoDB) and Redis caches"
     Write-Host "  help     Display this help message"

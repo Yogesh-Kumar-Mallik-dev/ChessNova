@@ -40,7 +40,7 @@ npm run dev &
 FRONTEND_PID=$!
 
 echo "=================================================================="
-echo "  ♟ ChessNova Platform is running in dev mode!"
+echo "  ♟ ChessPasant Platform is running in dev mode!"
 echo "  Frontend: http://localhost:5173"
 echo "  Backend:  http://localhost:8080"
 echo "  Press Ctrl+C to stop all services."
