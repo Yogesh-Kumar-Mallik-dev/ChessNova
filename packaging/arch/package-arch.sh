@@ -189,14 +189,15 @@ echo "  ♟ Setting up ChessPasant Arch Linux Repository"
 echo "=================================================================="
 
 if grep -q "^\[${REPO_NAME}\]" "$REPO_CONF"; then
-  echo "ℹ️  Repository [${REPO_NAME}] is already configured in ${REPO_CONF}."
+  echo "ℹ️  Updating [${REPO_NAME}] configuration in ${REPO_CONF}..."
+  sed -i -e '/^\[chesspasant\]/,/^\[/ s/^SigLevel = .*/SigLevel = Optional DatabaseOptional/' "$REPO_CONF"
 else
   echo "==> Adding [${REPO_NAME}] repository to ${REPO_CONF}..."
   cat << CONF_EOF >> "$REPO_CONF"
 
 # ChessPasant Official Repository
 [${REPO_NAME}]
-SigLevel = Optional TrustAll
+SigLevel = Optional DatabaseOptional
 Server = ${REPO_URL}
 CONF_EOF
   echo "✅ Added [${REPO_NAME}] repository to ${REPO_CONF}."
