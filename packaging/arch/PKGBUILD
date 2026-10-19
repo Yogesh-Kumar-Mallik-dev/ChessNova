@@ -10,13 +10,11 @@ depends=('webkit2gtk-4.1' 'gtk3' 'glib2' 'openssl' 'libayatana-appindicator')
 optdepends=('stockfish: for external UCI system engine calculation')
 provides=('chessnova')
 conflicts=('chessnova')
-source=("chessnova-${pkgver}-x86_64.tar.gz::https://github.com/Yogesh-Kumar-Mallik-dev/ChessNova/releases/download/v${pkgver}/ChessNova_${pkgver}_x86_64.tar.gz"
-        "chessnova.desktop")
-sha256sums=('SKIP'
-            'SKIP')
+source=("https://github.com/Yogesh-Kumar-Mallik-dev/ChessNova/releases/download/v${pkgver}/ChessNova_${pkgver}_x86_64.tar.gz")
+sha256sums=('SKIP')
 
 package() {
-    cd "${srcdir}"
+    cd "${srcdir}/chessnova-${pkgver}"
     
     install -Dm755 "chessnova" "${pkgdir}/usr/bin/chessnova"
     install -Dm644 "chessnova.desktop" "${pkgdir}/usr/share/applications/chessnova.desktop"
