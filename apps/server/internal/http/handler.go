@@ -1710,6 +1710,13 @@ func (rt *Router) handleLegalMoves(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Square != "" {
+		if _, err := chess.ParseSquare(req.Square); err != nil {
+			writeError(w, http.StatusBadRequest, "INVALID_SQUARE", "invalid square notation")
+			return
+		}
+	}
+
 	legalMoves := chess.LegalMoves(pos)
 	targets := make([]legalTargetRes, 0)
 

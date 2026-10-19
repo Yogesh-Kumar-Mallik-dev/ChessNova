@@ -88,6 +88,30 @@ func FromFEN(fen string) (Position, error) {
 		}
 	}
 
+	// Validate King count and pawn placement
+	var whiteKings, blackKings int
+	for sq := Square(0); sq < 64; sq++ {
+		p := pos.Board.Get(sq)
+		if p.Type == King {
+			if p.Color == White {
+				whiteKings++
+			} else {
+				blackKings++
+			}
+		} else if p.Type == Pawn {
+			r := sq.Rank()
+			if r == 0 || r == 7 {
+				return Position{}, fmt.Errorf("pawn on rank %d is illegal", r+1)
+			}
+		}
+	}
+	if whiteKings != 1 {
+		return Position{}, fmt.Errorf("invalid white king count in FEN: %d", whiteKings)
+	}
+	if blackKings != 1 {
+		return Position{}, fmt.Errorf("invalid black king count in FEN: %d", blackKings)
+	}
+
 	// 2. Active color
 	switch parts[1] {
 	case "w":
@@ -99,6 +123,13 @@ func FromFEN(fen string) (Position, error) {
 	}
 
 	// 3. Castling availability
+	if parts[2] != "-" {
+		for _, r := range parts[2] {
+			if r != 'K' && r != 'Q' && r != 'k' && r != 'q' {
+				return Position{}, fmt.Errorf("invalid castling availability in FEN: %s", parts[2])
+			}
+		}
+	}
 	pos.Castling = ParseCastlingRights(parts[2])
 
 	// 4. En passant target square
@@ -106,6 +137,9 @@ func FromFEN(fen string) (Position, error) {
 		sq, err := ParseSquare(parts[3])
 		if err != nil {
 			return Position{}, fmt.Errorf("invalid en passant square: %w", err)
+		}
+		if sq.Rank() != 2 && sq.Rank() != 5 {
+			return Position{}, fmt.Errorf("invalid en passant rank %d", sq.Rank()+1)
 		}
 		pos.EnPassant = &sq
 	} else {
