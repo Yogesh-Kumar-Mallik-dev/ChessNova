@@ -132,14 +132,24 @@
 		try {
 			hasAssistance = true;
 			isSolutionRevealed = true;
+
+			// Reset board to initial puzzle state so solution moves apply validly
+			currentFen = currentPuzzle.fen;
+			lastMove = null;
+			hintSquare = null;
+			hintArrow = null;
+			const parts = currentPuzzle.fen.split(' ');
+			turn = parts[1] === 'w' ? 'white' : 'black';
+			solutionIndex = 0;
+
 			statusType = 'info';
 			statusMessage = 'Solution revealed. Playing through the winning moves...';
 
 			const solRes = await api.puzzles.getSolution(currentPuzzle.id);
 			solutionMoves = solRes.solution;
 
-			// Step through each remaining move with an animated delay
-			playSolutionStep(solutionIndex);
+			// Step through each move starting from the beginning (0)
+			playSolutionStep(0);
 		} catch (err: any) {
 			statusMessage = 'Unable to fetch solution.';
 		}
@@ -275,8 +285,9 @@
 					}
 				}
 			} else {
-				statusMessage = 'Not the optimal move. Retry or request a hint!';
+				statusMessage = 'Not the optimal move. Resetting position...';
 				statusType = 'error';
+				soundEffects.playIllegal();
 				if (!isRetrying && !hasAssistance) {
 					userRating = check.newRating;
 					ratingDiff = check.diff;
@@ -285,6 +296,20 @@
 					}
 				}
 				isRetrying = true;
+
+				// Inform the user, then auto-reset the board so they can try again without manual clicks
+				setTimeout(() => {
+					if (currentPuzzle && statusType === 'error') {
+						currentFen = currentPuzzle.fen;
+						lastMove = null;
+						hintSquare = null;
+						hintArrow = null;
+						const parts = currentPuzzle.fen.split(' ');
+						turn = parts[1] === 'w' ? 'white' : 'black';
+						statusMessage = 'Try another tactical combination!';
+						statusType = 'info';
+					}
+				}, 850);
 			}
 		} catch (err: any) {
 			statusMessage = 'Verification error: ' + (err.message || 'unknown');
@@ -433,7 +458,7 @@
 	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center justify-center my-auto min-h-0">
 		<!-- Left: Hero Puzzle Board Column -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
-			<div class="w-full max-w-[min(100%,calc(100dvh-280px),520px)] flex flex-col items-center">
+			<div class="w-full max-w-[min(100%,calc(100dvh-280px),520px)] lg:max-w-[min(100%,calc(100dvh-130px),620px)] flex flex-col items-center">
 				
 				<!-- Turn Banner -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-xs font-semibold select-none mb-1">
@@ -474,8 +499,8 @@
 					/>
 				{/if}
 
-				<!-- Tactical Status & Immediate Action Bar -->
-				<div class="w-full mt-2 flex flex-col gap-1.5 shrink-0">
+				<!-- Tactical Status & Immediate Action Bar (Mobile Only - Under Board) -->
+				<div class="w-full mt-2 flex flex-col gap-1.5 shrink-0 lg:hidden">
 					<!-- Status Banner -->
 					<div
 						class="px-3 py-2 rounded-xl border flex items-center justify-between gap-2 transition-all duration-200 shrink-0 {statusType === 'success'
@@ -604,8 +629,8 @@
 		</div>
 
 		<!-- Right: Puzzle Details Card (Desktop) -->
-		<div class="hidden lg:flex lg:col-span-5 xl:col-span-4 h-[min(calc(100dvh-110px),640px)] bg-card border border-border rounded-xl p-5 shadow-lg flex-col justify-between overflow-y-auto">
-			<div class="flex items-center justify-between pb-4 border-b border-border">
+		<div class="hidden lg:flex lg:col-span-5 xl:col-span-4 h-[min(calc(100dvh-130px),620px)] bg-card border border-border rounded-xl p-4 xl:p-5 shadow-lg flex-col justify-between overflow-y-auto gap-3">
+			<div class="flex items-center justify-between pb-3 border-b border-border">
 				<div>
 					<span class="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Puzzle Elo</span>
 					<div class="flex items-center gap-2 mt-1">
@@ -649,7 +674,7 @@
 			</div>
 
 			{#if currentPuzzle && currentPuzzle.themes?.length}
-				<div>
+				<div class="my-auto">
 					<div class="flex items-center justify-between mb-2">
 						<span class="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Tactical Themes</span>
 						<span class="text-[10px] text-muted-foreground font-mono">
@@ -667,12 +692,139 @@
 			{/if}
 
 			<!-- Practice Tier Quick Info -->
-			<div class="p-3 bg-secondary/40 rounded-xl border border-border text-xs text-muted-foreground flex items-center justify-between">
+			<div class="p-2.5 bg-secondary/40 rounded-xl border border-border text-xs text-muted-foreground flex items-center justify-between">
 				<div class="flex items-center gap-2">
-					<Icon name="shield" size={15} />
+					<Icon name="shield" size={14} />
 					<span>Calculation Trainer</span>
 				</div>
 				<span class="font-mono text-[11px] text-muted-foreground">525+ Curated Puzzles</span>
+			</div>
+
+			<!-- Tactical Action Console (Desktop) -->
+			<div class="flex flex-col gap-2 pt-2 border-t border-border/80 shrink-0">
+				<!-- Status Banner -->
+				<div
+					class="px-3 py-2 rounded-xl border flex items-center justify-between gap-2 transition-all duration-200 {statusType === 'success'
+						? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+						: statusType === 'error'
+							? 'bg-destructive/10 border-destructive/30 text-destructive'
+							: 'bg-secondary/60 border-border text-foreground'}"
+				>
+					<div class="flex items-center gap-2 min-w-0">
+						<div class="shrink-0">
+							{#if statusType === 'success'}
+								<div class="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+									<Icon name={finishedWithMate ? 'crown' : 'check'} size={12} />
+								</div>
+							{:else if statusType === 'error'}
+								<div class="w-5 h-5 rounded-md bg-destructive/20 text-destructive flex items-center justify-center border border-destructive/30">
+									<Icon name="x" size={12} />
+								</div>
+							{:else}
+								<div class="w-5 h-5 rounded-md bg-secondary text-foreground flex items-center justify-center border border-border">
+									<Icon name="sparkles" size={12} />
+								</div>
+							{/if}
+						</div>
+						<span class="text-xs font-semibold truncate leading-tight">
+							{statusMessage}
+						</span>
+					</div>
+
+					{#if statusType === 'success' && ratingDiff && ratingDiff > 0}
+						<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono font-bold text-xs shrink-0 tabular-nums">
+							+{ratingDiff}
+						</span>
+					{/if}
+				</div>
+
+				<!-- Tactical Buttons Bar -->
+				<div class="flex items-center gap-2 w-full">
+					{#if statusType === 'success'}
+						<Button
+							variant="primary"
+							size="sm"
+							className="flex-1 font-bold justify-center gap-1.5 py-2 shadow-xs"
+							on:click={loadRandomPuzzle}
+						>
+							<span>Next Puzzle</span>
+							<Icon name="arrow-right" size={13} />
+							<span class="text-[10px] opacity-75 font-mono font-normal">(Enter)</span>
+						</Button>
+
+						<Button
+							variant="outline"
+							size="sm"
+							on:click={resetToInitial}
+							className="py-2 px-3"
+							title="Retry position"
+						>
+							<Icon name="rotate-ccw" size={13} />
+							<span class="hidden sm:inline">Retry</span>
+						</Button>
+
+						<a
+							href="/analysis?fen={encodeURIComponent(currentFen)}"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="shrink-0"
+						>
+							<Button
+								variant="outline"
+								size="sm"
+								className="py-2 px-3"
+								title="Analyze in Game Review"
+							>
+								<Icon name="search" size={13} />
+								<span class="hidden sm:inline">Analyze</span>
+							</Button>
+						</a>
+					{:else}
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={isSolutionRevealed}
+							on:click={requestHint}
+							className="flex-1 py-2 gap-1.5"
+							title="Get tactical hint without penalty"
+						>
+							<Icon name="sparkles" size={13} className="text-muted-foreground" />
+							<span>{hintCount === 0 ? 'Hint' : 'Target'}</span>
+						</Button>
+
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={isSolutionRevealed}
+							on:click={revealSolution}
+							className="flex-1 py-2 gap-1.5"
+							title="Reveal the winning move sequence"
+						>
+							<Icon name="eye" size={13} className="text-muted-foreground" />
+							<span>Solution</span>
+						</Button>
+
+						<Button
+							variant="outline"
+							size="sm"
+							on:click={resetToInitial}
+							className="py-2 px-2.5"
+							title="Reset position"
+						>
+							<Icon name="rotate-ccw" size={13} />
+						</Button>
+
+						<Button
+							variant="outline"
+							size="sm"
+							on:click={loadRandomPuzzle}
+							className="py-2 px-2.5"
+							title="Skip to next puzzle"
+						>
+							<Icon name="chevrons-right" size={13} />
+						</Button>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
