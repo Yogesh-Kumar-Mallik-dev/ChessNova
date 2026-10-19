@@ -152,5 +152,67 @@ tar -czf "$TAR_FILE" "chesspasant-${VERSION}"
 # Copy PKGBUILD into output
 cp "$SCRIPT_DIR/PKGBUILD" "$OUTPUT_DIR/PKGBUILD"
 
-echo "✅ [arch] Arch Linux packages generated successfully:"
+# 7. Generate Pacman Repository Database ($OUTPUT_DIR/repo/x86_64)
+REPO_DIR="$OUTPUT_DIR/repo/x86_64"
+mkdir -p "$REPO_DIR"
+cp "$PKG_FILE" "$REPO_DIR/"
+
+if command -v repo-add >/dev/null 2>&1; then
+    echo "==> [arch] Generating Pacman repository index database in $REPO_DIR..."
+    cd "$REPO_DIR"
+    repo-add chesspasant.db.tar.zst "$(basename "$PKG_FILE")"
+else
+    echo "⚠️  [arch] 'repo-add' not installed. Skipping local pacman repo database generation."
+fi
+
+# 8. Create 1-command automated installer script ($OUTPUT_DIR/repo/setup-repo.sh)
+cat << 'SETUP_EOF' > "$OUTPUT_DIR/repo/setup-repo.sh"
+#!/usr/bin/env bash
+# ==============================================================================
+# ChessPasant Official Arch Linux Repository Automated Setup
+# Usage: curl -sSL https://chess.yogeshmallik.in/repo/setup-repo.sh | sudo bash
+# ==============================================================================
+set -euo pipefail
+
+REPO_CONF="/etc/pacman.conf"
+REPO_NAME="chesspasant"
+REPO_URL="https://chess.yogeshmallik.in/repo/\$arch"
+
+if [ "$EUID" -ne 0 ]; then
+  echo "ERROR: Please run this script with root privileges (sudo):"
+  echo "  curl -sSL https://chess.yogeshmallik.in/repo/setup-repo.sh | sudo bash"
+  exit 1
+fi
+
+echo "=================================================================="
+echo "  ♟ Setting up ChessPasant Arch Linux Repository"
+echo "=================================================================="
+
+if grep -q "^\[${REPO_NAME}\]" "$REPO_CONF"; then
+  echo "ℹ️  Repository [${REPO_NAME}] is already configured in ${REPO_CONF}."
+else
+  echo "==> Adding [${REPO_NAME}] repository to ${REPO_CONF}..."
+  cat << CONF_EOF >> "$REPO_CONF"
+
+# ChessPasant Official Repository
+[${REPO_NAME}]
+SigLevel = Optional TrustAll
+Server = ${REPO_URL}
+CONF_EOF
+  echo "✅ Added [${REPO_NAME}] repository to ${REPO_CONF}."
+fi
+
+echo "==> Synchronizing repository and installing ChessPasant..."
+pacman -Sy --noconfirm "${REPO_NAME}"
+
+echo "=================================================================="
+echo "🎉 ChessPasant installed successfully!"
+echo "   Launch it by typing: chesspasant"
+echo "   Future updates will arrive automatically via: sudo pacman -Syu"
+echo "=================================================================="
+SETUP_EOF
+chmod +x "$OUTPUT_DIR/repo/setup-repo.sh"
+
+echo "✅ [arch] Arch Linux packages & repository generated successfully:"
 ls -lh "$OUTPUT_DIR"
+ls -lh "$REPO_DIR"

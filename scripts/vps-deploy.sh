@@ -69,7 +69,7 @@ cd "${PROJECT_ROOT}/apps/web"
 npm run build
 
 echo "    Uploading frontend static assets..."
-rsync -avzP --delete -e "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=accept-new" build/ "${TARGET_USER}@${TARGET_HOST}:/var/www/chessnova/html/"
+rsync -avzP --delete --exclude 'repo/' -e "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=accept-new" build/ "${TARGET_USER}@${TARGET_HOST}:/var/www/chessnova/html/"
 $SSH_CMD "chown -R www-data:www-data /var/www/chessnova/html"
 
 # 5. Start/Restart Multi-Instance Cluster (8081, 8082, 8083)

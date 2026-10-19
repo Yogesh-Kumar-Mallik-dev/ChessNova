@@ -129,14 +129,25 @@
 					</Button>
 				</a>
 
-				<!-- Quick Copy Install Helper -->
+				<!-- 1-Command Automated Repo Install -->
 				<button
 					type="button"
-					on:click={() => copyCommand(`sudo pacman -U chesspasant-${VERSION_NUM}-1-x86_64.pkg.tar.zst`)}
-					class="w-full mt-1.5 px-2.5 py-1.5 rounded-lg bg-secondary/60 hover:bg-secondary border border-border/60 text-left flex items-center justify-between text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+					on:click={() => copyCommand('curl -sSL https://chess.yogeshmallik.in/repo/setup-repo.sh | sudo bash')}
+					class="w-full mt-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left flex items-center justify-between text-[11px] font-mono text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+					title="Click to copy automated repository setup & install script"
+				>
+					<span class="truncate mr-2">curl -sSL .../setup-repo.sh | sudo bash</span>
+					<Icon name={copiedCommand ? 'check' : 'copy'} size={12} className={copiedCommand ? 'text-emerald-500' : 'text-emerald-400'} />
+				</button>
+
+				<!-- Quick Copy Pacman Install Helper -->
+				<button
+					type="button"
+					on:click={() => copyCommand('sudo pacman -Sy chesspasant')}
+					class="w-full px-2.5 py-1 rounded-lg bg-secondary/60 hover:bg-secondary border border-border/60 text-left flex items-center justify-between text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
 					title="Click to copy Pacman command"
 				>
-					<span class="truncate mr-2">sudo pacman -U ...</span>
+					<span class="truncate mr-2">sudo pacman -Sy chesspasant</span>
 					<Icon name={copiedCommand ? 'check' : 'copy'} size={12} className={copiedCommand ? 'text-emerald-500' : 'text-muted-foreground'} />
 				</button>
 			</div>

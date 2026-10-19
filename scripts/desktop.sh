@@ -32,8 +32,13 @@ case "$ACTION" in
     echo "==> [desktop] Packaging ChessPasant for Arch Linux (.pkg.tar.zst & .tar.gz)..."
     "$ROOT_DIR/packaging/arch/package-arch.sh" "0.1.0" "$ROOT_DIR/dist/arch"
     ;;
+  deploy-arch|deploy-repo)
+    echo "==> [desktop] Deploying Arch Linux repository to production VPS..."
+    shift || true
+    "$ROOT_DIR/packaging/arch/deploy-repo.sh" "$@"
+    ;;
   *)
-    echo "Usage: ./scripts/desktop.sh [dev|build|check|arch]"
+    echo "Usage: ./scripts/desktop.sh [dev|build|check|arch|deploy-arch]"
     exit 1
     ;;
 esac

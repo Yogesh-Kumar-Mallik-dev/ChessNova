@@ -199,6 +199,7 @@ jobs:
         run: |
           echo "Deploying frontend assets to /var/www/chessnova/html/..."
           rsync -avz --delete \
+            --exclude 'repo/' \
             -e "ssh -p $SSH_PORT -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
             apps/web/build/ \
             "${SSH_USER}@${SSH_HOST}:/var/www/chessnova/html/"
