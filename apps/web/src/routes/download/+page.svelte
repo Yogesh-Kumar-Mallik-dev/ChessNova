@@ -8,28 +8,27 @@
 	import Card from '$lib/components/ui/Card.svelte';
 
 	const GITHUB_REPO = 'https://github.com/Yogesh-Kumar-Mallik-dev/ChessPasant';
-	const RELEASE_TAG = 'v0.1.2';
-	const VERSION_NUM = '0.1.2';
-	const RELEASE_BASE = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}`;
+	let releaseTag = 'v0.1.4';
+	let versionNum = '0.1.4';
 	const RELEASES_PAGE = `${GITHUB_REPO}/releases`;
 
-	// Download artifacts map
-	const downloads = {
+	// Download artifacts map - dynamically updated from GitHub Releases API
+	let downloads = {
 		arch: {
-			pkg: `${RELEASE_BASE}/chesspasant-${VERSION_NUM}-1-x86_64.pkg.tar.zst`,
-			tarball: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_x86_64.tar.gz`,
+			pkg: `${GITHUB_REPO}/releases/download/${releaseTag}/chesspasant-${versionNum}-1-x86_64.pkg.tar.zst`,
+			tarball: `${GITHUB_REPO}/releases/download/${releaseTag}/ChessPasant_${versionNum}_x86_64.tar.gz`,
 			pkgbuild: `${GITHUB_REPO}/blob/main/packaging/arch/PKGBUILD`
 		},
 		linux: {
-			appimage: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_amd64.AppImage`,
-			deb: `${RELEASE_BASE}/chesspasant_${VERSION_NUM}_amd64.deb`
+			appimage: `${GITHUB_REPO}/releases/download/${releaseTag}/ChessPasant_${versionNum}_amd64.AppImage`,
+			deb: `${GITHUB_REPO}/releases/download/${releaseTag}/chesspasant_${versionNum}_amd64.deb`
 		},
 		windows: {
-			exe: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_x64-setup.exe`,
-			msi: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_x64_en-US.msi`
+			exe: `${GITHUB_REPO}/releases/download/${releaseTag}/ChessPasant_${versionNum}_x64-setup.exe`,
+			msi: `${GITHUB_REPO}/releases/download/${releaseTag}/ChessPasant_${versionNum}_x64_en-US.msi`
 		},
 		macos: {
-			dmg: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_universal.dmg`
+			dmg: `${GITHUB_REPO}/releases/download/${releaseTag}/ChessPasant_${versionNum}_universal.dmg`
 		}
 	};
 
@@ -51,6 +50,39 @@
 			goto('/play');
 			return;
 		}
+
+		// Dynamically query GitHub Releases API to always serve the latest release and asset URLs
+		fetch('https://api.github.com/repos/Yogesh-Kumar-Mallik-dev/ChessPasant/releases/latest')
+			.then((res) => (res.ok ? res.json() : null))
+			.then((data) => {
+				if (data && data.tag_name) {
+					releaseTag = data.tag_name;
+					versionNum = data.tag_name.replace(/^v/, '');
+
+					if (Array.isArray(data.assets)) {
+						const findAsset = (pattern: RegExp) =>
+							data.assets.find((a: any) => pattern.test(a.name))?.browser_download_url;
+
+						const pkg = findAsset(/\.pkg\.tar\.zst$/);
+						const tarball = findAsset(/\.tar\.gz$/);
+						const appimage = findAsset(/\.AppImage$/);
+						const deb = findAsset(/\.deb$/);
+						const exe = findAsset(/setup\.exe$/);
+						const msi = findAsset(/\.msi$/);
+						const dmg = findAsset(/\.dmg$/);
+
+						if (pkg) downloads.arch.pkg = pkg;
+						if (tarball) downloads.arch.tarball = tarball;
+						if (appimage) downloads.linux.appimage = appimage;
+						if (deb) downloads.linux.deb = deb;
+						if (exe) downloads.windows.exe = exe;
+						if (msi) downloads.windows.msi = msi;
+						if (dmg) downloads.macos.dmg = dmg;
+						downloads = { ...downloads };
+					}
+				}
+			})
+			.catch(() => {});
 
 		if (typeof window !== 'undefined' && navigator) {
 			const ua = navigator.userAgent.toLowerCase();
@@ -82,7 +114,7 @@
 		<div>
 			<Badge variant="outline" className="mb-4 px-3 py-1 font-mono text-xs tracking-wider uppercase border-border text-muted-foreground">
 				<span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
-				<span>Official Release {RELEASE_TAG}</span>
+				<span>Official Release {releaseTag}</span>
 			</Badge>
 		</div>
 
