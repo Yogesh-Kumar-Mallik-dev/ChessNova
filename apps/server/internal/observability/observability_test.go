@@ -31,13 +31,13 @@ func TestMetricsAndExposition(t *testing.T) {
 	}
 
 	bodyProm := rrProm.Body.String()
-	if !strings.Contains(bodyProm, "chessnova_active_websocket_connections{instance=\"test-instance-1\"} 1") {
+	if !strings.Contains(bodyProm, "chesspasant_active_websocket_connections{instance=\"test-instance-1\"} 1") {
 		t.Errorf("Prometheus output missing active websockets: %s", bodyProm)
 	}
-	if !strings.Contains(bodyProm, "chessnova_active_games{instance=\"test-instance-1\"} 3") {
+	if !strings.Contains(bodyProm, "chesspasant_active_games{instance=\"test-instance-1\"} 3") {
 		t.Errorf("Prometheus output missing active games: %s", bodyProm)
 	}
-	if !strings.Contains(bodyProm, "chessnova_matchmaking_queue_size{instance=\"test-instance-1\"} 4") {
+	if !strings.Contains(bodyProm, "chesspasant_matchmaking_queue_size{instance=\"test-instance-1\"} 4") {
 		t.Errorf("Prometheus output missing queue size: %s", bodyProm)
 	}
 	if !strings.Contains(bodyProm, "http_requests_total{instance=\"test-instance-1\",method=\"GET\",path=\"/api/v1/games/{id}\",status=\"200\"} 1") {
@@ -188,13 +188,13 @@ func TestMatchmakingMetrics(t *testing.T) {
 	metrics.PrometheusHandler()(rrProm, reqProm)
 	body := rrProm.Body.String()
 
-	if !strings.Contains(body, "chessnova_matchmaking_joins_total{instance=\"test-mm-inst\"} 2") {
+	if !strings.Contains(body, "chesspasant_matchmaking_joins_total{instance=\"test-mm-inst\"} 2") {
 		t.Errorf("Prometheus missing joins total: %s", body)
 	}
-	if !strings.Contains(body, "chessnova_matchmaking_leaves_total{instance=\"test-mm-inst\"} 1") {
+	if !strings.Contains(body, "chesspasant_matchmaking_leaves_total{instance=\"test-mm-inst\"} 1") {
 		t.Errorf("Prometheus missing leaves total: %s", body)
 	}
-	if !strings.Contains(body, "chessnova_matchmaking_matches_total{instance=\"test-mm-inst\"} 1") {
+	if !strings.Contains(body, "chesspasant_matchmaking_matches_total{instance=\"test-mm-inst\"} 1") {
 		t.Errorf("Prometheus missing matches total: %s", body)
 	}
 

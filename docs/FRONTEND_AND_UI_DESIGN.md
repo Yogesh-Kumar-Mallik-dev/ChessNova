@@ -1,12 +1,12 @@
 # Frontend Architecture & UI/UX Design System
 
-The ChessNova frontend (`apps/web`) is built with **SvelteKit 2**, **TypeScript 5**, and **Tailwind CSS 3**, prioritizing ultra-fast reactive state, modern desktop ergonomics, zero layout shifts, and visual aesthetics.
+The ChessPasant frontend (`apps/web`) is built with **SvelteKit 2**, **TypeScript 5**, and **Tailwind CSS 3**, prioritizing ultra-fast reactive state, modern desktop ergonomics, zero layout shifts, and visual aesthetics.
 
 ---
 
 ## 1. Dynamic Multi-Theme Engine
 
-Rather than forcing a single static theme, ChessNova provides four distinct, high-contrast visual themes mapped dynamically through CSS variables in `apps/web/src/app.css` and Tailwind palette extensions in `apps/web/tailwind.config.js`:
+Rather than forcing a single static theme, ChessPasant provides four distinct, high-contrast visual themes mapped dynamically through CSS variables in `apps/web/src/app.css` and Tailwind palette extensions in `apps/web/tailwind.config.js`:
 
 ### 1.1 Available Platform Themes
 - **Dark Slate (Default)**: Deep Obsidian (`#020617` / `#0f172a`) with luminous sky and indigo highlights.
@@ -105,7 +105,7 @@ The Game Review interface (`apps/web/src/routes/analysis` and `GameReview.svelte
 ## 6. Local Guest Game Archive (`localGames.ts`)
 
 Unauthenticated and guest players enjoy full match history and post-game review:
-- Whenever a pass-and-play, bot, or live game completes, it is saved into browser `localStorage` (`chessnova_local_games_v1`).
+- Whenever a pass-and-play, bot, or live game completes, it is saved into browser `localStorage` (`chesspasant_local_games_v1`).
 - Stores up to 50 games with complete PGN, timestamps, results, and outcome metadata.
 - Enables 1-click **"Review Game"** from the local match archive, transmitting PGN to the Stockfish laboratory.
 
@@ -113,7 +113,7 @@ Unauthenticated and guest players enjoy full match history and post-game review:
 
 ## 7. Web Audio Sound Engine (`sounds.ts`)
 
-ChessNova includes an audio synthesizer and sound effect player:
+ChessPasant includes an audio synthesizer and sound effect player:
 - **Events**: Move, Capture, Check, Castle, Game Start, Victory, Defeat.
 - **Resilient Fallback**: Uses pre-rendered high-fidelity audio samples with an automated fallback to the browser's Web Audio API (`AudioContext` oscillator synthesis) if audio files are blocked or offline.
 
@@ -123,6 +123,6 @@ ChessNova includes an audio synthesizer and sound effect player:
 
 The player profile interface (`apps/web/src/routes/profile/[username]/+page.svelte`) features a modern, shadcn-inspired glassmorphism layout:
 - **Hero Dossier**: Displays verified player badge, country tag, bio, joined date, and avatar with 1-click photo upload.
-- **Tri-Platform Elo Matrix**: Side-by-side comparative rating cards (ChessNova vs. Chess.com vs. Lichess) comparing Blitz, Rapid, Bullet, and Puzzles with real-time API sync.
-- **Imported External Games Tab**: Displays recent matches fetched from linked Chess.com and Lichess accounts with a 1-click **"Review in ChessNova"** button that imports the PGN directly into the Stockfish Game Review laboratory.
+- **Tri-Platform Elo Matrix**: Side-by-side comparative rating cards (ChessPasant vs. Chess.com vs. Lichess) comparing Blitz, Rapid, Bullet, and Puzzles with real-time API sync.
+- **Imported External Games Tab**: Displays recent matches fetched from linked Chess.com and Lichess accounts with a 1-click **"Review in ChessPasant"** button that imports the PGN directly into the Stockfish Game Review laboratory.
 - **Interactive Modals**: Seamless dialogs for editing bio/country and connecting external accounts with live verification feedback.

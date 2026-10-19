@@ -1,6 +1,6 @@
-# ChessNova Bot Persona & Personality Architecture Blueprint
+# ChessPasant Bot Persona & Personality Architecture Blueprint
 
-This document defines the architectural blueprint for ChessNova's **Personality-Driven Bot Simulation System**. It transitions the platform from a generic 5-level difficulty slider into a rich, human-like simulation engine capable of modeling distinct player archetypes, phase-specific blunder curves, tactical biases, material sacrifice desires, and contextual in-game trash talk.
+This document defines the architectural blueprint for ChessPasant's **Personality-Driven Bot Simulation System**. It transitions the platform from a generic 5-level difficulty slider into a rich, human-like simulation engine capable of modeling distinct player archetypes, phase-specific blunder curves, tactical biases, material sacrifice desires, and contextual in-game trash talk.
 
 ---
 

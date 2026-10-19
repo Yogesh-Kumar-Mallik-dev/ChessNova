@@ -1,12 +1,12 @@
 # Backend Security, Authorization & Data Protection Practices
 
-This document specifies the comprehensive security architecture, authentication and authorization enforcement, rate limiting, S3-compatible object storage lifecycle, and data protection standards implemented in ChessNova.
+This document specifies the comprehensive security architecture, authentication and authorization enforcement, rate limiting, S3-compatible object storage lifecycle, and data protection standards implemented in ChessPasant.
 
 ---
 
 ## 1. Threat Model & Security Posture
 
-ChessNova operates on a **zero-trust, server-authoritative** model:
+ChessPasant operates on a **zero-trust, server-authoritative** model:
 - **Clients never declare game positions, results, or evaluation scores.**
 - **The client only submits intent** (e.g., `{ "from": "e2", "to": "e4" }`).
 - **All rule validations, clock decrements, ratings, and Game Reviews are authoritatively executed on the Go backend.**
@@ -135,7 +135,7 @@ To avoid exposing long-lived access tokens in WebSocket connection URLs and prox
 
 ### 6.2 Origin Validation Policy
 In `internal/websocket/websocket.go`:
-- Validates origin scheme, host, and port against configured `CORS_ORIGIN` and production domains (`https://chessnova.com`).
+- Validates origin scheme, host, and port against configured `CORS_ORIGIN` and production domains (`https://chesspasant.com`).
 - Explicitly permits native desktop schemes: `tauri://localhost` and `http://tauri.localhost`.
 - In production (`ENV=production`), missing origins and arbitrary localhost ports are strictly rejected.
 

@@ -5,7 +5,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 
-	const GITHUB_REPO = 'https://github.com/Yogesh-Kumar-Mallik-dev/ChessNova';
+	const GITHUB_REPO = 'https://github.com/Yogesh-Kumar-Mallik-dev/ChessPasant';
 	const RELEASE_TAG = 'v0.1.0';
 	const VERSION_NUM = '0.1.0';
 	const RELEASE_BASE = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}`;
@@ -14,20 +14,20 @@
 	// Download artifacts map
 	const downloads = {
 		arch: {
-			pkg: `${RELEASE_BASE}/chessnova-${VERSION_NUM}-1-x86_64.pkg.tar.zst`,
-			tarball: `${RELEASE_BASE}/ChessNova_${VERSION_NUM}_x86_64.tar.gz`,
+			pkg: `${RELEASE_BASE}/chesspasant-${VERSION_NUM}-1-x86_64.pkg.tar.zst`,
+			tarball: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_x86_64.tar.gz`,
 			pkgbuild: `${GITHUB_REPO}/blob/main/packaging/arch/PKGBUILD`
 		},
 		linux: {
-			appimage: `${RELEASE_BASE}/ChessNova_${VERSION_NUM}_amd64.AppImage`,
-			deb: `${RELEASE_BASE}/chessnova_${VERSION_NUM}_amd64.deb`
+			appimage: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_amd64.AppImage`,
+			deb: `${RELEASE_BASE}/chesspasant_${VERSION_NUM}_amd64.deb`
 		},
 		windows: {
-			exe: `${RELEASE_BASE}/ChessNova_${VERSION_NUM}_x64-setup.exe`,
-			msi: `${RELEASE_BASE}/ChessNova_${VERSION_NUM}_x64_en-US.msi`
+			exe: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_x64-setup.exe`,
+			msi: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_x64_en-US.msi`
 		},
 		macos: {
-			dmg: `${RELEASE_BASE}/ChessNova_${VERSION_NUM}_universal.dmg`
+			dmg: `${RELEASE_BASE}/ChessPasant_${VERSION_NUM}_universal.dmg`
 		}
 	};
 
@@ -61,15 +61,15 @@
 </script>
 
 <svelte:head>
-	<title>Download ChessNova Desktop — Arch Linux, Linux, Windows & macOS</title>
-	<meta name="description" content="Download ChessNova desktop application for Arch Linux, Debian/Ubuntu, Windows, and macOS. Native performance, embedded Stockfish 19 NNUE, offline analysis, and Studio Noir design." />
+	<title>Download ChessPasant Desktop — Arch Linux, Linux, Windows & macOS</title>
+	<meta name="description" content="Download ChessPasant desktop application for Arch Linux, Debian/Ubuntu, Windows, and macOS. Native performance, embedded Stockfish 19 NNUE, offline analysis, and Studio Noir design." />
 </svelte:head>
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16 w-full flex-1 flex flex-col justify-center">
 	<!-- Hero Header with Authentic Platform Logo -->
 	<div class="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
 		<div class="inline-flex items-center justify-center p-3 sm:p-4 rounded-2xl bg-secondary/80 border border-border shadow-xs mb-5 group hover:border-foreground/30 transition-all">
-			<img src="/logo.png" alt="ChessNova" class="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
+			<img src="/logo.png" alt="ChessPasant" class="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
 		</div>
 
 		<div>
@@ -80,11 +80,11 @@
 		</div>
 
 		<h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-foreground tracking-tight mb-4">
-			ChessNova for Desktop
+			ChessPasant for Desktop
 		</h1>
 
 		<p class="text-base sm:text-lg text-muted-foreground leading-relaxed">
-			The complete ChessNova platform packaged into an ultra-fast, native desktop application engineered with Rust and Tauri v2. Offline Stockfish 19 sparring, grandmaster tactical review coach, and frameless Studio Noir design.
+			The complete ChessPasant platform packaged into an ultra-fast, native desktop application engineered with Rust and Tauri v2. Offline Stockfish 19 sparring, grandmaster tactical review coach, and frameless Studio Noir design.
 		</p>
 	</div>
 
@@ -132,7 +132,7 @@
 				<!-- Quick Copy Install Helper -->
 				<button
 					type="button"
-					on:click={() => copyCommand(`sudo pacman -U chessnova-${VERSION_NUM}-1-x86_64.pkg.tar.zst`)}
+					on:click={() => copyCommand(`sudo pacman -U chesspasant-${VERSION_NUM}-1-x86_64.pkg.tar.zst`)}
 					class="w-full mt-1.5 px-2.5 py-1.5 rounded-lg bg-secondary/60 hover:bg-secondary border border-border/60 text-left flex items-center justify-between text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
 					title="Click to copy Pacman command"
 				>

@@ -24,7 +24,7 @@ func getEnv(k, def string) string {
 
 func main() {
 	port := getEnv("PORT", "9090")
-	secret := getEnv("ENGINE_SECRET", "chessnova-engine-secret-2026")
+	secret := getEnv("ENGINE_SECRET", "chesspasant-engine-secret-2026")
 
 	eng := engine.NewStockfishEngine()
 	defer eng.Close()
@@ -38,7 +38,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "ok",
-			"service": "chessnova-engine",
+			"service": "chesspasant-engine",
 			"engine":  "Stockfish 19",
 			"time":    time.Now().UTC().Format(time.RFC3339),
 		})
@@ -144,7 +144,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("ChessNova Remote Engine Service listening on port %s", port)
+		log.Printf("ChessPasant Remote Engine Service listening on port %s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}

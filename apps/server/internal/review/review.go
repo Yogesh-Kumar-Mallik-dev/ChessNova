@@ -555,7 +555,7 @@ func (s *ReviewService) AnalyzeMoves(ctx context.Context, moves []InputMove) (*R
 	} else {
 		pgnBuilder.SetHeader("Event", "Game Review")
 	}
-	pgnBuilder.SetHeader("Site", "ChessNova")
+	pgnBuilder.SetHeader("Site", "ChessPasant")
 	pgnBuilder.SetHeader("Date", time.Now().UTC().Format("2006.01.02"))
 	for _, rm := range reviewedMoves {
 		pgnBuilder.AddMoveWithSquares(rm.Ply, rm.From, rm.To, rm.SAN, rm.FENAfter)

@@ -1,6 +1,6 @@
 # Operations, Lifecycle Scripts & Deployment Runbook
 
-ChessNova follows the unified script orchestration standard. All platform tasks are driven through a single root entrypoint:
+ChessPasant follows the unified script orchestration standard. All platform tasks are driven through a single root entrypoint:
 - **Linux / macOS / POSIX**: `./script.sh <command>`
 - **Windows PowerShell**: `.\script.ps1 <command>`
 
@@ -18,8 +18,9 @@ ChessNova follows the unified script orchestration standard. All platform tasks 
 | **`envi`** | Scaffolds `.env` from `.env.example` if absent and starts Docker containers (`chess-mongo`, `chess-redis`, `chess-minio`). | `scripts/envi.sh` / `scripts/envi.ps1` |
 | **`uenvi`** | Tears down and stops all Docker infrastructure containers (`chess-mongo`, `chess-redis`, `chess-minio`). | `scripts/uenvi.sh` / `scripts/uenvi.ps1` |
 | **`flush`** | Flushes Redis memory cache and drops development (`chess`) and test (`chess_test`) databases in MongoDB. | `scripts/flush_db.sh` / `scripts/flush_db.ps1` |
-| **`desktop`** | Launches the ChessNova Tauri v2 desktop application in development mode with hot-reloading. | `scripts/desktop.sh` / `scripts/desktop.ps1` |
+| **`desktop`** | Launches the ChessPasant Tauri v2 desktop application in development mode with hot-reloading. | `scripts/desktop.sh` / `scripts/desktop.ps1` |
 | **`desktop-build`** | Compiles the production native desktop application release bundle (.AppImage, .deb, .msi, etc.). | `scripts/desktop.sh` / `scripts/desktop.ps1` |
+| **`desktop-arch`** | Packages ChessPasant for Arch Linux (.pkg.tar.zst & .tar.gz). | `scripts/desktop.sh` |
 | **`engine`** | Launches the standalone Stockfish 19 engine microservice on port `:8081`. | `apps/server/cmd/engine-service/main.go` |
 
 ---
@@ -84,7 +85,7 @@ CORS_ORIGIN=http://localhost:5173
 # S3-Compatible Object Storage (AWS S3, MinIO, Cloudflare R2, Wasabi)
 # Leave empty for automatic local storage fallback to ./uploads/avatars
 S3_ENDPOINT=localhost:9000
-S3_BUCKET=chessnova-avatars
+S3_BUCKET=chesspasant-avatars
 S3_ACCESS_KEY=minioadmin
 S3_SECRET_KEY=miniopassword123
 S3_REGION=us-east-1
@@ -103,7 +104,7 @@ STOCKFISH_PATH=./apps/server/bin/stockfish
 `docker-compose.yml` orchestrates local persistent databases and object storage:
 
 ```yaml
-name: chessnova
+name: chesspasant
 
 services:
   mongodb:

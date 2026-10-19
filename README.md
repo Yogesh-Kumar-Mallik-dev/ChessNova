@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="./logo.png" alt="ChessNova" width="110" height="110" />
+  <img src="./logo.png" alt="ChessPasant" width="110" height="110" />
 </p>
 
-# ChessNova — Next-Generation Online Chess Platform
+# ChessPasant — Next-Generation Online Chess Platform
 
 A production-grade, server-authoritative online chess platform featuring a custom pure-Go chess engine, Stockfish 19 UCI Game Review Laboratory, real-time WebSockets, modern SvelteKit + TypeScript frontend, MongoDB persistence, and Redis matchmaking/caching.
 
@@ -85,7 +85,7 @@ Comprehensive architectural specifications, mathematical formulations, and opera
 - **External Platform Linking & 1-Click Game Review (`internal/external`)**:
   - Link Chess.com and Lichess accounts with public existence verification.
   - Live **Tri-Platform Elo Matrix** comparing ratings side-by-side across Rapid, Blitz, Bullet, and Tactics.
-  - Import recent games with PGN from Chess.com and Lichess archives and launch deep Stockfish Game Reviews directly in ChessNova with a single click.
+  - Import recent games with PGN from Chess.com and Lichess archives and launch deep Stockfish Game Reviews directly in ChessPasant with a single click.
 - **Tactical Puzzles System (`internal/puzzle`)**:
   - Progressive difficulty tiers (Tier 1 to 5) and tactical categories (Mate, Fork, Pin, Skewer, Hanging Piece, etc.).
   - Daily and Weekly curated puzzles with deterministic in-memory calendar fallbacks.
@@ -193,18 +193,18 @@ All lifecycle tasks are orchestrated through the root entrypoint:
 | `envi` | Scaffold `.env` and start Docker infrastructure containers (`chess-mongo`, `chess-redis`) |
 | `uenvi` | Stop and tear down Docker containers |
 | `flush` | Flush Redis cache and reset MongoDB database |
-| `desktop` | Launch ChessNova Tauri v2 desktop application in development mode |
+| `desktop` | Launch ChessPasant Tauri v2 desktop application in development mode |
 | `desktop-build` | Compile native desktop application release bundle (.AppImage, .deb, etc.) |
-| `desktop-arch` | Package ChessNova for Arch Linux (.pkg.tar.zst & .tar.gz) |
+| `desktop-arch` | Package ChessPasant for Arch Linux (.pkg.tar.zst & .tar.gz) |
 
 ---
 
 ## Native Desktop Application (Tauri v2)
 
-ChessNova includes a dedicated desktop shell in [`apps/desktop/`](file:///home/yogesh/ChessNova/apps/desktop) (accessible also via the repo root shortcut `desktop/`):
+ChessPasant includes a dedicated desktop shell in [`apps/desktop/`](file:///home/yogesh/ChessNova/apps/desktop) (accessible also via the repo root shortcut `desktop/`):
 
 - **Custom Frameless Titlebar:** Seamless window header matching the theme palette with drag region (`data-tauri-drag-region`), minimize, maximize/restore, and close buttons.
-- **Native System Tray:** Persistent system tray icon with "Show ChessNova" and "Quit ChessNova" context menus.
+- **Native System Tray:** Persistent system tray icon with "Show ChessPasant" and "Quit ChessPasant" context menus.
 - **Desktop Notifications:** Real-time native system notifications for match start, opponent moves, draw offers, and game completion.
 - **Cross-Platform Compilation & Official Packages:** Automated matrix builds via GitHub Actions ([`.github/workflows/desktop-release.yml`](file:///home/yogesh/ChessNova/.github/workflows/desktop-release.yml)) packaging:
   - **Arch Linux:** Native Pacman package (`.pkg.tar.zst`), AUR PKGBUILD, and standalone archive (`.tar.gz`).

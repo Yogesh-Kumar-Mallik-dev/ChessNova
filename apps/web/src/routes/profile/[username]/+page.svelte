@@ -179,7 +179,7 @@
 </script>
 
 <svelte:head>
-	<title>{username} - Player Profile | ChessNova</title>
+	<title>{username} - Player Profile | ChessPasant</title>
 </svelte:head>
 
 <div class="flex-1 max-w-6xl mx-auto w-full p-3 sm:p-6 select-none">
@@ -348,7 +348,7 @@
 						<h2 class="text-sm sm:text-base font-black text-foreground uppercase tracking-wider">Multi-Platform Elo Matrix</h2>
 						<span class="text-[10px] font-mono font-bold text-foreground bg-secondary px-2 py-0.5 rounded-md border border-border">Synced</span>
 					</div>
-					<p class="text-[11px] text-muted-foreground mt-0.5">Comparative rating breakdown across ChessNova, Chess.com, and Lichess</p>
+					<p class="text-[11px] text-muted-foreground mt-0.5">Comparative rating breakdown across ChessPasant, Chess.com, and Lichess</p>
 				</div>
 
 				{#if profileData.user.chessComUsername || profileData.user.lichessUsername}
@@ -367,12 +367,12 @@
 
 			<!-- Comparison Cards Grid -->
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-				<!-- Platform 1: ChessNova -->
+				<!-- Platform 1: ChessPasant -->
 				<div class="bg-secondary/40 border border-border rounded-xl p-4 shadow-xs flex flex-col justify-between">
 					<div>
 						<div class="flex items-center justify-between mb-3">
 							<div class="flex items-center gap-2">
-								<span class="text-xs font-extrabold text-foreground">ChessNova</span>
+								<span class="text-xs font-extrabold text-foreground">ChessPasant</span>
 							</div>
 							<span class="text-[10px] uppercase font-bold text-foreground bg-secondary px-2 py-0.5 rounded border border-border">Primary</span>
 						</div>
@@ -567,7 +567,7 @@
 						on:click={() => (activeTab = 'nova-games')}
 					>
 						<Icon name="swords" size={13} />
-						<span>ChessNova Matches</span>
+						<span>ChessPasant Matches</span>
 					</button>
 
 					<button
@@ -622,7 +622,7 @@
 				{/if}
 			</div>
 
-			<!-- Tab 1: ChessNova Matches -->
+			<!-- Tab 1: ChessPasant Matches -->
 			{#if activeTab === 'nova-games'}
 				<div class="pt-4">
 					{#if !profileData.recentGames || profileData.recentGames.length === 0}
@@ -630,7 +630,7 @@
 							<div class="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-muted-foreground border border-border">
 								<Icon name="clock" size={20} />
 							</div>
-							<span class="font-bold text-foreground">No ChessNova rated matches played yet.</span>
+							<span class="font-bold text-foreground">No ChessPasant rated matches played yet.</span>
 							<p class="text-[11px] text-muted-foreground max-w-xs">Play matchmaking online or invite friends to generate rated game records.</p>
 						</div>
 					{:else}

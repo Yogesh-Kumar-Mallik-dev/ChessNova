@@ -52,12 +52,13 @@ type PlatformRatings struct {
 }
 
 type PlatformComparison struct {
-	Username     string           `json:"username"`
-	ChessNova    PlatformRatings  `json:"chessnova"`
-	ChessCom     *PlatformRatings `json:"chesscom,omitempty"`
-	Lichess      *PlatformRatings `json:"lichess,omitempty"`
-	ChessComUser string           `json:"chessComUser,omitempty"`
-	LichessUser  string           `json:"lichessUser,omitempty"`
+	Username    string           `json:"username"`
+	ChessPasant PlatformRatings  `json:"chesspasant"`
+	ChessNova   PlatformRatings  `json:"chessnova,omitempty"`
+	ChessCom    *PlatformRatings `json:"chesscom,omitempty"`
+	Lichess     *PlatformRatings `json:"lichess,omitempty"`
+	ChessComUser string          `json:"chessComUser,omitempty"`
+	LichessUser string           `json:"lichessUser,omitempty"`
 }
 
 type Service struct {
@@ -99,7 +100,7 @@ func (s *Service) FetchChessComStats(ctx context.Context, username string) (*Pla
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "ChessNova-App/1.0 (contact: support@chessnova.com)")
+	req.Header.Set("User-Agent", "ChessPasant-App/1.0 (contact: support@chesspasant.com)")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -167,7 +168,7 @@ func (s *Service) FetchLichessStats(ctx context.Context, username string) (*Plat
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "ChessNova-App/1.0 (contact: support@chessnova.com)")
+	req.Header.Set("User-Agent", "ChessPasant-App/1.0 (contact: support@chesspasant.com)")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -235,7 +236,7 @@ func (s *Service) FetchLichessRecentGames(ctx context.Context, username string, 
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/x-ndjson")
-	req.Header.Set("User-Agent", "ChessNova-App/1.0 (contact: support@chessnova.com)")
+	req.Header.Set("User-Agent", "ChessPasant-App/1.0 (contact: support@chesspasant.com)")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -339,7 +340,7 @@ func (s *Service) FetchChessComRecentGames(ctx context.Context, username string,
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "ChessNova-App/1.0 (contact: support@chessnova.com)")
+	req.Header.Set("User-Agent", "ChessPasant-App/1.0 (contact: support@chesspasant.com)")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -352,7 +353,7 @@ func (s *Service) FetchChessComRecentGames(ctx context.Context, username string,
 		prev := now.AddDate(0, -1, 0)
 		url = fmt.Sprintf("https://api.chess.com/pub/player/%s/games/%d/%02d", strings.ToLower(username), prev.Year(), int(prev.Month()))
 		req, _ = http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		req.Header.Set("User-Agent", "ChessNova-App/1.0 (contact: support@chessnova.com)")
+		req.Header.Set("User-Agent", "ChessPasant-App/1.0 (contact: support@chesspasant.com)")
 		resp2, err2 := s.client.Do(req)
 		if err2 != nil || resp2.StatusCode != http.StatusOK {
 			if resp2 != nil {

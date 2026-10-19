@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# packaging/arch/publish-aur.sh - Automates publishing chessnova-bin to the AUR
+# packaging/arch/publish-aur.sh - Automates publishing chesspasant-bin to the AUR
 # Usage: ./packaging/arch/publish-aur.sh
 # ==============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-PKG_NAME="chessnova-bin"
+PKG_NAME="chesspasant-bin"
 AUR_REPO="ssh://aur@aur.archlinux.org/${PKG_NAME}.git"
 
 echo "=================================================================="
@@ -19,7 +19,7 @@ echo "==> Regenerating .SRCINFO..."
 cd "$SCRIPT_DIR"
 makepkg --printsrcinfo > .SRCINFO
 
-TMP_DIR=$(mktemp -d -t aur-chessnova-XXXXXX)
+TMP_DIR=$(mktemp -d -t aur-chesspasant-XXXXXX)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 echo "==> Cloning AUR repository: ${AUR_REPO}..."

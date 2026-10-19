@@ -31,7 +31,7 @@
 	<Card className="max-w-sm w-full p-6 sm:p-8 shadow-xl border-border">
 		<div class="flex flex-col items-center text-center mb-6">
 			<div class="w-12 h-12 rounded-xl bg-secondary border border-border flex items-center justify-center p-2 mb-3 shadow-xs">
-				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain" />
+				<img src="/logo.png" alt="ChessPasant" class="w-full h-full object-contain" />
 			</div>
 			<h1 class="text-xl sm:text-2xl font-black text-foreground tracking-tight">Welcome Back</h1>
 			<p class="text-xs text-muted-foreground mt-1">Sign in to resume your games</p>

@@ -808,6 +808,7 @@ func (rt *Router) handleGetExternalStats(w http.ResponseWriter, r *http.Request)
 
 	comparison := external.PlatformComparison{
 		Username:     u.Username,
+		ChessPasant:  novaRatings,
 		ChessNova:    novaRatings,
 		ChessComUser: u.ChessComUsername,
 		LichessUser:  u.LichessUsername,

@@ -59,7 +59,7 @@
 	function toggleAdvanced() {
 		showAdvanced = !showAdvanced;
 		if (typeof window !== 'undefined') {
-			localStorage.setItem('chessnova_show_advanced', showAdvanced ? '1' : '0');
+			localStorage.setItem('chesspasant_show_advanced', showAdvanced ? '1' : '0');
 		}
 		if (showAdvanced) {
 			rightPanelTab = 'advanced';
@@ -129,7 +129,7 @@
 		if (typeof window !== 'undefined') {
 			initEngineSystem();
 
-			const advPref = localStorage.getItem('chessnova_show_advanced');
+			const advPref = localStorage.getItem('chesspasant_show_advanced') ?? localStorage.getItem('chessnova_show_advanced');
 			if (advPref === '1') {
 				showAdvanced = true;
 			}

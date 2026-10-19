@@ -173,33 +173,33 @@ func (m *MetricRegistry) PrometheusHandler() http.HandlerFunc {
 		sb.WriteString(fmt.Sprintf("go_memstats_num_gc{instance=\"%s\"} %d\n\n", m.instanceID, mem.NumGC))
 
 		// Application Metrics
-		sb.WriteString("# HELP chessnova_active_websocket_connections Current active WebSocket client connections\n")
-		sb.WriteString("# TYPE chessnova_active_websocket_connections gauge\n")
-		sb.WriteString(fmt.Sprintf("chessnova_active_websocket_connections{instance=\"%s\"} %d\n\n", m.instanceID, activeWS))
+		sb.WriteString("# HELP chesspasant_active_websocket_connections Current active WebSocket client connections\n")
+		sb.WriteString("# TYPE chesspasant_active_websocket_connections gauge\n")
+		sb.WriteString(fmt.Sprintf("chesspasant_active_websocket_connections{instance=\"%s\"} %d\n\n", m.instanceID, activeWS))
 
-		sb.WriteString("# HELP chessnova_active_games Current ongoing chess games on this instance\n")
-		sb.WriteString("# TYPE chessnova_active_games gauge\n")
-		sb.WriteString(fmt.Sprintf("chessnova_active_games{instance=\"%s\"} %d\n\n", m.instanceID, activeGames))
+		sb.WriteString("# HELP chesspasant_active_games Current ongoing chess games on this instance\n")
+		sb.WriteString("# TYPE chesspasant_active_games gauge\n")
+		sb.WriteString(fmt.Sprintf("chesspasant_active_games{instance=\"%s\"} %d\n\n", m.instanceID, activeGames))
 
-		sb.WriteString("# HELP chessnova_matchmaking_queue_size Number of players waiting in matchmaking queue\n")
-		sb.WriteString("# TYPE chessnova_matchmaking_queue_size gauge\n")
-		sb.WriteString(fmt.Sprintf("chessnova_matchmaking_queue_size{instance=\"%s\"} %d\n\n", m.instanceID, queueSize))
+		sb.WriteString("# HELP chesspasant_matchmaking_queue_size Number of players waiting in matchmaking queue\n")
+		sb.WriteString("# TYPE chesspasant_matchmaking_queue_size gauge\n")
+		sb.WriteString(fmt.Sprintf("chesspasant_matchmaking_queue_size{instance=\"%s\"} %d\n\n", m.instanceID, queueSize))
 
-		sb.WriteString("# HELP chessnova_matchmaking_joins_total Total players who joined matchmaking queue\n")
-		sb.WriteString("# TYPE chessnova_matchmaking_joins_total counter\n")
-		sb.WriteString(fmt.Sprintf("chessnova_matchmaking_joins_total{instance=\"%s\"} %d\n\n", m.instanceID, atomic.LoadInt64(&m.matchmakingJoins)))
+		sb.WriteString("# HELP chesspasant_matchmaking_joins_total Total players who joined matchmaking queue\n")
+		sb.WriteString("# TYPE chesspasant_matchmaking_joins_total counter\n")
+		sb.WriteString(fmt.Sprintf("chesspasant_matchmaking_joins_total{instance=\"%s\"} %d\n\n", m.instanceID, atomic.LoadInt64(&m.matchmakingJoins)))
 
-		sb.WriteString("# HELP chessnova_matchmaking_leaves_total Total players who left matchmaking queue\n")
-		sb.WriteString("# TYPE chessnova_matchmaking_leaves_total counter\n")
-		sb.WriteString(fmt.Sprintf("chessnova_matchmaking_leaves_total{instance=\"%s\"} %d\n\n", m.instanceID, atomic.LoadInt64(&m.matchmakingLeaves)))
+		sb.WriteString("# HELP chesspasant_matchmaking_leaves_total Total players who left matchmaking queue\n")
+		sb.WriteString("# TYPE chesspasant_matchmaking_leaves_total counter\n")
+		sb.WriteString(fmt.Sprintf("chesspasant_matchmaking_leaves_total{instance=\"%s\"} %d\n\n", m.instanceID, atomic.LoadInt64(&m.matchmakingLeaves)))
 
-		sb.WriteString("# HELP chessnova_matchmaking_matches_total Total matches formed by matchmaking\n")
-		sb.WriteString("# TYPE chessnova_matchmaking_matches_total counter\n")
-		sb.WriteString(fmt.Sprintf("chessnova_matchmaking_matches_total{instance=\"%s\"} %d\n\n", m.instanceID, atomic.LoadInt64(&m.matchmakingMatches)))
+		sb.WriteString("# HELP chesspasant_matchmaking_matches_total Total matches formed by matchmaking\n")
+		sb.WriteString("# TYPE chesspasant_matchmaking_matches_total counter\n")
+		sb.WriteString(fmt.Sprintf("chesspasant_matchmaking_matches_total{instance=\"%s\"} %d\n\n", m.instanceID, atomic.LoadInt64(&m.matchmakingMatches)))
 
-		sb.WriteString("# HELP chessnova_stockfish_evaluations_total Total engine analysis requests processed\n")
-		sb.WriteString("# TYPE chessnova_stockfish_evaluations_total counter\n")
-		sb.WriteString(fmt.Sprintf("chessnova_stockfish_evaluations_total{instance=\"%s\"} %d\n\n", m.instanceID, evals))
+		sb.WriteString("# HELP chesspasant_stockfish_evaluations_total Total engine analysis requests processed\n")
+		sb.WriteString("# TYPE chesspasant_stockfish_evaluations_total counter\n")
+		sb.WriteString(fmt.Sprintf("chesspasant_stockfish_evaluations_total{instance=\"%s\"} %d\n\n", m.instanceID, evals))
 
 		// HTTP Requests Total
 		sb.WriteString("# HELP http_requests_total Total number of HTTP requests by method, path, and status code\n")

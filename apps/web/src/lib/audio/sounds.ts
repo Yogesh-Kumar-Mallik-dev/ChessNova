@@ -1,5 +1,5 @@
 // ==============================================================================
-// ChessNova Authentic Studio Audio Player
+// ChessPasant Authentic Studio Audio Player
 // Uses authentic, studio-recorded acoustic chess sound effects (clean, pleasant wood impacts)
 // Pre-cached audio pool with zero-latency playback across all browsers
 // ==============================================================================

@@ -57,20 +57,20 @@ func (m *UniversalMailer) SendVerificationOTP(ctx context.Context, toEmail, user
 	from := m.cfg.From
 	if from == "" {
 		if m.cfg.ResendAPIKey != "" {
-			from = "ChessNova <onboarding@resend.dev>"
+			from = "ChessPasant <onboarding@resend.dev>"
 		} else {
-			from = "ChessNova <noreply@chess.yogeshmallik.in>"
+			from = "ChessPasant <noreply@chess.yogeshmallik.in>"
 		}
 	}
 
-	subject := fmt.Sprintf("%s is your ChessNova verification code", otp)
+	subject := fmt.Sprintf("%s is your ChessPasant verification code", otp)
 
 	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ChessNova Email Verification</title>
+  <title>ChessPasant Email Verification</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #050811; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f1f5f9;">
   <table role="presentation" width="100%%" border="0" cellspacing="0" cellpadding="0" style="background-color: #050811; padding: 40px 10px;">
@@ -80,7 +80,7 @@ func (m *UniversalMailer) SendVerificationOTP(ctx context.Context, toEmail, user
           <tr>
             <td style="padding: 32px 32px 24px; text-align: center; border-bottom: 1px solid #162032;">
               <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
-                Chess<span style="color: #38bdf8;">Nova</span>
+                Chess<span style="color: #38bdf8;">Pasant</span>
               </h1>
               <p style="margin: 6px 0 0; font-size: 13px; color: #94a3b8;">
                 Real-Time Competitive Chess Platform
@@ -93,7 +93,7 @@ func (m *UniversalMailer) SendVerificationOTP(ctx context.Context, toEmail, user
                 Welcome, %s!
               </h2>
               <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.5; color: #cbd5e1;">
-                Thank you for creating an account on ChessNova. To verify your email address and activate your account, please enter the one-time code below:
+                Thank you for creating an account on ChessPasant. To verify your email address and activate your account, please enter the one-time code below:
               </p>
               
               <div style="background-color: #050811; border: 1px solid #38bdf840; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
@@ -106,14 +106,14 @@ func (m *UniversalMailer) SendVerificationOTP(ctx context.Context, toEmail, user
               </div>
 
               <p style="margin: 0 0 8px; font-size: 13px; color: #64748b; line-height: 1.4;">
-                If you did not attempt to register on ChessNova, you can safely ignore or delete this email.
+                If you did not attempt to register on ChessPasant, you can safely ignore or delete this email.
               </p>
             </td>
           </tr>
           <tr>
             <td style="background-color: #080d17; padding: 20px 32px; text-align: center; border-top: 1px solid #162032;">
               <p style="margin: 0; font-size: 11px; color: #475569;">
-                &copy; %d ChessNova. High-Performance Chess Engine & Platform.
+                &copy; %d ChessPasant. High-Performance Chess Engine & Platform.
               </p>
             </td>
           </tr>
@@ -124,7 +124,7 @@ func (m *UniversalMailer) SendVerificationOTP(ctx context.Context, toEmail, user
 </body>
 </html>`, username, otp, time.Now().Year())
 
-	plainText := fmt.Sprintf("Welcome, %s!\n\nYour ChessNova verification code is: %s\n\nThis code expires in 10 minutes. If you did not request this, please ignore this email.\n\n- The ChessNova Team", username, otp)
+	plainText := fmt.Sprintf("Welcome, %s!\n\nYour ChessPasant verification code is: %s\n\nThis code expires in 10 minutes. If you did not request this, please ignore this email.\n\n- The ChessPasant Team", username, otp)
 
 	// 1. Resend HTTP API (Industry-standard proven solution, 100% deliverability over HTTPS)
 	if m.cfg.ResendAPIKey != "" {

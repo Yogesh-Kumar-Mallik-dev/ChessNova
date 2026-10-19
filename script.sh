@@ -12,7 +12,7 @@ shift || true
 
 function show_help() {
   echo "=================================================================="
-  echo "  ♟ ChessNova Platform Lifecycle Orchestrator"
+  echo "  ♟ ChessPasant Platform Lifecycle Orchestrator"
   echo "=================================================================="
   echo "Usage: ./script.sh <command> [args...]"
   echo ""
@@ -24,9 +24,9 @@ function show_help() {
   echo "  deps     Install Go and npm dependencies"
   echo "  envi     Initialize local environment and start Docker services"
   echo "  uenvi    Tear down local Docker containers"
-  echo "  desktop  Launch ChessNova Tauri desktop application in dev mode"
-  echo "  desktop-build Build ChessNova Tauri desktop native release binary"
-  echo "  desktop-arch  Package ChessNova for Arch Linux (.pkg.tar.zst & .tar.gz)"
+  echo "  desktop  Launch ChessPasant Tauri desktop application in dev mode"
+  echo "  desktop-build Build ChessPasant Tauri desktop native release binary"
+  echo "  desktop-arch  Package ChessPasant for Arch Linux (.pkg.tar.zst & .tar.gz)"
   echo "  engine   Launch standalone Stockfish 19 engine microservice (port 8081)"
   echo "  flush    Flush database (MongoDB) and Redis caches"
   echo "  help     Display this help message"

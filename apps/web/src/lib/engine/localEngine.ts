@@ -26,7 +26,7 @@ export interface EngineState {
 	error: string | null;
 }
 
-const CACHE_NAME = 'chessnova-engine-v2-sf19';
+const CACHE_NAME = 'chesspasant-engine-v2-sf19';
 const ENGINE_FILES = [
 	'/engine/stockfish.js',
 	'/engine/stockfish.wasm'
@@ -60,7 +60,7 @@ export async function initEngineSystem() {
 	if (typeof window === 'undefined') return;
 
 	const isTauri = isTauriEnvironment();
-	const userEnabled = localStorage.getItem('chessnova_local_engine_enabled') !== 'false';
+	const userEnabled = (localStorage.getItem('chesspasant_local_engine_enabled') ?? localStorage.getItem('chessnova_local_engine_enabled')) !== 'false';
 
 	if (isTauri) {
 		try {
@@ -237,7 +237,7 @@ export async function clearEngineCache(): Promise<void> {
  */
 export function setLocalEngineEnabled(enabled: boolean) {
 	if (typeof window !== 'undefined') {
-		localStorage.setItem('chessnova_local_engine_enabled', enabled ? 'true' : 'false');
+		localStorage.setItem('chesspasant_local_engine_enabled', enabled ? 'true' : 'false');
 	}
 
 	engineStore.update((s) => {

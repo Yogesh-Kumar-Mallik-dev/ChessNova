@@ -52,7 +52,7 @@ func TestWebSocketOriginValidation(t *testing.T) {
 	cfg := HubConfig{
 		AllowedOrigins: []string{
 			"http://localhost:5173",
-			"https://chessnova.com",
+			"https://chesspasant.com",
 			"tauri://localhost",
 			"http://tauri.localhost",
 		},
@@ -67,7 +67,7 @@ func TestWebSocketOriginValidation(t *testing.T) {
 	}{
 		// Trusted origins
 		{"Allowed configured origin", "http://localhost:5173", true},
-		{"Allowed production origin", "https://chessnova.com", true},
+		{"Allowed production origin", "https://chesspasant.com", true},
 		{"Allowed desktop tauri scheme", "tauri://localhost", true},
 		{"Allowed desktop http tauri", "http://tauri.localhost", true},
 		{"Allowed dev localhost with port", "http://localhost:3000", true},
@@ -76,8 +76,8 @@ func TestWebSocketOriginValidation(t *testing.T) {
 		// Hostile origins
 		{"Hostile external origin", "https://evil-attacker.com", false},
 		{"Hostile subdomain trick", "http://localhost.evil.com", false},
-		{"Hostile suffix attack", "http://chessnova.com.attacker.com", false},
-		{"Hostile http instead of https prod", "http://chessnova.com", false},
+		{"Hostile suffix attack", "http://chesspasant.com.attacker.com", false},
+		{"Hostile http instead of https prod", "http://chesspasant.com", false},
 
 		// Malformed origins
 		{"Malformed empty scheme", "://broken", false},

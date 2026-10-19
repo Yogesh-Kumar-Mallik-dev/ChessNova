@@ -200,11 +200,12 @@ Link Chess.com and Lichess accounts to the user profile with automatic API exist
 - **Response**: `200 OK` (or `400 Bad Request` if external accounts cannot be verified).
 
 #### `GET /api/v1/users/{username}/external-stats`
-Retrieves live synchronized rating comparisons across ChessNova, Chess.com, and Lichess.
+Retrieves live synchronized rating comparisons across ChessPasant, Chess.com, and Lichess.
 - **Response**: `200 OK`
   ```json
   {
     "username": "grandmaster_alex",
+    "chesspasant": { "bullet": 400, "blitz": 520, "rapid": 400 },
     "chessnova": { "bullet": 400, "blitz": 520, "rapid": 400 },
     "chesscom": { "bullet": 1420, "blitz": 1580, "rapid": 1620, "puzzle": 1850 },
     "lichess": { "bullet": 1500, "blitz": 1610, "rapid": 1690, "puzzle": 1920 },
@@ -416,7 +417,7 @@ ws://localhost:8080/ws/game/{gameId}?ticket={ticket}
 
 - **Spectator Mode**: If neither `ticket` nor `token` is supplied, the connection is admitted as a **spectator**. Spectators have strictly read-only capabilities and cannot submit moves, draw offers, resignations, or timeout claims.
 - **Single-Use Ticket**: Tickets expire in 60 seconds and are atomically consumed upon connection.
-- **Origin Validation**: Verified against explicit allowlist (`CORS_ORIGIN`, `https://chessnova.com`, and Tauri desktop schemes `tauri://localhost` / `http://tauri.localhost`). In production, missing origins and arbitrary localhost ports are rejected with `403 Forbidden`.
+- **Origin Validation**: Verified against explicit allowlist (`CORS_ORIGIN`, `https://chesspasant.com`, and Tauri desktop schemes `tauri://localhost` / `http://tauri.localhost`). In production, missing origins and arbitrary localhost ports are rejected with `403 Forbidden`.
 - **Per-Socket Rate Limiting**: Max 25 messages per second per client connection. Payloads exceeding 64KB or flooding the socket are dropped with connection termination.
 
 Upon establishing connection, the server immediately emits the current board state (`game_start` or initial state).

@@ -50,10 +50,10 @@
 		<!-- Brand Logo -->
 		<a href="/" class="flex items-center gap-2.5 text-foreground font-bold text-base sm:text-lg tracking-tight group">
 			<div class="w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center p-1.5 shadow-xs group-hover:opacity-90 transition-opacity overflow-hidden">
-				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain invert dark:invert-0" />
+				<img src="/logo.png" alt="ChessPasant" class="w-full h-full object-contain invert dark:invert-0" />
 			</div>
 			<span class="font-extrabold tracking-tight">
-				ChessNova
+				ChessPasant
 			</span>
 		</a>
 

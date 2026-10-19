@@ -10,7 +10,7 @@ import (
 )
 
 func TestStorageLocalFallback(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "chessnova_test_avatars_*")
+	tmpDir, err := os.MkdirTemp("", "chesspasant_test_avatars_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}

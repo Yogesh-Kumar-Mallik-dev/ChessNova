@@ -1,5 +1,5 @@
 // ==============================================================================
-// ChessNova Standard Cburnett Vector Pieces
+// ChessPasant Standard Cburnett Vector Pieces
 // Standard Staunton vector set by Colin M.L. Burnett (CC BY-SA 3.0 / Lichess)
 // ==============================================================================
 

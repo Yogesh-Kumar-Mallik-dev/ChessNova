@@ -1,10 +1,10 @@
 [Desktop Entry]
-Name=ChessNova
+Name=ChessPasant
 Comment=Modern Chess Platform and Stockfish 19 Game Review Studio
-Exec=chessnova %U
-Icon=chessnova
+Exec=chesspasant %U
+Icon=chesspasant
 Terminal=false
 Type=Application
 Categories=Game;BoardGame;
-StartupWMClass=chessnova
+StartupWMClass=chesspasant
 Keywords=chess;game;stockfish;board;analysis;

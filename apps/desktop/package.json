@@ -1,7 +1,7 @@
 {
-  "name": "chessnova-desktop",
+  "name": "chesspasant-desktop",
   "version": "0.1.0",
-  "description": "ChessNova Native Desktop Application",
+  "description": "ChessPasant Native Desktop Application",
   "private": true,
   "type": "module",
   "scripts": {

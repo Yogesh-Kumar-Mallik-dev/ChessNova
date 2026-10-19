@@ -505,7 +505,7 @@ func TestPublicProfileDoesNotLeakPrivateData(t *testing.T) {
 	testUser := &user.User{
 		ID:            primitive.NewObjectID(),
 		Username:      "grandmaster",
-		Email:         "private_grandmaster@chessnova.com",
+		Email:         "private_grandmaster@chesspasant.com",
 		PasswordHash:  "$2a$10$insecurehashvalueshouldneverbeexposed",
 		EmailVerified: true,
 		Bio:           "Candidate Master",
@@ -531,7 +531,7 @@ func TestPublicProfileDoesNotLeakPrivateData(t *testing.T) {
 	}
 
 	// Verify private fields are strictly absent
-	if strings.Contains(respBody, "private_grandmaster@chessnova.com") {
+	if strings.Contains(respBody, "private_grandmaster@chesspasant.com") {
 		t.Errorf("SECURITY VULNERABILITY: User email address leaked in public profile: %s", respBody)
 	}
 	if strings.Contains(respBody, "insecurehashvalue") {

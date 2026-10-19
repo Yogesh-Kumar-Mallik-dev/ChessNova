@@ -1,8 +1,8 @@
-# ChessNova Documentation
+# ChessPasant Documentation
 
-Welcome to the comprehensive documentation suite for **ChessNova**, a next-generation, server-authoritative online chess platform and analysis laboratory.
+Welcome to the comprehensive documentation suite for **ChessPasant**, a next-generation, server-authoritative online chess platform and analysis laboratory.
 
-ChessNova combines a 100% FIDE-compliant pure Go chess rules engine, a high-performance Stockfish 19 UCI game evaluation and review system, real-time WebSocket gameplay, dynamic Redis matchmaking, Chess.com-adapted Elo rating curves (starting at 400 with a 100 floor), and a modern SvelteKit + Tailwind CSS "Midnight Slate" client.
+ChessPasant combines a 100% FIDE-compliant pure Go chess rules engine, a high-performance Stockfish 19 UCI game evaluation and review system, real-time WebSocket gameplay, dynamic Redis matchmaking, Chess.com-adapted Elo rating curves (starting at 400 with a 100 floor), and a modern SvelteKit + Tailwind CSS "Midnight Slate" client.
 
 ---
 
@@ -32,7 +32,7 @@ Explore the detailed architecture, specifications, and operational manuals:
                   HTTP REST /                          \ Real-Time WebSocket
                            v                            v
                ┌──────────────────────────────────────────────┐
-               │         ChessNova Modular Go Monolith         │
+               │        ChessPasant Modular Go Monolith       │
                │                   (apps/server)              │
                ├──────────────────────┬───────────────────────┤
                │   Auth & Accounts    │   Matchmaking Engine   │

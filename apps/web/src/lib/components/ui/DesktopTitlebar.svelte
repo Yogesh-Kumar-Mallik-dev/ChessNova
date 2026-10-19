@@ -57,10 +57,10 @@
 		<!-- Left: Branding & Draggable Title -->
 		<div class="flex items-center gap-2 pointer-events-none" data-tauri-drag-region>
 			<div class="w-5 h-5 rounded border border-border bg-foreground text-background flex items-center justify-center p-0.5 shadow-xs overflow-hidden">
-				<img src="/logo.png" alt="ChessNova" class="w-full h-full object-contain invert dark:invert-0" />
+				<img src="/logo.png" alt="ChessPasant" class="w-full h-full object-contain invert dark:invert-0" />
 			</div>
 			<div class="flex items-center gap-1.5 font-bold tracking-tight text-foreground text-[11px]">
-				<span>ChessNova</span>
+				<span>ChessPasant</span>
 				<span class="px-1.5 py-0.2 text-[9px] font-medium bg-secondary text-muted-foreground border border-border rounded uppercase tracking-wider">
 					Desktop
 				</span>

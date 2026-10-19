@@ -114,7 +114,7 @@
 		const blackName = gameMode === 'vs_computer' ? (playerColor === 'black' ? 'Player' : `${activeBot.name} (${activeBot.elo})`) : 'Black';
 		c.header(
 			'Event', gameMode === 'vs_computer' ? `VS ${activeBot.name}` : 'Local Match',
-			'Site', 'ChessNova',
+			'Site', 'ChessPasant',
 			'Date', new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
 			'White', whiteName,
 			'Black', blackName,

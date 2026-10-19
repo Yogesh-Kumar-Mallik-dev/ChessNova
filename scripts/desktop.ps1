@@ -25,11 +25,11 @@ if (-not (Test-Path "node_modules")) {
 
 switch ($Action.ToLower()) {
     "dev" {
-        Write-Host "==> [desktop] Launching ChessNova Tauri desktop in development mode..." -ForegroundColor Cyan
+        Write-Host "==> [desktop] Launching ChessPasant Tauri desktop in development mode..." -ForegroundColor Cyan
         npm run dev -- @RemainingArgs
     }
     "build" {
-        Write-Host "==> [desktop] Building ChessNova Tauri desktop production binary..." -ForegroundColor Cyan
+        Write-Host "==> [desktop] Building ChessPasant Tauri desktop production binary..." -ForegroundColor Cyan
         npm run build -- @RemainingArgs
     }
     "check" {

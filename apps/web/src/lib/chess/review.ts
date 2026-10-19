@@ -1,5 +1,5 @@
 // ==============================================================================
-// ChessNova Game Review Analysis Engine - Client Types & Authoritative API
+// ChessPasant Game Review Analysis Engine - Client Types & Authoritative API
 // All business logic, Stockfish evaluation, CAPS 2 calculation, and ECO theory
 // are authoritatively handled by the Go backend server (apps/server/internal/review)
 // ==============================================================================

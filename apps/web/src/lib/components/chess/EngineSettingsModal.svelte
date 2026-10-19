@@ -88,7 +88,7 @@
 					{:else if $engineStore.source === 'wasm'}
 						Running client-side inside a background Web Worker. Evaluations happen in your browser with zero server load.
 					{:else}
-						Positions are evaluated by the remote ChessNova Stockfish server cluster.
+						Positions are evaluated by the remote ChessPasant Stockfish server cluster.
 					{/if}
 				</p>
 			</div>

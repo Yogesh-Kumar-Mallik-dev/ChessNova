@@ -25,8 +25,8 @@ pub fn run() {
             }
 
             // Create tray menu items
-            let show_i = MenuItem::with_id(app, "show", "Show ChessNova", true, None::<&str>)?;
-            let quit_i = MenuItem::with_id(app, "quit", "Quit ChessNova", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Show ChessPasant", true, None::<&str>)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit ChessPasant", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
             if let Some(icon) = app.default_window_icon() {
@@ -34,7 +34,7 @@ pub fn run() {
                     .icon(icon.clone())
                     .menu(&menu)
                     .show_menu_on_left_click(false)
-                    .tooltip("ChessNova")
+                    .tooltip("ChessPasant")
                     .on_menu_event(|app, event| match event.id.as_ref() {
                         "show" => {
                             if let Some(window) = app.get_webview_window("main") {

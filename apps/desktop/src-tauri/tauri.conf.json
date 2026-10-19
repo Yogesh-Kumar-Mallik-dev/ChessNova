@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "ChessNova",
+  "productName": "ChessPasant",
   "version": "0.1.0",
-  "identifier": "com.chessnova.desktop",
+  "identifier": "com.chesspasant.desktop",
   "build": {
     "frontendDist": "../../web/build",
     "devUrl": "http://localhost:5173",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "ChessNova",
+        "title": "ChessPasant",
         "width": 1240,
         "height": 840,
         "minWidth": 850,

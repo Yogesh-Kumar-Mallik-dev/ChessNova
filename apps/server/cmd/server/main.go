@@ -117,9 +117,9 @@ func main() {
 	smtpPort := getEnv("SMTP_PORT", "587")
 	smtpUser := getEnv("SMTP_USER", "")
 	smtpPass := getEnv("SMTP_PASS", "")
-	smtpFrom := getEnv("SMTP_FROM", "ChessNova <noreply@chess.yogeshmallik.in>")
+	smtpFrom := getEnv("SMTP_FROM", "ChessPasant <noreply@chess.yogeshmallik.in>")
 
-	observability.DefaultLogger.Info("Initializing ChessNova instance", map[string]interface{}{
+	observability.DefaultLogger.Info("Initializing ChessPasant instance", map[string]interface{}{
 		"instanceId": instanceID,
 		"port":       serverPort,
 	})
@@ -301,7 +301,7 @@ func main() {
 	// 6. Initialize Storage & External Platform Services
 	storageService := storage.NewStorageService(storage.Config{
 		Endpoint:         getEnv("S3_ENDPOINT", ""),
-		Bucket:           getEnv("S3_BUCKET", "chessnova-avatars"),
+		Bucket:           getEnv("S3_BUCKET", "chesspasant-avatars"),
 		AccessKey:        getEnv("S3_ACCESS_KEY", ""),
 		SecretKey:        getEnv("S3_SECRET_KEY", ""),
 		Region:           getEnv("S3_REGION", "us-east-1"),

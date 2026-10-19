@@ -1,14 +1,14 @@
 [package]
-name = "chessnova"
+name = "chesspasant"
 version = "0.1.0"
-description = "ChessNova Modern Chess Desktop Application"
-authors = ["ChessNova Team"]
+description = "ChessPasant Modern Chess Desktop Application"
+authors = ["ChessPasant Team"]
 license = "MIT"
 edition = "2024"
 rust-version = "1.90"
 
 [lib]
-name = "chessnova_lib"
+name = "chesspasant_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

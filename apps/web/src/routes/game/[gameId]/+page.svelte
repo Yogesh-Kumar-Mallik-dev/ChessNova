@@ -399,7 +399,7 @@
 
 			c.header(
 				'Event', 'Live Match',
-				'Site', 'ChessNova',
+				'Site', 'ChessPasant',
 				'Date', new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
 				'White', whiteName,
 				'Black', blackName,

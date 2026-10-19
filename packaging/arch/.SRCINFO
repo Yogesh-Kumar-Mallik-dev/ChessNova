@@ -1,8 +1,8 @@
-pkgbase = chessnova-bin
+pkgbase = chesspasant-bin
 	pkgdesc = Modern, distraction-free chess platform and Stockfish 19 Game Review Studio
 	pkgver = 0.1.0
 	pkgrel = 1
-	url = https://github.com/Yogesh-Kumar-Mallik-dev/ChessNova
+	url = https://github.com/Yogesh-Kumar-Mallik-dev/ChessPasant
 	arch = x86_64
 	license = MIT
 	depends = webkit2gtk-4.1
@@ -11,9 +11,9 @@ pkgbase = chessnova-bin
 	depends = openssl
 	depends = libayatana-appindicator
 	optdepends = stockfish: for external UCI system engine calculation
-	provides = chessnova
-	conflicts = chessnova
-	source = https://github.com/Yogesh-Kumar-Mallik-dev/ChessNova/releases/download/v0.1.0/ChessNova_0.1.0_x86_64.tar.gz
+	provides = chesspasant
+	conflicts = chesspasant
+	source = https://github.com/Yogesh-Kumar-Mallik-dev/ChessPasant/releases/download/v0.1.0/ChessPasant_0.1.0_x86_64.tar.gz
 	sha256sums = SKIP
 
-pkgname = chessnova-bin
+pkgname = chesspasant-bin

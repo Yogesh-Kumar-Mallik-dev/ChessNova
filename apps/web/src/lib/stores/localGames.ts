@@ -1,5 +1,5 @@
 // ==============================================================================
-// ChessNova Local Game Archive & History Store
+// ChessPasant Local Game Archive & History Store
 // Automatically preserves completed games in localStorage for non-signed (and signed)
 // users, enabling full Game Reviews, PGN exports, and local game history.
 // ==============================================================================
@@ -20,7 +20,8 @@ export interface LocalGameRecord {
 	startFen?: string;
 }
 
-const STORAGE_KEY = 'chessnova_local_games_v1';
+const STORAGE_KEY = 'chesspasant_local_games_v1';
+const LEGACY_STORAGE_KEY = 'chessnova_local_games_v1';
 const MAX_LOCAL_GAMES = 50;
 
 /**
@@ -29,7 +30,13 @@ const MAX_LOCAL_GAMES = 50;
 export function getLocalGames(): LocalGameRecord[] {
 	if (typeof window === 'undefined') return [];
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
+		let raw = localStorage.getItem(STORAGE_KEY);
+		if (!raw) {
+			raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+			if (raw) {
+				localStorage.setItem(STORAGE_KEY, raw);
+			}
+		}
 		if (!raw) return [];
 		const parsed = JSON.parse(raw);
 		if (Array.isArray(parsed)) {

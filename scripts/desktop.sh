@@ -17,11 +17,11 @@ fi
 
 case "$ACTION" in
   dev)
-    echo "==> [desktop] Launching ChessNova Tauri desktop in development mode..."
+    echo "==> [desktop] Launching ChessPasant Tauri desktop in development mode..."
     npm run dev
     ;;
   build)
-    echo "==> [desktop] Building ChessNova Tauri desktop production binary..."
+    echo "==> [desktop] Building ChessPasant Tauri desktop production binary..."
     npm run build
     ;;
   check)
@@ -29,7 +29,7 @@ case "$ACTION" in
     cargo check --manifest-path src-tauri/Cargo.toml
     ;;
   arch|package-arch)
-    echo "==> [desktop] Packaging ChessNova for Arch Linux (.pkg.tar.zst & .tar.gz)..."
+    echo "==> [desktop] Packaging ChessPasant for Arch Linux (.pkg.tar.zst & .tar.gz)..."
     "$ROOT_DIR/packaging/arch/package-arch.sh" "0.1.0" "$ROOT_DIR/dist/arch"
     ;;
   *)
