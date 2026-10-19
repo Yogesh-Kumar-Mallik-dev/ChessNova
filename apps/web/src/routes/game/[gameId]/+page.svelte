@@ -86,6 +86,34 @@
 	let copiedInvite = false;
 	let opponentCountdown = 60;
 	let countdownInterval: any = null;
+	let clockTickerInterval: any = null;
+	let lastClockTick: number = Date.now();
+
+	// Smooth local clock ticker when match is actively playing
+	$: if ($gameStore.status === 'playing') {
+		if (!clockTickerInterval) {
+			lastClockTick = Date.now();
+			clockTickerInterval = setInterval(() => {
+				const now = Date.now();
+				const delta = now - lastClockTick;
+				lastClockTick = now;
+
+				gameStore.update((s) => {
+					if (s.status !== 'playing') return s;
+					if (s.turn === 'white') {
+						return { ...s, whiteTime: Math.max(0, s.whiteTime - delta) };
+					} else {
+						return { ...s, blackTime: Math.max(0, s.blackTime - delta) };
+					}
+				});
+			}, 100);
+		}
+	} else {
+		if (clockTickerInterval) {
+			clearInterval(clockTickerInterval);
+			clockTickerInterval = null;
+		}
+	}
 
 	// Track opponent disconnection countdown
 	$: if (isPlayer && !$gameStore.opponentConnected && $gameStore.status === 'playing') {
@@ -255,6 +283,10 @@
 		if (countdownInterval) {
 			clearInterval(countdownInterval);
 			countdownInterval = null;
+		}
+		if (clockTickerInterval) {
+			clearInterval(clockTickerInterval);
+			clockTickerInterval = null;
 		}
 		if (socket) {
 			socket.disconnect();
@@ -432,13 +464,13 @@
 
 </script>
 
-<div class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full px-2 py-1.5 sm:px-4 sm:py-2 lg:px-6 min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto lg:overflow-hidden">
+<div class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full px-2 py-1.5 sm:px-4 sm:py-2 lg:px-6 min-h-0 min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto">
 	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center justify-center my-auto min-h-0">
 		
 		<!-- Board Column (Hero centerpiece) -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
 			
-			<div class="w-full max-w-[min(100%,calc(100dvh-200px),580px)] flex flex-col items-center">
+			<div class="w-full max-w-[min(100%,calc(100dvh-240px),580px)] flex flex-col items-center">
 				<!-- Opponent Disconnection Countdown Banner -->
 				{#if isPlayer && !$gameStore.opponentConnected && $gameStore.status === 'playing'}
 					<div class="w-full mb-1.5 p-2 bg-destructive/10 border border-destructive/30 rounded-xl flex items-center justify-between text-xs text-destructive animate-pulse shadow-sm">

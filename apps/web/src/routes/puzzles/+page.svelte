@@ -303,7 +303,7 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="flex-1 max-w-7xl mx-auto w-full px-2 py-1.5 sm:px-4 sm:py-2 lg:px-6 flex flex-col justify-center min-h-0 lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto lg:overflow-hidden">
+<div class="flex-1 max-w-7xl mx-auto w-full px-2 py-1.5 sm:px-4 sm:py-2 lg:px-6 flex flex-col justify-center min-h-0 min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] overflow-x-hidden overflow-y-auto">
 	<!-- Slim Unified Header & Filter Toolbar -->
 	<div class="mb-1.5 flex flex-wrap items-center justify-between gap-2 bg-card border border-border rounded-xl px-2.5 py-1.5 shrink-0 shadow-xs">
 		<!-- Left: Mode Switcher -->
@@ -433,7 +433,7 @@
 	<div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center justify-center my-auto min-h-0">
 		<!-- Left: Hero Puzzle Board Column -->
 		<div class="lg:col-span-7 xl:col-span-8 flex flex-col items-center justify-center min-h-0 w-full">
-			<div class="w-full max-w-[min(100%,calc(100dvh-200px),580px)] flex flex-col items-center">
+			<div class="w-full max-w-[min(100%,calc(100dvh-280px),520px)] flex flex-col items-center">
 				
 				<!-- Turn Banner -->
 				<div class="w-full flex items-center justify-between py-1 px-1 text-xs font-semibold select-none mb-1">
@@ -475,10 +475,10 @@
 				{/if}
 
 				<!-- Tactical Status & Immediate Action Bar -->
-				<div class="w-full mt-2 flex flex-col gap-1.5">
+				<div class="w-full mt-2 flex flex-col gap-1.5 shrink-0">
 					<!-- Status Banner -->
 					<div
-						class="px-3 py-2 rounded-xl border flex items-center justify-between gap-2 transition-all duration-200 {statusType === 'success'
+						class="px-3 py-2 rounded-xl border flex items-center justify-between gap-2 transition-all duration-200 shrink-0 {statusType === 'success'
 							? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
 							: statusType === 'error'
 								? 'bg-destructive/10 border-destructive/30 text-destructive'
@@ -513,7 +513,7 @@
 					</div>
 
 					<!-- Tactical Buttons Bar -->
-					<div class="flex items-center gap-2 w-full">
+					<div class="flex items-center gap-2 w-full shrink-0">
 						{#if statusType === 'success'}
 							<Button
 								variant="primary"

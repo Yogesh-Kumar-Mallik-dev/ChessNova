@@ -3,6 +3,7 @@ import { authStore } from '$lib/stores/auth';
 import { soundEffects } from '$lib/audio/sounds';
 import { sendDesktopNotification } from '$lib/utils/desktop';
 import { getWsBase } from '$lib/config';
+import { api } from '$lib/api/client';
 
 function getCategory(initialSeconds: number): string {
 	const mins = initialSeconds / 60;
@@ -47,12 +48,27 @@ export class GameSocket {
 		this.errorCallback = cb;
 	}
 
-	public connect() {
+	public async connect() {
 		this.isExplicitlyClosed = false;
 		if (typeof window === 'undefined') return;
 
-		const tokenParam = this.token ? `?token=${encodeURIComponent(this.token)}` : '';
-		const url = `${getWsBase()}/game/${this.gameId}${tokenParam}`;
+		let ticket = '';
+		if (this.token) {
+			try {
+				const ticketRes = await api.auth.getWSTicket();
+				if (ticketRes?.ticket) {
+					ticket = ticketRes.ticket;
+				}
+			} catch (_) {
+				// Fall back to token param
+			}
+		}
+
+		const params = new URLSearchParams();
+		if (ticket) params.set('ticket', ticket);
+		if (this.token) params.set('token', this.token);
+		const qs = params.toString() ? `?${params.toString()}` : '';
+		const url = `${getWsBase()}/game/${this.gameId}${qs}`;
 
 		gameStore.update((s) => ({ ...s, connectionStatus: 'connecting' }));
 
@@ -97,24 +113,49 @@ export class GameSocket {
 
 	private handleMessage(data: any) {
 		switch (data.type) {
-			case 'game_started':
+			case 'game_started': {
 				soundEffects.playGameStart();
 				sendDesktopNotification('Game Started!', 'Your chess match is ready. Good luck!');
-				gameStore.update((s) => ({
-					...s,
-					gameId: data.gameId,
-					fen: data.fen,
-					turn: data.turn,
-					whiteTime: data.whiteTime,
-					blackTime: data.blackTime,
-					status: data.status,
-					whitePlayer: data.white,
-					blackPlayer: data.black,
-					timeControl: data.timeControl,
-					isCheck: data.isCheck,
-					drawOfferBy: null
-				}));
+				gameStore.update((s) => {
+					let authState: any = null;
+					const unsub = authStore.subscribe((val) => (authState = val));
+					unsub();
+					const myUid = authState?.user?.id;
+					const myUname = authState?.user?.username?.toLowerCase();
+
+					const isMeWhite = (s.whitePlayer?.userId && s.whitePlayer.userId === myUid) ||
+						(data.white?.userId && data.white.userId === myUid) ||
+						(myUname && (s.whitePlayer?.username?.toLowerCase() === myUname || data.white?.username?.toLowerCase() === myUname));
+
+					const isMeBlack = (s.blackPlayer?.userId && s.blackPlayer.userId === myUid) ||
+						(data.black?.userId && data.black.userId === myUid) ||
+						(myUname && (s.blackPlayer?.username?.toLowerCase() === myUname || data.black?.username?.toLowerCase() === myUname));
+
+					let opponentConnected = s.opponentConnected;
+					if (isMeWhite && data.blackConnected !== undefined) {
+						opponentConnected = data.blackConnected;
+					} else if (isMeBlack && data.whiteConnected !== undefined) {
+						opponentConnected = data.whiteConnected;
+					}
+
+					return {
+						...s,
+						gameId: data.gameId,
+						fen: data.fen,
+						turn: data.turn,
+						whiteTime: data.whiteTime,
+						blackTime: data.blackTime,
+						status: data.status,
+						whitePlayer: data.white || s.whitePlayer,
+						blackPlayer: data.black || s.blackPlayer,
+						timeControl: data.timeControl,
+						isCheck: data.isCheck,
+						opponentConnected,
+						drawOfferBy: null
+					};
+				});
 				break;
+			}
 
 			case 'move': {
 				const moveFrom = toSquareNotation(data.move?.from);
@@ -187,21 +228,70 @@ export class GameSocket {
 				break;
 			}
 
-			case 'player_disconnected':
-				gameStore.update((s) => ({
-					...s,
-					opponentConnected: false,
-					opponentDisconnectTime: Date.now()
-				}));
-				break;
+			case 'player_disconnected': {
+				gameStore.update((s) => {
+					let authState: any = null;
+					const unsub = authStore.subscribe((val) => (authState = val));
+					unsub();
+					const myUid = authState?.user?.id;
+					const myUname = authState?.user?.username?.toLowerCase();
 
-			case 'player_connected':
-				gameStore.update((s) => ({
-					...s,
-					opponentConnected: true,
-					opponentDisconnectTime: null
-				}));
+					const isMeWhite = (s.whitePlayer?.userId && s.whitePlayer.userId === myUid) ||
+						(myUname && s.whitePlayer?.username?.toLowerCase() === myUname);
+					const isMeBlack = (s.blackPlayer?.userId && s.blackPlayer.userId === myUid) ||
+						(myUname && s.blackPlayer?.username?.toLowerCase() === myUname);
+
+					const opponentUid = isMeWhite ? s.blackPlayer?.userId : isMeBlack ? s.whitePlayer?.userId : null;
+					const opponentUname = isMeWhite ? s.blackPlayer?.username?.toLowerCase() : isMeBlack ? s.whitePlayer?.username?.toLowerCase() : null;
+
+					// Only set opponentConnected to false if the disconnecting user is actually the opponent!
+					const isOpponent = (opponentUid && data.userId === opponentUid) ||
+						(opponentUname && data.username?.toLowerCase() === opponentUname);
+
+					if (!isOpponent) {
+						return s;
+					}
+
+					return {
+						...s,
+						opponentConnected: false,
+						opponentDisconnectTime: Date.now()
+					};
+				});
 				break;
+			}
+
+			case 'player_connected': {
+				gameStore.update((s) => {
+					let authState: any = null;
+					const unsub = authStore.subscribe((val) => (authState = val));
+					unsub();
+					const myUid = authState?.user?.id;
+					const myUname = authState?.user?.username?.toLowerCase();
+
+					const isMeWhite = (s.whitePlayer?.userId && s.whitePlayer.userId === myUid) ||
+						(myUname && s.whitePlayer?.username?.toLowerCase() === myUname);
+					const isMeBlack = (s.blackPlayer?.userId && s.blackPlayer.userId === myUid) ||
+						(myUname && s.blackPlayer?.username?.toLowerCase() === myUname);
+
+					const opponentUid = isMeWhite ? s.blackPlayer?.userId : isMeBlack ? s.whitePlayer?.userId : null;
+					const opponentUname = isMeWhite ? s.blackPlayer?.username?.toLowerCase() : isMeBlack ? s.whitePlayer?.username?.toLowerCase() : null;
+
+					const isOpponent = (opponentUid && data.userId === opponentUid) ||
+						(opponentUname && data.username?.toLowerCase() === opponentUname);
+
+					if (!isOpponent) {
+						return s;
+					}
+
+					return {
+						...s,
+						opponentConnected: true,
+						opponentDisconnectTime: null
+					};
+				});
+				break;
+			}
 
 			case 'clock_update':
 				gameStore.update((s) => ({

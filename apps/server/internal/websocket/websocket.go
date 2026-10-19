@@ -213,8 +213,10 @@ type ServerMessage struct {
 	White       *game.PlayerInfo  `json:"white,omitempty"`
 	Black       *game.PlayerInfo  `json:"black,omitempty"`
 	TimeControl *game.TimeControl `json:"timeControl,omitempty"`
-	WhiteDiff   *int              `json:"whiteDiff,omitempty"`
-	BlackDiff   *int              `json:"blackDiff,omitempty"`
+	WhiteDiff      *int              `json:"whiteDiff,omitempty"`
+	BlackDiff      *int              `json:"blackDiff,omitempty"`
+	WhiteConnected *bool             `json:"whiteConnected,omitempty"`
+	BlackConnected *bool             `json:"blackConnected,omitempty"`
 }
 
 type Client struct {
@@ -525,13 +527,13 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 		}
 	}
 
-	// 2. Fallback: Authorization header (or query token parameter in development only)
+	// 2. Fallback: Authorization header or query token parameter
 	if userID == "" {
 		tokenStr := ""
 		authH := r.Header.Get("Authorization")
 		if strings.HasPrefix(authH, "Bearer ") {
 			tokenStr = strings.TrimPrefix(authH, "Bearer ")
-		} else if !h.config.IsProduction {
+		} else {
 			tokenStr = r.URL.Query().Get("token")
 		}
 
@@ -563,18 +565,44 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 			// A player must be an authenticated user whose ID matches either seat
 			client.isPlayer = (userID != "" && (strings.EqualFold(ag.White.UserID, userID) || strings.EqualFold(ag.Black.UserID, userID)))
 			wMs, bMs, _ := ag.Clock.CurrentTimes(ag.Status)
+
+			room.mu.RLock()
+			whiteConn := false
+			blackConn := false
+			if client.isPlayer {
+				if strings.EqualFold(ag.White.UserID, userID) {
+					whiteConn = true
+				}
+				if strings.EqualFold(ag.Black.UserID, userID) {
+					blackConn = true
+				}
+			}
+			for c := range room.clients {
+				if c.userID != "" {
+					if strings.EqualFold(ag.White.UserID, c.userID) {
+						whiteConn = true
+					}
+					if strings.EqualFold(ag.Black.UserID, c.userID) {
+						blackConn = true
+					}
+				}
+			}
+			room.mu.RUnlock()
+
 			initMsg := ServerMessage{
-				Type:        "game_started",
-				GameID:      ag.ID,
-				FEN:         chess.ToFEN(ag.Engine.CurrentPosition),
-				Turn:        ag.Engine.CurrentPosition.SideToMove.String(),
-				WhiteTime:   wMs,
-				BlackTime:   bMs,
-				Status:      ag.Status,
-				White:       &ag.White,
-				Black:       &ag.Black,
-				TimeControl: &ag.TimeControl,
-				IsCheck:     chess.IsCheck(ag.Engine.CurrentPosition),
+				Type:           "game_started",
+				GameID:         ag.ID,
+				FEN:            chess.ToFEN(ag.Engine.CurrentPosition),
+				Turn:           ag.Engine.CurrentPosition.SideToMove.String(),
+				WhiteTime:      wMs,
+				BlackTime:      bMs,
+				Status:         ag.Status,
+				White:          &ag.White,
+				Black:          &ag.Black,
+				TimeControl:    &ag.TimeControl,
+				IsCheck:        chess.IsCheck(ag.Engine.CurrentPosition),
+				WhiteConnected: &whiteConn,
+				BlackConnected: &blackConn,
 			}
 			initBytes, _ := json.Marshal(initMsg)
 			client.send <- initBytes
@@ -592,13 +620,15 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, gameID str
 	}
 	room.mu.Unlock()
 
-	// Notify connection
-	h.Broadcast(gameID, ServerMessage{
-		Type:     "player_connected",
-		GameID:   gameID,
-		UserID:   userID,
-		Username: username,
-	})
+	// Notify connection ONLY for authenticated seated players
+	if client.isPlayer && userID != "" {
+		h.Broadcast(gameID, ServerMessage{
+			Type:     "player_connected",
+			GameID:   gameID,
+			UserID:   userID,
+			Username: username,
+		})
+	}
 
 	observability.DefaultMetrics.IncActiveWebSocket()
 	go client.writePump()
@@ -686,12 +716,14 @@ func (c *Client) readPump() {
 		close(c.send)
 		c.conn.Close()
 
-		c.hub.Broadcast(c.gameID, ServerMessage{
-			Type:     "player_disconnected",
-			GameID:   c.gameID,
-			UserID:   c.userID,
-			Username: c.username,
-		})
+		if !hasRemaining && c.isPlayer && c.userID != "" {
+			c.hub.Broadcast(c.gameID, ServerMessage{
+				Type:     "player_disconnected",
+				GameID:   c.gameID,
+				UserID:   c.userID,
+				Username: c.username,
+			})
+		}
 	}()
 
 	c.conn.SetReadLimit(4096)
