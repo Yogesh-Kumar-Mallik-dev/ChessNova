@@ -84,6 +84,9 @@ func ValidateOrigin(origin string, cfg HubConfig, reqHost ...string) bool {
 	// For custom URI scheme (e.g. tauri://localhost)
 	if scheme == "tauri" {
 		full := "tauri://" + strings.ToLower(u.Host)
+		if full == "tauri://localhost" {
+			return true
+		}
 		for _, allowed := range cfg.AllowedOrigins {
 			if strings.EqualFold(strings.TrimRight(allowed, "/"), full) {
 				return true
@@ -97,6 +100,10 @@ func ValidateOrigin(origin string, cfg HubConfig, reqHost ...string) bool {
 	}
 
 	originHost := strings.ToLower(u.Hostname())
+	if originHost == "tauri.localhost" {
+		return true
+	}
+
 	normOrigin := scheme + "://" + strings.ToLower(u.Host)
 
 	// If the request was made to the same host and effective port, it is same-origin and trusted

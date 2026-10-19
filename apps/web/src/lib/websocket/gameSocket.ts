@@ -2,6 +2,7 @@ import { gameStore } from '$lib/stores/game';
 import { authStore } from '$lib/stores/auth';
 import { soundEffects } from '$lib/audio/sounds';
 import { sendDesktopNotification } from '$lib/utils/desktop';
+import { getWsBase } from '$lib/config';
 
 function getCategory(initialSeconds: number): string {
 	const mins = initialSeconds / 60;
@@ -50,10 +51,8 @@ export class GameSocket {
 		this.isExplicitlyClosed = false;
 		if (typeof window === 'undefined') return;
 
-		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-		const host = window.location.host;
 		const tokenParam = this.token ? `?token=${encodeURIComponent(this.token)}` : '';
-		const url = `${protocol}//${host}/ws/game/${this.gameId}${tokenParam}`;
+		const url = `${getWsBase()}/game/${this.gameId}${tokenParam}`;
 
 		gameStore.update((s) => ({ ...s, connectionStatus: 'connecting' }));
 

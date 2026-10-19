@@ -1,3 +1,5 @@
+import { getApiBase } from '$lib/config';
+
 export const API_BASE = '/api/v1';
 
 function getToken(): string | null {
@@ -20,7 +22,7 @@ async function refreshAccessToken(): Promise<string | null> {
 	isRefreshing = true;
 	refreshPromise = (async () => {
 		try {
-			const res = await fetch(`${API_BASE}/auth/refresh`, {
+			const res = await fetch(`${getApiBase()}/auth/refresh`, {
 				method: 'POST',
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
@@ -63,7 +65,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 		headers['Authorization'] = `Bearer ${token}`;
 	}
 
-	let res = await fetch(`${API_BASE}${endpoint}`, {
+	let res = await fetch(`${getApiBase()}${endpoint}`, {
 		...options,
 		credentials: 'include',
 		headers
@@ -74,7 +76,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 		const newAccess = await refreshAccessToken();
 		if (newAccess) {
 			headers['Authorization'] = `Bearer ${newAccess}`;
-			res = await fetch(`${API_BASE}${endpoint}`, {
+			res = await fetch(`${getApiBase()}${endpoint}`, {
 				...options,
 				credentials: 'include',
 				headers
@@ -135,7 +137,7 @@ export const api = {
 			const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
 			try {
 				if (accessToken || refreshToken) {
-					await fetch(`${API_BASE}/auth/logout`, {
+					await fetch(`${getApiBase()}/auth/logout`, {
 						method: 'POST',
 						credentials: 'include',
 						headers: {
@@ -174,7 +176,7 @@ export const api = {
 			const headers: Record<string, string> = {};
 			if (token) headers['Authorization'] = `Bearer ${token}`;
 
-			const res = await fetch(`${API_BASE}/users/avatar`, {
+			const res = await fetch(`${getApiBase()}/users/avatar`, {
 				method: 'POST',
 				credentials: 'include',
 				headers,
@@ -243,7 +245,7 @@ export const api = {
 				method: 'POST'
 			}),
 		getPgn: async (gameId: string) => {
-			const res = await fetch(`/api/v1/games/${gameId}/pgn`);
+			const res = await fetch(`${getApiBase()}/games/${gameId}/pgn`);
 			if (!res.ok) throw new Error('Failed to fetch game PGN');
 			return res.text();
 		}

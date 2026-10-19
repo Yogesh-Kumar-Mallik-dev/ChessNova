@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api/client';
+	import { getApiBase } from '$lib/config';
 	import { authStore } from '$lib/stores/auth';
 	import { stageGameForReview } from '$lib/stores/localGames';
 	import Icon from '$lib/components/icons/Icon.svelte';
@@ -685,7 +686,7 @@
 										</a>
 
 										<a
-											href="/api/v1/games/{g.id}/pgn"
+											href="{getApiBase()}/games/{g.id}/pgn"
 											download
 											class="p-1.5 bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground border border-border rounded-lg transition"
 											title="Download PGN"

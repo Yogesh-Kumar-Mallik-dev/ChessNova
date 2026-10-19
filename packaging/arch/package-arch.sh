@@ -12,6 +12,7 @@ OUTPUT_DIR="${2:-$ROOT_DIR/dist/arch}"
 echo "==> [arch] Building Arch Linux release package for ChessPasant v${VERSION}..."
 
 mkdir -p "$OUTPUT_DIR"
+OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
 WORK_DIR=$(mktemp -d -t chesspasant-arch-build-XXXXXX)
 trap 'rm -rf "$WORK_DIR"' EXIT
 

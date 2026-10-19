@@ -129,7 +129,17 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https: http: ws: wss:; font-src 'self' data:;")
 
 	// Global CORS Handler
-	w.Header().Set("Access-Control-Allow-Origin", rt.corsOrigin)
+	origin := r.Header.Get("Origin")
+	allowOrigin := rt.corsOrigin
+	if origin != "" {
+		originLower := strings.ToLower(origin)
+		if originLower == "tauri://localhost" || originLower == "http://tauri.localhost" || originLower == "https://tauri.localhost" {
+			allowOrigin = origin
+		} else if strings.EqualFold(originLower, strings.TrimRight(rt.corsOrigin, "/")) {
+			allowOrigin = origin
+		}
+	}
+	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With, X-Admin-Secret")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
