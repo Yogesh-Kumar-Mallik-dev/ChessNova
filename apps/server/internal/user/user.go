@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"regexp"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -61,6 +62,8 @@ type Repository interface {
 	FindByID(ctx context.Context, id primitive.ObjectID) (*User, error)
 	FindByUsername(ctx context.Context, username string) (*User, error)
 	FindByEmail(ctx context.Context, email string) (*User, error)
+	SearchUsers(ctx context.Context, query string, limit int) ([]*User, error)
+	DeleteAllUsers(ctx context.Context) error
 	UpdateProfile(ctx context.Context, id primitive.ObjectID, bio, country string) error
 	UpdateAvatar(ctx context.Context, id primitive.ObjectID, avatarURL string) error
 	UpdateLinkedAccounts(ctx context.Context, id primitive.ObjectID, chessComUsername, lichessUsername string) error
@@ -156,6 +159,40 @@ func (r *MongoRepository) UpdateAvatar(ctx context.Context, id primitive.ObjectI
 			},
 		},
 	)
+	return err
+}
+
+func (r *MongoRepository) SearchUsers(ctx context.Context, query string, limit int) ([]*User, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	filter := bson.M{}
+	if query != "" {
+		filter = bson.M{
+			"username": bson.M{
+				"$regex": primitive.Regex{Pattern: regexp.QuoteMeta(query), Options: "i"},
+			},
+		}
+	}
+	opts := options.Find().SetLimit(int64(limit)).SetSort(bson.D{{Key: "username", Value: 1}})
+	cur, err := r.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	var users []*User
+	if err := cur.All(ctx, &users); err != nil {
+		return nil, err
+	}
+	if users == nil {
+		users = []*User{}
+	}
+	return users, nil
+}
+
+func (r *MongoRepository) DeleteAllUsers(ctx context.Context) error {
+	_, err := r.collection.DeleteMany(ctx, bson.M{})
 	return err
 }
 

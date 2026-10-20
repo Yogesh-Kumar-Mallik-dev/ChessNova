@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -95,6 +96,30 @@ func (m *mockUserRepo) UpdateLinkedAccounts(ctx context.Context, id primitive.Ob
 	}
 	u.ChessComUsername = chessComUsername
 	u.LichessUsername = lichessUsername
+	return nil
+}
+
+func (m *mockUserRepo) SearchUsers(ctx context.Context, query string, limit int) ([]*user.User, error) {
+	if m.dbError != nil {
+		return nil, m.dbError
+	}
+	var res []*user.User
+	for _, u := range m.users {
+		if query == "" || strings.Contains(strings.ToLower(u.Username), strings.ToLower(query)) {
+			res = append(res, u)
+			if limit > 0 && len(res) >= limit {
+				break
+			}
+		}
+	}
+	return res, nil
+}
+
+func (m *mockUserRepo) DeleteAllUsers(ctx context.Context) error {
+	if m.dbError != nil {
+		return m.dbError
+	}
+	m.users = make(map[string]*user.User)
 	return nil
 }
 

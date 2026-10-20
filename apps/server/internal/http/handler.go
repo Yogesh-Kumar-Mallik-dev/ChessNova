@@ -183,6 +183,7 @@ func (rt *Router) routes() {
 
 	// Users & Profiles
 	rt.mux.HandleFunc("GET /api/v1/users/me", rt.withAuth(rt.handleGetMe))
+	rt.mux.HandleFunc("GET /api/v1/users/search", rt.handleSearchUsers)
 	rt.mux.HandleFunc("GET /api/v1/users/{username}", rt.handleGetUser)
 	rt.mux.HandleFunc("PUT /api/v1/users/profile", rt.withAuth(rt.handleUpdateProfile))
 	rt.mux.HandleFunc("POST /api/v1/users/avatar", rt.withAuth(rt.handleUploadAvatar))
@@ -213,6 +214,8 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/draw-decline", rt.withAuth(rt.handleDeclineDraw))
 	rt.mux.HandleFunc("POST /api/v1/games/{id}/claim-draw", rt.withAuth(rt.handleClaimDraw))
 	rt.mux.HandleFunc("POST /api/v1/games/close-all", rt.withAdminAuth(rt.handleCloseAllGames))
+	rt.mux.HandleFunc("POST /api/v1/admin/users/reset", rt.withAdminAuth(rt.handleResetUsers))
+	rt.mux.HandleFunc("DELETE /api/v1/admin/users", rt.withAdminAuth(rt.handleResetUsers))
 
 	// Authoritative Chess Engine & Legal Move Rules
 	rt.mux.HandleFunc("POST /api/v1/chess/legal-moves", rt.handleLegalMoves)
@@ -624,6 +627,46 @@ func (rt *Router) handleGetMe(w http.ResponseWriter, r *http.Request, claims *au
 		"user":    u,
 		"ratings": ratingsList,
 	})
+}
+
+func (rt *Router) handleSearchUsers(w http.ResponseWriter, r *http.Request) {
+	if rt.userService == nil {
+		writeError(w, http.StatusServiceUnavailable, "USER_UNAVAILABLE", "user service unavailable")
+		return
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	users, err := rt.userService.SearchUsers(r.Context(), q, 20)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "SEARCH_FAILED", err.Error())
+		return
+	}
+
+	type searchResult struct {
+		ID       string `json:"id"`
+		Username string `json:"username"`
+		Avatar   string `json:"avatar"`
+		Country  string `json:"country"`
+		Rating   int    `json:"rating"`
+	}
+
+	res := make([]searchResult, 0, len(users))
+	for _, u := range users {
+		rat := rating.DefaultRating
+		if rt.ratingRepo != nil {
+			if rObj, _ := rt.ratingRepo.GetRating(r.Context(), u.ID, rating.Blitz); rObj != nil {
+				rat = rObj.Rating
+			}
+		}
+		res = append(res, searchResult{
+			ID:       u.ID.Hex(),
+			Username: u.Username,
+			Avatar:   u.Avatar,
+			Country:  u.Country,
+			Rating:   rat,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, res)
 }
 
 func (rt *Router) handleGetUser(w http.ResponseWriter, r *http.Request) {
@@ -1299,6 +1342,20 @@ func (rt *Router) handleCloseAllGames(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"closed":  count,
 		"message": "all active games terminated",
+	})
+}
+
+func (rt *Router) handleResetUsers(w http.ResponseWriter, r *http.Request) {
+	if rt.userService == nil {
+		writeError(w, http.StatusServiceUnavailable, "USER_UNAVAILABLE", "user service unavailable")
+		return
+	}
+	if err := rt.userService.DeleteAllUsers(r.Context()); err != nil {
+		writeError(w, http.StatusInternalServerError, "RESET_FAILED", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "all users deleted successfully",
 	})
 }
 
@@ -2121,7 +2178,7 @@ func (rt *Router) handleSendFriendRequest(w http.ResponseWriter, r *http.Request
 	}
 
 	targetUsername := strings.TrimSpace(req.Username)
-	if strings.EqualFold(targetUsername, claims.Username) {
+	if targetUsername == claims.Username {
 		writeError(w, http.StatusBadRequest, "SELF_FRIEND_PROHIBITED", "cannot send a friend request to yourself")
 		return
 	}
@@ -2133,6 +2190,10 @@ func (rt *Router) handleSendFriendRequest(w http.ResponseWriter, r *http.Request
 	}
 
 	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	if targetUser.ID == userOID {
+		writeError(w, http.StatusBadRequest, "SELF_FRIEND_PROHIBITED", "cannot send a friend request to yourself")
+		return
+	}
 	currentUser, _ := rt.userService.FindByID(r.Context(), userOID)
 	currentAvatar := ""
 	if currentUser != nil {

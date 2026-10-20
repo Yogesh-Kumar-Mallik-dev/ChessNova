@@ -47,7 +47,7 @@
 	let uploadingAvatar = false;
 	let avatarError = '';
 
-	$: isOwnProfile = $authStore.user?.username?.toLowerCase() === username.toLowerCase();
+	$: isOwnProfile = $authStore.user?.username === username;
 
 	const ratingCategories: Array<{ id: 'bullet' | 'blitz' | 'rapid' | 'classical'; label: string; icon: 'zap' | 'flame' | 'timer' | 'hourglass' }> = [
 		{ id: 'bullet', label: 'Bullet', icon: 'zap' },
@@ -60,19 +60,19 @@
 		if (!$authStore.user || isOwnProfile) return;
 		try {
 			const res = await api.friends.list();
-			const fr = (res.friends || []).find((f: any) => f.username.toLowerCase() === username.toLowerCase());
+			const fr = (res.friends || []).find((f: any) => f.username === username);
 			if (fr) {
 				friendStatus = 'friends';
 				friendshipId = fr.friendshipId;
 				return;
 			}
-			const outReq = (res.outgoing || []).find((o: any) => o.addresseeUsername.toLowerCase() === username.toLowerCase());
+			const outReq = (res.outgoing || []).find((o: any) => o.addresseeUsername === username);
 			if (outReq) {
 				friendStatus = 'pending_sent';
 				friendshipId = outReq.id;
 				return;
 			}
-			const inReq = (res.incoming || []).find((i: any) => i.requesterUsername.toLowerCase() === username.toLowerCase());
+			const inReq = (res.incoming || []).find((i: any) => i.requesterUsername === username);
 			if (inReq) {
 				friendStatus = 'pending_received';
 				friendshipId = inReq.id;

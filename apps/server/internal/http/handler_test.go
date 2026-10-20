@@ -496,6 +496,22 @@ func (m *testUserRepo) UpdateAvatar(ctx context.Context, id primitive.ObjectID, 
 func (m *testUserRepo) UpdateLinkedAccounts(ctx context.Context, id primitive.ObjectID, chessCom, lichess string) error {
 	return nil
 }
+func (m *testUserRepo) SearchUsers(ctx context.Context, query string, limit int) ([]*user.User, error) {
+	var res []*user.User
+	for _, u := range m.users {
+		if query == "" || strings.Contains(strings.ToLower(u.Username), strings.ToLower(query)) {
+			res = append(res, u)
+			if limit > 0 && len(res) >= limit {
+				break
+			}
+		}
+	}
+	return res, nil
+}
+func (m *testUserRepo) DeleteAllUsers(ctx context.Context) error {
+	m.users = make(map[string]*user.User)
+	return nil
+}
 func (m *testUserRepo) EnsureIndexes(ctx context.Context) error {
 	return nil
 }
@@ -650,4 +666,71 @@ func TestRefreshTokenRotationAndSessionRevocation(t *testing.T) {
 		t.Errorf("SECURITY VULNERABILITY: Logged out access token was still accepted as valid!")
 	}
 }
+
+func TestUserSearchEndpoint(t *testing.T) {
+	repo := newTestUserRepo()
+	_ = repo.Create(context.Background(), &user.User{
+		Username: "yogesh",
+		Email:    "yogesh1@example.com",
+	})
+	_ = repo.Create(context.Background(), &user.User{
+		Username: "Yogesh",
+		Email:    "yogesh2@example.com",
+	})
+	_ = repo.Create(context.Background(), &user.User{
+		Username: "magnus",
+		Email:    "magnus@example.com",
+	})
+
+	router := NewRouter(nil, repo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "*")
+
+	req := httptest.NewRequest("GET", "/api/v1/users/search?q=yog", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", w.Code)
+	}
+
+	var results []map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &results); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results for 'yog', got %d: %v", len(results), results)
+	}
+}
+
+func TestAdminResetUsersEndpoint(t *testing.T) {
+	repo := newTestUserRepo()
+	_ = repo.Create(context.Background(), &user.User{
+		Username: "tempuser",
+		Email:    "temp@example.com",
+	})
+
+	router := NewRouter(nil, repo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "*")
+	router.SetAdminSecret("secret-admin-key")
+
+	// Unauthorized attempt
+	req1 := httptest.NewRequest("POST", "/api/v1/admin/users/reset", nil)
+	w1 := httptest.NewRecorder()
+	router.ServeHTTP(w1, req1)
+	if w1.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 Unauthorized, got %d", w1.Code)
+	}
+
+	// Authorized attempt
+	req2 := httptest.NewRequest("POST", "/api/v1/admin/users/reset", nil)
+	req2.Header.Set("X-Admin-Secret", "secret-admin-key")
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", w2.Code, w2.Body.String())
+	}
+
+	if len(repo.users) != 0 {
+		t.Fatalf("expected 0 users remaining after reset, got %d", len(repo.users))
+	}
+}
+
 

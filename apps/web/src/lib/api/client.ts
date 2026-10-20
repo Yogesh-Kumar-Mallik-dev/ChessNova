@@ -164,6 +164,7 @@ export const api = {
 	users: {
 		getMe: () => request<{ user: any; ratings: Record<string, number> }>('/users/me'),
 		getUser: (username: string) => request<any>(`/users/${username}`),
+		search: (q: string) => request<any[]>(`/users/search?q=${encodeURIComponent(q)}`),
 		updateProfile: (data: { bio: string; country: string }) =>
 			request<{ message: string }>('/users/profile', {
 				method: 'PUT',

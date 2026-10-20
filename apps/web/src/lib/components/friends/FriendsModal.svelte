@@ -23,9 +23,48 @@
 	let error = '';
 	let successMsg = '';
 
-	// Add Friend form
+	// Add Friend form & search
 	let addFriendUsername = '';
 	let addFriendLoading = false;
+	let searchResults: any[] = [];
+	let isSearching = false;
+	let searchTimer: any = null;
+
+	function onSearchInput() {
+		if (searchTimer) clearTimeout(searchTimer);
+		const q = addFriendUsername.trim();
+		if (q.length < 1) {
+			searchResults = [];
+			isSearching = false;
+			return;
+		}
+		isSearching = true;
+		searchTimer = setTimeout(async () => {
+			try {
+				searchResults = await api.users.search(q);
+			} catch (err) {
+				console.warn('Failed to search users:', err);
+				searchResults = [];
+			} finally {
+				isSearching = false;
+			}
+		}, 250);
+	}
+
+	async function handleSendRequestTo(targetName: string) {
+		addFriendLoading = true;
+		error = '';
+		successMsg = '';
+		try {
+			await api.friends.sendRequest(targetName);
+			successMsg = `Friend request sent to ${targetName}!`;
+			loadAll();
+		} catch (e: any) {
+			error = e.message || 'Failed to send friend request';
+		} finally {
+			addFriendLoading = false;
+		}
+	}
 
 	// Target for challenging
 	let challengeTarget: { id: string; username: string; rating: number; avatar: string } | null = null;
@@ -370,22 +409,33 @@
 				</div>
 			</div>
 
-		<!-- Tab 4: Add Friend -->
+		<!-- Tab 4: Add Friend & User Search -->
 		{:else if activeTab === 'add'}
 			<div class="space-y-3 py-2">
 				<div>
 					<label for="friend-username-input" class="block text-xs font-bold text-foreground mb-1.5">
-						Enter Player's Username
+						Search Player by Username
 					</label>
 					<div class="flex gap-2">
-						<input
-							id="friend-username-input"
-							type="text"
-							bind:value={addFriendUsername}
-							placeholder="e.g. magnuscarlsen"
-							class="flex-1 px-3 py-2 bg-secondary border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground"
-							on:keydown={(e) => e.key === 'Enter' && handleSendRequest()}
-						/>
+						<div class="relative flex-1">
+							<input
+								id="friend-username-input"
+								type="text"
+								bind:value={addFriendUsername}
+								on:input={onSearchInput}
+								placeholder="e.g. magnuscarlsen or yogesh"
+								class="w-full pl-8 pr-3 py-2 bg-secondary border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground"
+								on:keydown={(e) => e.key === 'Enter' && handleSendRequest()}
+							/>
+							<div class="absolute left-2.5 top-2.5 text-muted-foreground pointer-events-none">
+								{#if isSearching}
+									<div class="w-3.5 h-3.5 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+								{:else}
+									<Icon name="search" size={13} />
+								{/if}
+							</div>
+						</div>
+
 						<Button variant="primary" size="sm" className="text-xs px-4" on:click={handleSendRequest} disabled={addFriendLoading || !addFriendUsername.trim()}>
 							{#if addFriendLoading}
 								<span>Sending...</span>
@@ -396,9 +446,80 @@
 						</Button>
 					</div>
 					<p class="text-[11px] text-muted-foreground mt-1.5">
-						Your friend will receive an incoming request and appear in your Friends list once accepted.
+						Search for any player or type their exact username to send a direct friend request.
 					</p>
 				</div>
+
+				<!-- Live Search Results -->
+				{#if searchResults.length > 0}
+					<div class="mt-3 space-y-1.5 max-h-56 overflow-y-auto pr-1">
+						<span class="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block mb-1">Search Results</span>
+						{#each searchResults as u}
+							{@const isAlreadyFriend = friends.some((f) => f.username === u.username)}
+							{@const isPendingOutgoing = outgoingRequests.some((r) => r.addresseeUsername === u.username)}
+							{@const isPendingIncoming = incomingRequests.some((r) => r.requesterUsername === u.username)}
+
+							<div class="flex items-center justify-between p-2 rounded-xl bg-card border border-border hover:border-foreground/20 transition gap-2">
+								<div class="flex items-center gap-2 min-w-0">
+									<div class="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center font-bold text-xs text-foreground overflow-hidden shrink-0">
+										{#if u.avatar}
+											<img src={u.avatar} alt={u.username} class="w-full h-full object-cover" />
+										{:else}
+											<Icon name="user" size={13} />
+										{/if}
+									</div>
+									<div class="min-w-0">
+										<a href="/profile/{u.username}" class="font-bold text-xs hover:underline truncate block text-foreground">
+											{u.username}
+										</a>
+										<span class="text-[10px] font-mono text-muted-foreground">Blitz {u.rating || 400}</span>
+									</div>
+								</div>
+
+								<div class="flex items-center gap-1.5 shrink-0">
+									{#if isAlreadyFriend}
+										<span class="px-2 py-0.5 rounded text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20">
+											Friend
+										</span>
+									{:else if isPendingOutgoing}
+										<span class="px-2 py-0.5 rounded text-[10px] font-semibold text-muted-foreground bg-secondary">
+											Pending
+										</span>
+									{:else if isPendingIncoming}
+										<Button variant="primary" size="sm" className="text-xs py-1 px-2 text-[11px]" on:click={() => handleRespondRequest(incomingRequests.find(r => r.requesterUsername === u.username).id, true)}>
+											Accept
+										</Button>
+									{:else}
+										<Button
+											variant="secondary"
+											size="sm"
+											className="text-xs py-1 px-2.5"
+											on:click={() => handleSendRequestTo(u.username)}
+											disabled={addFriendLoading}
+										>
+											<Icon name="user-plus" size={11} />
+											<span>Add</span>
+										</Button>
+									{/if}
+
+									<Button
+										variant="outline"
+										size="sm"
+										className="text-xs py-1 px-2"
+										on:click={() => openChallengeFor({ id: u.id, username: u.username, rating: u.rating, avatar: u.avatar })}
+										title="Direct Challenge"
+									>
+										<Icon name="swords" size={12} />
+									</Button>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{:else if addFriendUsername.trim().length > 0 && !isSearching}
+					<div class="py-4 text-center text-xs text-muted-foreground">
+						No players found matching "{addFriendUsername.trim()}". You can still click "Add" to send a request if the username is exact.
+					</div>
+				{/if}
 			</div>
 		{/if}
 	</div>
