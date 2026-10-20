@@ -1,0 +1,23 @@
+[package]
+name = "chesspasant-mobile"
+version = "0.1.5"
+description = "ChessPasant Modern Chess Mobile Application (Android & iOS)"
+authors = ["ChessPasant Team"]
+license = "MIT"
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "chesspasant_mobile_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.2", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.12.3" }
+tauri-plugin-log = "2"
+tauri-plugin-notification = "2"
