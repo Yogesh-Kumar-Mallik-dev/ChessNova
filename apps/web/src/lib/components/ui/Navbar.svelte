@@ -3,7 +3,7 @@
 	import { authStore } from '$lib/stores/auth';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { isTauriEnvironment } from '$lib/config';
+	import { isNativeOrAppEnvironment } from '$lib/config';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import QuickSettings from '$lib/components/ui/QuickSettings.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -44,11 +44,11 @@
 		{ href: '/puzzles', label: 'Puzzles', icon: 'puzzle' },
 		{ href: '/analysis', label: 'Analysis', icon: 'search' },
 		{ href: '/leaderboard', label: 'Leaderboard', icon: 'trophy' },
-		{ href: '/download', label: 'Desktop', icon: 'download' }
+		{ href: '/download', label: 'Download', icon: 'download' }
 	];
 
-	$: isDesktop = isTauriEnvironment();
-	$: navItems = isDesktop ? allNavItems.filter((item) => item.href !== '/download') : allNavItems;
+	$: isApp = isNativeOrAppEnvironment();
+	$: navItems = isApp ? allNavItems.filter((item) => item.href !== '/download') : allNavItems;
 </script>
 
 <header class="h-14 sm:h-16 bg-card/95 border-b border-border px-3 sm:px-6 flex items-center justify-between sticky top-0 z-40 select-none shadow-2xs backdrop-blur-xs">

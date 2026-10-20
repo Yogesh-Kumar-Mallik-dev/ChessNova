@@ -13,6 +13,14 @@ export function isTauriEnvironment(): boolean {
 	);
 }
 
+export function isNativeOrAppEnvironment(): boolean {
+	if (typeof window === 'undefined') return false;
+	if (isTauriEnvironment()) return true;
+	if (window.matchMedia?.('(display-mode: standalone)').matches) return true;
+	if ((window.navigator as any)?.standalone === true) return true;
+	return false;
+}
+
 export function getApiBase(): string {
 	if (typeof window === 'undefined') return '/api/v1';
 

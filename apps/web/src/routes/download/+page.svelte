@@ -1,19 +1,27 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { isTauriEnvironment } from '$lib/config';
+	import { isNativeOrAppEnvironment } from '$lib/config';
 	import Icon from '$lib/components/icons/Icon.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 
 	const GITHUB_REPO = 'https://github.com/Yogesh-Kumar-Mallik-dev/ChessPasant';
-	let releaseTag = 'v0.1.4';
-	let versionNum = '0.1.4';
+	let releaseTag = 'v0.1.5';
+	let versionNum = '0.1.5';
 	const RELEASES_PAGE = `${GITHUB_REPO}/releases`;
 
 	// Download artifacts map - dynamically updated from GitHub Releases API
 	let downloads = {
+		android: {
+			apk: `${GITHUB_REPO}/releases/download/${releaseTag}/ChessPasant_${versionNum}.apk`,
+			release: `${GITHUB_REPO}/releases`
+		},
+		ios: {
+			pwa: 'https://chess.yogeshmallik.in',
+			ipa: `${GITHUB_REPO}/releases`
+		},
 		arch: {
 			pkg: `${GITHUB_REPO}/releases/download/${releaseTag}/chesspasant-${versionNum}-1-x86_64.pkg.tar.zst`,
 			tarball: `${GITHUB_REPO}/releases/download/${releaseTag}/ChessPasant_${versionNum}_x86_64.tar.gz`,
@@ -32,8 +40,9 @@
 		}
 	};
 
-	let detectedOs: 'arch' | 'linux' | 'windows' | 'macos' | 'other' = 'other';
+	let detectedOs: 'android' | 'ios' | 'arch' | 'linux' | 'windows' | 'macos' | 'other' = 'other';
 	let copiedCommand: string | null = null;
+	let platformFilter: 'all' | 'mobile' | 'desktop' = 'all';
 
 	function copyCommand(cmd: string) {
 		if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -46,7 +55,7 @@
 	}
 
 	onMount(() => {
-		if (isTauriEnvironment()) {
+		if (isNativeOrAppEnvironment()) {
 			goto('/play');
 			return;
 		}
@@ -63,6 +72,8 @@
 						const findAsset = (pattern: RegExp) =>
 							data.assets.find((a: any) => pattern.test(a.name))?.browser_download_url;
 
+						const apk = findAsset(/\.apk$/);
+						const ipa = findAsset(/\.ipa$/);
 						const pkg = findAsset(/\.pkg\.tar\.zst$/);
 						const tarball = findAsset(/\.tar\.gz$/);
 						const appimage = findAsset(/\.AppImage$/);
@@ -71,6 +82,8 @@
 						const msi = findAsset(/\.msi$/);
 						const dmg = findAsset(/\.dmg$/);
 
+						if (apk) downloads.android.apk = apk;
+						if (ipa) downloads.ios.ipa = ipa;
 						if (pkg) downloads.arch.pkg = pkg;
 						if (tarball) downloads.arch.tarball = tarball;
 						if (appimage) downloads.linux.appimage = appimage;
@@ -85,14 +98,38 @@
 			.catch(() => {});
 
 		if (typeof window !== 'undefined' && navigator) {
-			const ua = navigator.userAgent.toLowerCase();
-			if (ua.includes('win')) {
+			const ua = (navigator.userAgent || '').toLowerCase();
+			const platform = ((navigator as any).userAgentData?.platform || navigator.platform || '').toLowerCase();
+
+			// 1. Android
+			if (ua.includes('android') || platform.includes('android')) {
+				detectedOs = 'android';
+			}
+			// 2. iOS (iPhone, iPad, iPod)
+			else if (
+				ua.includes('iphone') ||
+				ua.includes('ipad') ||
+				ua.includes('ipod') ||
+				platform.includes('iphone') ||
+				platform.includes('ipad') ||
+				(platform === 'macintel' && navigator.maxTouchPoints > 1)
+			) {
+				detectedOs = 'ios';
+			}
+			// 3. Windows
+			else if (ua.includes('win') || platform.includes('win')) {
 				detectedOs = 'windows';
-			} else if (ua.includes('mac') || ua.includes('darwin')) {
+			}
+			// 4. macOS
+			else if (ua.includes('mac') || platform.includes('mac') || ua.includes('darwin')) {
 				detectedOs = 'macos';
-			} else if (ua.includes('arch') || ua.includes('manjaro') || ua.includes('endeavouros')) {
+			}
+			// 5. Arch Linux
+			else if (/arch|manjaro|endeavouros|garuda|cachyos/i.test(ua)) {
 				detectedOs = 'arch';
-			} else if (ua.includes('linux') || ua.includes('x11')) {
+			}
+			// 6. Generic Linux
+			else if (ua.includes('linux') || ua.includes('x11') || platform.includes('linux')) {
 				detectedOs = 'linux';
 			}
 		}
@@ -100,13 +137,13 @@
 </script>
 
 <svelte:head>
-	<title>Download ChessPasant Desktop — Arch Linux, Linux, Windows & macOS</title>
-	<meta name="description" content="Download ChessPasant desktop application for Arch Linux, Debian/Ubuntu, Windows, and macOS. Native performance, embedded Stockfish 19 NNUE, offline analysis, and Studio Noir design." />
+	<title>Download ChessPasant — Mobile & Desktop Apps</title>
+	<meta name="description" content="Download ChessPasant application for Android, iOS, Arch Linux, Debian/Ubuntu, Windows, and macOS. Native performance, embedded Stockfish 19 NNUE, offline play, haptic feedback, and Studio Noir design." />
 </svelte:head>
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16 w-full flex-1 flex flex-col justify-center">
 	<!-- Hero Header with Authentic Platform Logo -->
-	<div class="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
+	<div class="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
 		<div class="inline-flex items-center justify-center p-3 sm:p-4 rounded-2xl bg-secondary/80 border border-border shadow-xs mb-5 group hover:border-foreground/30 transition-all">
 			<img src="/logo.png" alt="ChessPasant" class="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
 		</div>
@@ -119,195 +156,321 @@
 		</div>
 
 		<h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-foreground tracking-tight mb-4">
-			ChessPasant for Desktop
+			Download ChessPasant
 		</h1>
 
-		<p class="text-base sm:text-lg text-muted-foreground leading-relaxed">
-			The complete ChessPasant platform packaged into an ultra-fast, native desktop application engineered with Rust and Tauri v2. Offline Stockfish 19 sparring, grandmaster tactical review coach, and frameless Studio Noir design.
+		<p class="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6">
+			Ultra-fast, native performance engineered with Rust and Tauri v2. Offline Stockfish 19 sparring, tactile haptics, tactical analysis, and Studio Noir design across Mobile & Desktop.
 		</p>
+
+		<!-- Platform Filter Tabs -->
+		<div class="inline-flex items-center p-1 rounded-xl bg-secondary/60 border border-border gap-1 text-xs font-semibold">
+			<button
+				class="px-4 py-1.5 rounded-lg transition-colors {platformFilter === 'all' ? 'bg-card text-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground'}"
+				on:click={() => (platformFilter = 'all')}
+			>
+				All Platforms
+			</button>
+			<button
+				class="px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 {platformFilter === 'mobile' ? 'bg-card text-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground'}"
+				on:click={() => (platformFilter = 'mobile')}
+			>
+				<Icon name="smartphone" size={13} />
+				<span>Mobile</span>
+			</button>
+			<button
+				class="px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 {platformFilter === 'desktop' ? 'bg-card text-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground'}"
+				on:click={() => (platformFilter = 'desktop')}
+			>
+				<Icon name="brand-windows" size={13} />
+				<span>Desktop</span>
+			</button>
+		</div>
 	</div>
 
-	<!-- Operating Systems Grid -->
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-14">
-		<!-- Arch Linux Card -->
-		<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'arch' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
-			{#if detectedOs === 'arch'}
-				<div class="absolute -top-3 left-6">
-					<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
-						Detected OS
-					</span>
-				</div>
-			{/if}
+	<!-- MOBILE SECTION -->
+	{#if platformFilter === 'all' || platformFilter === 'mobile'}
+		<div class="mb-12">
+			<div class="flex items-center gap-2 mb-4 px-1">
+				<Icon name="smartphone" size={18} className="text-foreground" />
+				<h2 class="text-sm font-bold uppercase tracking-wider text-muted-foreground">Mobile Applications</h2>
+			</div>
 
-			<div>
-				<div class="flex items-center justify-between mb-4">
-					<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center p-2.5 shadow-2xs">
-						<img src="/icons/archlinux.svg" alt="Arch Linux" class="w-full h-full object-contain" />
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<!-- Android Card -->
+				<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'android' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
+					{#if detectedOs === 'android'}
+						<div class="absolute -top-3 left-6">
+							<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+								Detected Device
+							</span>
+						</div>
+					{/if}
+
+					<div>
+						<div class="flex items-center justify-between mb-4">
+							<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center p-2.5 shadow-2xs text-foreground">
+								<Icon name="brand-android" size={26} className="text-foreground" />
+							</div>
+							<span class="text-xs font-mono text-muted-foreground">ARM64 & x86_64</span>
+						</div>
+
+						<h3 class="text-lg font-bold text-foreground mb-1">Android</h3>
+						<p class="text-xs text-muted-foreground mb-4">
+							Native Android application with tactile vibration haptics, direct camera avatar upload, and background match synchronization.
+						</p>
 					</div>
-					<span class="text-xs font-mono text-muted-foreground">x86_64</span>
-				</div>
 
-				<h2 class="text-lg font-bold text-foreground mb-1">Arch Linux</h2>
-				<p class="text-xs text-muted-foreground mb-4">
-					Native Pacman package (.pkg.tar.zst) and AUR PKGBUILD for Arch Linux, Manjaro, and EndeavourOS.
-				</p>
-			</div>
-
-			<div class="space-y-2 pt-4 border-t border-border">
-				<a href={downloads.arch.pkg} class="block">
-					<Button variant="primary" size="sm" className="w-full justify-between text-xs">
-						<span>Download .pkg.tar.zst</span>
-						<Icon name="download" size={13} />
-					</Button>
-				</a>
-
-				<a href={downloads.arch.tarball} class="block">
-					<Button variant="outline" size="sm" className="w-full justify-between text-xs">
-						<span>Download .tar.gz Bundle</span>
-						<Icon name="download" size={13} />
-					</Button>
-				</a>
-
-				<!-- 1-Command Automated Repo Install -->
-				<button
-					type="button"
-					on:click={() => copyCommand('curl -sSL https://chess.yogeshmallik.in/repo/setup-repo.sh | sudo bash')}
-					class="w-full mt-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left flex items-center justify-between text-[11px] font-mono text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
-					title="Click to copy automated repository setup & install script"
-				>
-					<span class="truncate mr-2">curl -sSL .../setup-repo.sh | sudo bash</span>
-					<Icon name={copiedCommand ? 'check' : 'copy'} size={12} className={copiedCommand ? 'text-emerald-500' : 'text-emerald-400'} />
-				</button>
-
-				<!-- Quick Copy Pacman Install Helper -->
-				<button
-					type="button"
-					on:click={() => copyCommand('sudo pacman -Sy chesspasant')}
-					class="w-full px-2.5 py-1 rounded-lg bg-secondary/60 hover:bg-secondary border border-border/60 text-left flex items-center justify-between text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-					title="Click to copy Pacman command"
-				>
-					<span class="truncate mr-2">sudo pacman -Sy chesspasant</span>
-					<Icon name={copiedCommand ? 'check' : 'copy'} size={12} className={copiedCommand ? 'text-emerald-500' : 'text-muted-foreground'} />
-				</button>
-			</div>
-		</Card>
-
-		<!-- Universal Linux Card -->
-		<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'linux' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
-			{#if detectedOs === 'linux'}
-				<div class="absolute -top-3 left-6">
-					<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
-						Detected OS
-					</span>
-				</div>
-			{/if}
-			<div>
-				<div class="flex items-center justify-between mb-4">
-					<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center p-2 shadow-2xs">
-						<img src="/icons/tux.svg" alt="Linux Tux" class="w-full h-full object-contain" />
+					<div class="space-y-2 pt-4 border-t border-border">
+						<a href={downloads.android.apk} class="block">
+							<Button variant={detectedOs === 'android' ? 'primary' : 'secondary'} size="sm" className="w-full justify-between text-xs">
+								<span>Download .apk Package</span>
+								<Icon name="download" size={13} />
+							</Button>
+						</a>
+						<a href={downloads.android.release} target="_blank" rel="noopener noreferrer" class="block">
+							<Button variant="outline" size="sm" className="w-full justify-between text-xs">
+								<span>GitHub APK Releases</span>
+								<Icon name="external-link" size={13} />
+							</Button>
+						</a>
 					</div>
-					<span class="text-xs font-mono text-muted-foreground">amd64</span>
-				</div>
+				</Card>
 
-				<h2 class="text-lg font-bold text-foreground mb-1">Linux Universal</h2>
-				<p class="text-xs text-muted-foreground mb-4">
-					Zero-install portable AppImage and Debian/Ubuntu packages for Fedora, Debian, Ubuntu, and Linux Mint.
-				</p>
-			</div>
+				<!-- iOS & iPadOS Card -->
+				<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'ios' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
+					{#if detectedOs === 'ios'}
+						<div class="absolute -top-3 left-6">
+							<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+								Detected Device
+							</span>
+						</div>
+					{/if}
 
-			<div class="space-y-2 pt-4 border-t border-border">
-				<a href={downloads.linux.appimage} class="block">
-					<Button variant="secondary" size="sm" className="w-full justify-between text-xs">
-						<span>Download .AppImage</span>
-						<Icon name="download" size={13} />
-					</Button>
-				</a>
-				<a href={downloads.linux.deb} class="block">
-					<Button variant="outline" size="sm" className="w-full justify-between text-xs">
-						<span>Download .deb Package</span>
-						<Icon name="download" size={13} />
-					</Button>
-				</a>
-			</div>
-		</Card>
+					<div>
+						<div class="flex items-center justify-between mb-4">
+							<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center p-2.5 shadow-2xs text-foreground">
+								<Icon name="brand-apple" size={26} className="text-foreground" />
+							</div>
+							<span class="text-xs font-mono text-muted-foreground">iOS / iPadOS 15+</span>
+						</div>
 
-		<!-- Windows Card -->
-		<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'windows' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
-			{#if detectedOs === 'windows'}
-				<div class="absolute -top-3 left-6">
-					<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
-						Detected OS
-					</span>
-				</div>
-			{/if}
-
-			<div>
-				<div class="flex items-center justify-between mb-4">
-					<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center text-foreground font-bold shadow-2xs">
-						<Icon name="brand-windows" size={24} className="text-foreground" />
+						<h3 class="text-lg font-bold text-foreground mb-1">iOS & iPadOS</h3>
+						<p class="text-xs text-muted-foreground mb-4">
+							Native gestures and offline caching for iPhone and iPad. Install directly to your Home Screen for a seamless fullscreen experience.
+						</p>
 					</div>
-					<span class="text-xs font-mono text-muted-foreground">x64 (64-bit)</span>
-				</div>
 
-				<h2 class="text-lg font-bold text-foreground mb-1">Windows</h2>
-				<p class="text-xs text-muted-foreground mb-4">
-					Standard installer executable (.exe) and enterprise MSI package optimized for Windows 10 and Windows 11.
-				</p>
-			</div>
-
-			<div class="space-y-2 pt-4 border-t border-border">
-				<a href={downloads.windows.exe} class="block">
-					<Button variant={detectedOs === 'windows' ? 'primary' : 'secondary'} size="sm" className="w-full justify-between text-xs">
-						<span>Download .exe Setup</span>
-						<Icon name="download" size={13} />
-					</Button>
-				</a>
-				<a href={downloads.windows.msi} class="block">
-					<Button variant="outline" size="sm" className="w-full justify-between text-xs">
-						<span>Download .msi Package</span>
-						<Icon name="download" size={13} />
-					</Button>
-				</a>
-			</div>
-		</Card>
-
-		<!-- macOS Card -->
-		<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'macos' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
-			{#if detectedOs === 'macos'}
-				<div class="absolute -top-3 left-6">
-					<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
-						Detected OS
-					</span>
-				</div>
-			{/if}
-
-			<div>
-				<div class="flex items-center justify-between mb-4">
-					<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center text-foreground font-bold shadow-2xs">
-						<Icon name="brand-apple" size={24} className="text-foreground" />
+					<div class="space-y-2 pt-4 border-t border-border">
+						<a href={downloads.ios.pwa} class="block">
+							<Button variant={detectedOs === 'ios' ? 'primary' : 'secondary'} size="sm" className="w-full justify-between text-xs">
+								<span>Open & Add to Home Screen</span>
+								<Icon name="external-link" size={13} />
+							</Button>
+						</a>
+						<a href={downloads.ios.ipa} target="_blank" rel="noopener noreferrer" class="block">
+							<Button variant="outline" size="sm" className="w-full justify-between text-xs">
+								<span>View Releases & IPA</span>
+								<Icon name="external-link" size={13} />
+							</Button>
+						</a>
 					</div>
-					<span class="text-xs font-mono text-muted-foreground">Universal</span>
-				</div>
+				</Card>
+			</div>
+		</div>
+	{/if}
 
-				<h2 class="text-lg font-bold text-foreground mb-1">macOS</h2>
-				<p class="text-xs text-muted-foreground mb-4">
-					Universal DMG disk image natively optimized for both Apple Silicon (M1/M2/M3/M4) and Intel Macs.
-				</p>
+	<!-- DESKTOP SECTION -->
+	{#if platformFilter === 'all' || platformFilter === 'desktop'}
+		<div class="mb-14">
+			<div class="flex items-center gap-2 mb-4 px-1">
+				<Icon name="brand-windows" size={18} className="text-foreground" />
+				<h2 class="text-sm font-bold uppercase tracking-wider text-muted-foreground">Desktop Applications</h2>
 			</div>
 
-			<div class="space-y-2 pt-4 border-t border-border">
-				<a href={downloads.macos.dmg} class="block">
-					<Button variant={detectedOs === 'macos' ? 'primary' : 'secondary'} size="sm" className="w-full justify-between text-xs">
-						<span>Download .dmg</span>
-						<Icon name="download" size={13} />
-					</Button>
-				</a>
-				<div class="text-[11px] text-center text-muted-foreground pt-1 font-mono">
-					macOS 11 Big Sur or newer
-				</div>
+			<!-- Operating Systems Grid -->
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+				<!-- Arch Linux Card -->
+				<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'arch' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
+					{#if detectedOs === 'arch'}
+						<div class="absolute -top-3 left-6">
+							<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+								Detected OS
+							</span>
+						</div>
+					{/if}
+
+					<div>
+						<div class="flex items-center justify-between mb-4">
+							<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center p-2.5 shadow-2xs">
+								<img src="/icons/archlinux.svg" alt="Arch Linux" class="w-full h-full object-contain" />
+							</div>
+							<span class="text-xs font-mono text-muted-foreground">x86_64</span>
+						</div>
+
+						<h3 class="text-lg font-bold text-foreground mb-1">Arch Linux</h3>
+						<p class="text-xs text-muted-foreground mb-4">
+							Native Pacman package (.pkg.tar.zst) and AUR PKGBUILD for Arch Linux, Manjaro, and EndeavourOS.
+						</p>
+					</div>
+
+					<div class="space-y-2 pt-4 border-t border-border">
+						<a href={downloads.arch.pkg} class="block">
+							<Button variant={detectedOs === 'arch' ? 'primary' : 'secondary'} size="sm" className="w-full justify-between text-xs">
+								<span>Download .pkg.tar.zst</span>
+								<Icon name="download" size={13} />
+							</Button>
+						</a>
+
+						<a href={downloads.arch.tarball} class="block">
+							<Button variant="outline" size="sm" className="w-full justify-between text-xs">
+								<span>Download .tar.gz Bundle</span>
+								<Icon name="download" size={13} />
+							</Button>
+						</a>
+
+						<!-- 1-Command Automated Repo Install -->
+						<button
+							type="button"
+							on:click={() => copyCommand('curl -sSL https://chess.yogeshmallik.in/repo/setup-repo.sh | sudo bash')}
+							class="w-full mt-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left flex items-center justify-between text-[11px] font-mono text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+							title="Click to copy automated repository setup & install script"
+						>
+							<span class="truncate mr-2">curl -sSL .../setup-repo.sh | sudo bash</span>
+							<Icon name={copiedCommand ? 'check' : 'copy'} size={12} className={copiedCommand ? 'text-emerald-500' : 'text-emerald-400'} />
+						</button>
+
+						<!-- Quick Copy Pacman Install Helper -->
+						<button
+							type="button"
+							on:click={() => copyCommand('sudo pacman -Sy chesspasant')}
+							class="w-full px-2.5 py-1 rounded-lg bg-secondary/60 hover:bg-secondary border border-border/60 text-left flex items-center justify-between text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+							title="Click to copy Pacman command"
+						>
+							<span class="truncate mr-2">sudo pacman -Sy chesspasant</span>
+							<Icon name={copiedCommand ? 'check' : 'copy'} size={12} className={copiedCommand ? 'text-emerald-500' : 'text-muted-foreground'} />
+						</button>
+					</div>
+				</Card>
+
+				<!-- Universal Linux Card -->
+				<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'linux' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
+					{#if detectedOs === 'linux'}
+						<div class="absolute -top-3 left-6">
+							<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+								Detected OS
+							</span>
+						</div>
+					{/if}
+					<div>
+						<div class="flex items-center justify-between mb-4">
+							<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center p-2 shadow-2xs">
+								<img src="/icons/tux.svg" alt="Linux Tux" class="w-full h-full object-contain" />
+							</div>
+							<span class="text-xs font-mono text-muted-foreground">amd64</span>
+						</div>
+
+						<h3 class="text-lg font-bold text-foreground mb-1">Linux Universal</h3>
+						<p class="text-xs text-muted-foreground mb-4">
+							Zero-install portable AppImage and Debian/Ubuntu packages for Fedora, Debian, Ubuntu, and Linux Mint.
+						</p>
+					</div>
+
+					<div class="space-y-2 pt-4 border-t border-border">
+						<a href={downloads.linux.appimage} class="block">
+							<Button variant={detectedOs === 'linux' ? 'primary' : 'secondary'} size="sm" className="w-full justify-between text-xs">
+								<span>Download .AppImage</span>
+								<Icon name="download" size={13} />
+							</Button>
+						</a>
+						<a href={downloads.linux.deb} class="block">
+							<Button variant="outline" size="sm" className="w-full justify-between text-xs">
+								<span>Download .deb Package</span>
+								<Icon name="download" size={13} />
+							</Button>
+						</a>
+					</div>
+				</Card>
+
+				<!-- Windows Card -->
+				<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'windows' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
+					{#if detectedOs === 'windows'}
+						<div class="absolute -top-3 left-6">
+							<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+								Detected OS
+							</span>
+						</div>
+					{/if}
+
+					<div>
+						<div class="flex items-center justify-between mb-4">
+							<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center text-foreground font-bold shadow-2xs">
+								<Icon name="brand-windows" size={24} className="text-foreground" />
+							</div>
+							<span class="text-xs font-mono text-muted-foreground">x64 (64-bit)</span>
+						</div>
+
+						<h3 class="text-lg font-bold text-foreground mb-1">Windows</h3>
+						<p class="text-xs text-muted-foreground mb-4">
+							Standard installer executable (.exe) and enterprise MSI package optimized for Windows 10 and Windows 11.
+						</p>
+					</div>
+
+					<div class="space-y-2 pt-4 border-t border-border">
+						<a href={downloads.windows.exe} class="block">
+							<Button variant={detectedOs === 'windows' ? 'primary' : 'secondary'} size="sm" className="w-full justify-between text-xs">
+								<span>Download .exe Setup</span>
+								<Icon name="download" size={13} />
+							</Button>
+						</a>
+						<a href={downloads.windows.msi} class="block">
+							<Button variant="outline" size="sm" className="w-full justify-between text-xs">
+								<span>Download .msi Package</span>
+								<Icon name="download" size={13} />
+							</Button>
+						</a>
+					</div>
+				</Card>
+
+				<!-- macOS Card -->
+				<Card className="p-6 flex flex-col justify-between relative border-border hover:border-foreground/30 transition-all {detectedOs === 'macos' ? 'ring-2 ring-emerald-500/50 bg-secondary/30' : 'bg-card'}">
+					{#if detectedOs === 'macos'}
+						<div class="absolute -top-3 left-6">
+							<span class="bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+								Detected OS
+							</span>
+						</div>
+					{/if}
+
+					<div>
+						<div class="flex items-center justify-between mb-4">
+							<div class="w-12 h-12 rounded-xl bg-secondary border border-border/80 flex items-center justify-center text-foreground font-bold shadow-2xs">
+								<Icon name="brand-apple" size={24} className="text-foreground" />
+							</div>
+							<span class="text-xs font-mono text-muted-foreground">Universal</span>
+						</div>
+
+						<h3 class="text-lg font-bold text-foreground mb-1">macOS</h3>
+						<p class="text-xs text-muted-foreground mb-4">
+							Universal DMG disk image natively optimized for both Apple Silicon (M1/M2/M3/M4) and Intel Macs.
+						</p>
+					</div>
+
+					<div class="space-y-2 pt-4 border-t border-border">
+						<a href={downloads.macos.dmg} class="block">
+							<Button variant={detectedOs === 'macos' ? 'primary' : 'secondary'} size="sm" className="w-full justify-between text-xs">
+								<span>Download .dmg</span>
+								<Icon name="download" size={13} />
+							</Button>
+						</a>
+						<div class="text-[11px] text-center text-muted-foreground pt-1 font-mono">
+							macOS 11 Big Sur or newer
+						</div>
+					</div>
+				</Card>
 			</div>
-		</Card>
-	</div>
+		</div>
+	{/if}
 
 	<!-- GitHub Release Banner & Verification -->
 	<Card className="p-6 sm:p-8 border-border bg-card/60 backdrop-blur-xs mb-14">
@@ -331,7 +494,7 @@
 		</div>
 	</Card>
 
-	<!-- Key Desktop Features Grid -->
+	<!-- Key Platform Features Grid -->
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 		<div class="p-5 rounded-xl border border-border bg-card/40">
 			<div class="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center mb-3">
@@ -357,7 +520,7 @@
 			<div class="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center mb-3">
 				<Icon name="sparkles" size={16} className="text-foreground" />
 			</div>
-			<h3 class="text-sm font-bold text-foreground mb-1">Frameless Studio Noir</h3>
+			<h3 class="text-sm font-bold text-foreground mb-1">Studio Noir Design</h3>
 			<p class="text-xs text-muted-foreground leading-relaxed">
 				Custom desktop titlebar, high-contrast Staunton SVG vector pieces, and dynamic multi-theme engine.
 			</p>
