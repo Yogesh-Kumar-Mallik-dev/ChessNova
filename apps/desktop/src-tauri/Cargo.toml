@@ -1,6 +1,6 @@
 [package]
 name = "chesspasant"
-version = "0.1.4"
+version = "0.1.5"
 description = "ChessPasant Modern Chess Desktop Application"
 authors = ["ChessPasant Team"]
 license = "MIT"
