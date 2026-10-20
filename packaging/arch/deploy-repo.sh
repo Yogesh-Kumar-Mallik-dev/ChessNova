@@ -40,8 +40,8 @@ ssh -o BatchMode=yes "${TARGET_USER}@${TARGET_HOST}" "mkdir -p /var/www/chessnov
 
 # 4. Rsync repository files (preserving symlinks and permissions)
 echo "==> Uploading repository packages, database, and setup script..."
-rsync -avzP --copy-links \
-    -e "ssh -o BatchMode=yes" \
+rsync -avP --partial --copy-links \
+    -e "ssh -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=6" \
     "$REPO_DIR/" \
     "${TARGET_USER}@${TARGET_HOST}:/var/www/chessnova/html/repo/"
 
