@@ -50,19 +50,23 @@ class ChessSoundPlayer {
 
 	private setupAutoplayUnlock() {
 		const unlock = () => {
-			if (this.unlocked) return;
-			if (this.audioContext && this.audioContext.state === 'suspended') {
-				this.audioContext.resume().then(() => {
-					this.unlocked = true;
-				}).catch(() => {});
-			} else {
-				this.unlocked = true;
-			}
+			this.unlockAudio();
 		};
 
 		window.addEventListener('pointerdown', unlock, { capture: true, once: true });
 		window.addEventListener('keydown', unlock, { capture: true, once: true });
 		window.addEventListener('touchstart', unlock, { capture: true, once: true });
+		window.addEventListener('touchend', unlock, { capture: true, once: true });
+	}
+
+	public unlockAudio() {
+		if (this.audioContext && this.audioContext.state === 'suspended') {
+			this.audioContext.resume().then(() => {
+				this.unlocked = true;
+			}).catch(() => {});
+		} else {
+			this.unlocked = true;
+		}
 	}
 
 	private preloadAll() {
@@ -120,18 +124,28 @@ class ChessSoundPlayer {
 		this.lastPlayedTime = now;
 
 		const finalVol = Math.max(0, Math.min(1, volume * this.masterVolume));
+		const isMobileDevice = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-		// 0. Native Desktop Audio: In Tauri desktop environment, invoke native Rust audio (pw-play / system audio)
-		if ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) {
+		// 0. Native Desktop Audio: On desktop Tauri Linux/Windows/macOS, invoke native Rust audio (pw-play / system audio)
+		if (!isMobileDevice && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)) {
 			import('@tauri-apps/api/core')
 				.then(({ invoke }) => {
-					invoke('native_play_sound', { name: key }).catch(() => {});
+					invoke('native_play_sound', { name: key }).catch(() => {
+						this.playWebAudio(key, finalVol);
+					});
 				})
-				.catch(() => {});
+				.catch(() => {
+					this.playWebAudio(key, finalVol);
+				});
 			return;
 		}
 
-		// 1. Primary Strategy: Web Audio API (Hardware-direct, 0ms latency, bypasses GStreamer URI routing)
+		// 1. Mobile & Web Standard: Direct Web Audio API / HTML5 Audio
+		this.playWebAudio(key, finalVol);
+	}
+
+	private playWebAudio(key: string, finalVol: number) {
+		// 1. Primary Strategy: Web Audio API (Hardware-direct, 0ms latency, zero native process overhead)
 		if (this.audioContext) {
 			if (this.audioContext.state === 'suspended') {
 				this.audioContext.resume().catch(() => {});
@@ -244,14 +258,17 @@ class ChessSoundPlayer {
 	}
 
 	public playGameStart() {
+		triggerHaptic('game-start');
 		this.play('game-start', 0.8);
 	}
 
 	public playGameEnd(won: boolean = true) {
+		triggerHaptic('game-end');
 		this.play('game-end', 0.9);
 	}
 
 	public playIllegal() {
+		triggerHaptic('illegal');
 		this.play('move', 0.5);
 	}
 
@@ -289,9 +306,44 @@ class ChessSoundPlayer {
 export const soundEffects = new ChessSoundPlayer();
 
 /**
+ * Mobile Haptic Feedback generator for physical vibration cues
+ */
+export function triggerHaptic(type: MoveCategory | 'game-start' | 'game-end' | 'illegal') {
+	if (typeof navigator === 'undefined' || !navigator.vibrate) return;
+	try {
+		switch (type) {
+			case 'checkmate':
+			case 'game-end':
+				navigator.vibrate([60, 40, 60, 40, 120]);
+				break;
+			case 'check':
+			case 'capture':
+			case 'en_passant':
+				navigator.vibrate([25, 20, 25]);
+				break;
+			case 'castle':
+			case 'promote':
+				navigator.vibrate([20, 15, 20]);
+				break;
+			case 'illegal':
+				navigator.vibrate([40, 30, 40]);
+				break;
+			case 'game-start':
+				navigator.vibrate([40]);
+				break;
+			case 'normal':
+			default:
+				navigator.vibrate(15);
+				break;
+		}
+	} catch {}
+}
+
+/**
  * Universal move sound dispatcher based on categorized move type
  */
 export function playMoveSoundByCategory(category: MoveCategory) {
+	triggerHaptic(category);
 	switch (category) {
 		case 'checkmate':
 			soundEffects.playCheckmate();
@@ -323,16 +375,22 @@ export function playMoveSoundByCategory(category: MoveCategory) {
  */
 export function playMoveSound(san: string, isCapture = false, isCheck = false) {
 	if (san.includes('#')) {
+		triggerHaptic('checkmate');
 		soundEffects.playCheckmate();
 	} else if (san.includes('=')) {
+		triggerHaptic('promote');
 		soundEffects.playPromotion();
 	} else if (isCheck || san.includes('+')) {
+		triggerHaptic('check');
 		soundEffects.playCheck();
 	} else if (san.startsWith('O-O')) {
+		triggerHaptic('castle');
 		soundEffects.playCastle();
 	} else if (isCapture || san.includes('x')) {
+		triggerHaptic('capture');
 		soundEffects.playCapture();
 	} else {
+		triggerHaptic('normal');
 		soundEffects.playNormalMove();
 	}
 }

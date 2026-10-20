@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/auth';
 	import { appThemeStore } from '$lib/stores/preferences';
+	import { soundEffects } from '$lib/audio/sounds';
 	import Navbar from '$lib/components/ui/Navbar.svelte';
 	import ChallengeNotificationBanner from '$lib/components/friends/ChallengeNotificationBanner.svelte';
 
@@ -13,7 +14,31 @@
 				document.documentElement.setAttribute('data-app-theme', theme);
 			}
 		});
-		return () => unsub();
+
+		const handleWake = () => {
+			soundEffects.unlockAudio();
+		};
+
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'visible') {
+				handleWake();
+			}
+		};
+
+		if (typeof window !== 'undefined') {
+			document.addEventListener('visibilitychange', handleVisibilityChange);
+			window.addEventListener('focus', handleWake);
+			window.addEventListener('online', handleWake);
+		}
+
+		return () => {
+			unsub();
+			if (typeof window !== 'undefined') {
+				document.removeEventListener('visibilitychange', handleVisibilityChange);
+				window.removeEventListener('focus', handleWake);
+				window.removeEventListener('online', handleWake);
+			}
+		};
 	});
 </script>
 

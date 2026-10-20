@@ -48,9 +48,39 @@ export class GameSocket {
 		this.errorCallback = cb;
 	}
 
+	public reconnectNow() {
+		if (this.isExplicitlyClosed) return;
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = null;
+		}
+		if (this.ws) {
+			try {
+				this.ws.onopen = null;
+				this.ws.onmessage = null;
+				this.ws.onclose = null;
+				this.ws.onerror = null;
+				this.ws.close();
+			} catch (_) {}
+			this.ws = null;
+		}
+		this.connect();
+	}
+
 	public async connect() {
 		this.isExplicitlyClosed = false;
 		if (typeof window === 'undefined') return;
+
+		if (this.ws) {
+			try {
+				this.ws.onopen = null;
+				this.ws.onmessage = null;
+				this.ws.onclose = null;
+				this.ws.onerror = null;
+				this.ws.close();
+			} catch (_) {}
+			this.ws = null;
+		}
 
 		let ticket = '';
 		if (this.token) {

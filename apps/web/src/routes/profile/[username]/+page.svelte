@@ -43,7 +43,9 @@
 	let modalSuccess = '';
 
 	// Avatar upload state
-	let avatarInput: HTMLInputElement;
+	let avatarGalleryInput: HTMLInputElement;
+	let avatarCameraInput: HTMLInputElement;
+	let showAvatarModal = false;
 	let uploadingAvatar = false;
 	let avatarError = '';
 
@@ -301,12 +303,20 @@
 							type="file"
 							accept="image/*"
 							class="hidden"
-							bind:this={avatarInput}
+							bind:this={avatarGalleryInput}
+							on:change={handleAvatarSelect}
+						/>
+						<input
+							type="file"
+							accept="image/*"
+							capture="user"
+							class="hidden"
+							bind:this={avatarCameraInput}
 							on:change={handleAvatarSelect}
 						/>
 						<button
-							class="absolute -bottom-2 -right-2 p-2 bg-foreground text-background rounded-lg shadow-md transition active:translate-y-px"
-							on:click={() => avatarInput.click()}
+							class="absolute -bottom-2 -right-2 p-2 bg-foreground text-background rounded-lg shadow-md transition active:translate-y-px hover:opacity-90"
+							on:click={() => (showAvatarModal = true)}
 							title="Change avatar picture"
 							disabled={uploadingAvatar}
 						>
@@ -1145,5 +1155,74 @@
 		on:close={() => (showDirectChallengeModal = false)}
 		on:created={() => {}}
 	/>
+{/if}
+
+<!-- Avatar Picker Modal / Bottom Sheet -->
+{#if showAvatarModal}
+	<div class="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+		<div class="w-full sm:max-w-md bg-card border border-border rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-4">
+			<div class="flex items-center justify-between pb-2 border-b border-border">
+				<h3 class="text-base font-bold text-foreground flex items-center gap-2">
+					<Icon name="camera" size={16} />
+					<span>Change Profile Picture</span>
+				</h3>
+				<button
+					class="p-1 text-muted-foreground hover:text-foreground rounded-lg transition"
+					on:click={() => (showAvatarModal = false)}
+				>
+					<Icon name="x" size={18} />
+				</button>
+			</div>
+
+			<p class="text-xs text-muted-foreground">
+				Take a new photo using your device camera or select an existing image from your gallery.
+			</p>
+
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+				<button
+					class="flex items-center gap-3 p-4 rounded-xl bg-secondary/80 hover:bg-secondary border border-border font-semibold text-xs text-foreground transition active:scale-[0.98] text-left"
+					on:click={() => {
+						showAvatarModal = false;
+						avatarCameraInput?.click();
+					}}
+				>
+					<div class="p-2.5 rounded-lg bg-foreground text-background shrink-0">
+						<Icon name="camera" size={18} />
+					</div>
+					<div>
+						<div class="font-bold">Take Photo</div>
+						<div class="text-[10px] text-muted-foreground font-normal">Direct Camera</div>
+					</div>
+				</button>
+
+				<button
+					class="flex items-center gap-3 p-4 rounded-xl bg-secondary/80 hover:bg-secondary border border-border font-semibold text-xs text-foreground transition active:scale-[0.98] text-left"
+					on:click={() => {
+						showAvatarModal = false;
+						avatarGalleryInput?.click();
+					}}
+				>
+					<div class="p-2.5 rounded-lg bg-secondary border border-border text-foreground shrink-0">
+						<Icon name="upload" size={18} />
+					</div>
+					<div>
+						<div class="font-bold">Choose Image</div>
+						<div class="text-[10px] text-muted-foreground font-normal">Gallery & Files</div>
+					</div>
+				</button>
+			</div>
+
+			<div class="pt-2">
+				<Button
+					variant="outline"
+					size="sm"
+					className="w-full text-xs"
+					on:click={() => (showAvatarModal = false)}
+				>
+					Cancel
+				</Button>
+			</div>
+		</div>
+	</div>
 {/if}
 

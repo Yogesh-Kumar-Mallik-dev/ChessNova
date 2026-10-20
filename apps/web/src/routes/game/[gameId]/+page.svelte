@@ -320,12 +320,55 @@
 		});
 	}
 
+	async function syncGameFromServer() {
+		try {
+			const info = await api.games.get(gameId);
+			if (!info) return;
+			gameStore.update((s) => ({
+				...s,
+				fen: info.fen || s.fen,
+				turn: info.turn || s.turn,
+				whitePlayer: info.white || s.whitePlayer,
+				blackPlayer: info.black || s.blackPlayer,
+				timeControl: info.timeControl || s.timeControl,
+				whiteTime: info.whiteTime !== undefined ? info.whiteTime : s.whiteTime,
+				blackTime: info.blackTime !== undefined ? info.blackTime : s.blackTime,
+				status: info.status || s.status,
+				result: info.result !== undefined ? info.result : s.result,
+				outcome: info.outcome !== undefined ? info.outcome : s.outcome,
+				moves: (info.moves || []).map((m: any) => ({
+					from: m.from,
+					to: m.to,
+					san: m.san,
+					fen: m.fen
+				}))
+			}));
+		} catch (e) {
+			console.warn('Sync game from server error:', e);
+		}
+	}
+
+	function handleLifecycleWake() {
+		soundEffects.unlockAudio();
+		if (socket && !socket.isConnected()) {
+			socket.reconnectNow();
+		}
+		syncGameFromServer();
+	}
+
 	onMount(async () => {
 		resetGameStore();
 
 		if (typeof window !== 'undefined') {
 			window.addEventListener('beforeunload', handleBeforeUnload);
 			window.addEventListener('keydown', handleKeydown);
+			document.addEventListener('visibilitychange', () => {
+				if (document.visibilityState === 'visible') {
+					handleLifecycleWake();
+				}
+			});
+			window.addEventListener('focus', handleLifecycleWake);
+			window.addEventListener('online', handleLifecycleWake);
 		}
 
 		try {
@@ -401,6 +444,8 @@
 		if (typeof window !== 'undefined') {
 			window.removeEventListener('beforeunload', handleBeforeUnload);
 			window.removeEventListener('keydown', handleKeydown);
+			window.removeEventListener('focus', handleLifecycleWake);
+			window.removeEventListener('online', handleLifecycleWake);
 		}
 		if (countdownInterval) {
 			clearInterval(countdownInterval);
