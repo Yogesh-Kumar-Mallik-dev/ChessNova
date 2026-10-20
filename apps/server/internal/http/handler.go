@@ -18,6 +18,7 @@ import (
 	"chess-platform/server/internal/chess"
 	"chess-platform/server/internal/engine"
 	"chess-platform/server/internal/external"
+	"chess-platform/server/internal/friend"
 	"chess-platform/server/internal/game"
 	"chess-platform/server/internal/matchmaking"
 	"chess-platform/server/internal/puzzle"
@@ -52,6 +53,7 @@ type Router struct {
 	reviewService   *review.ReviewService
 	storageService  storage.StorageService
 	externalService *external.Service
+	friendRepo      friend.Repository
 	wsHub           *websocket.Hub
 	corsOrigin      string
 	adminSecret     string
@@ -80,12 +82,18 @@ func NewRouter(
 	externalService *external.Service,
 	wsHub *websocket.Hub,
 	corsOrigin string,
+	friendRepo ...friend.Repository,
 ) *Router {
 	if storageService == nil {
 		storageService = storage.NewStorageService(storage.Config{})
 	}
 	if externalService == nil {
 		externalService = external.NewService()
+	}
+
+	var fRepo friend.Repository
+	if len(friendRepo) > 0 {
+		fRepo = friendRepo[0]
 	}
 
 	r := &Router{
@@ -101,6 +109,7 @@ func NewRouter(
 		reviewService:      reviewService,
 		storageService:     storageService,
 		externalService:    externalService,
+		friendRepo:         fRepo,
 		wsHub:              wsHub,
 		corsOrigin:         corsOrigin,
 		authLimiter:        newIPRateLimiter("auth", 10, time.Minute),
@@ -117,6 +126,10 @@ func NewRouter(
 
 func (rt *Router) SetAdminSecret(secret string) {
 	rt.adminSecret = secret
+}
+
+func (rt *Router) SetFriendRepository(repo friend.Repository) {
+	rt.friendRepo = repo
 }
 
 func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -222,6 +235,16 @@ func (rt *Router) routes() {
 	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}/hint", rt.handleGetPuzzleHint)
 	rt.mux.HandleFunc("GET /api/v1/puzzles/{id}/solution", rt.withAuth(rt.handleGetPuzzleSolution))
 	rt.mux.HandleFunc("POST /api/v1/puzzles/{id}/solve", rt.puzzleLimiter.Middleware(rt.handleSolvePuzzle))
+
+	// Friends & Challenges
+	rt.mux.HandleFunc("POST /api/v1/friends/request", rt.withAuth(rt.handleSendFriendRequest))
+	rt.mux.HandleFunc("POST /api/v1/friends/respond", rt.withAuth(rt.handleRespondFriendRequest))
+	rt.mux.HandleFunc("DELETE /api/v1/friends/{id}", rt.withAuth(rt.handleRemoveFriend))
+	rt.mux.HandleFunc("GET /api/v1/friends", rt.withAuth(rt.handleListFriends))
+	rt.mux.HandleFunc("POST /api/v1/challenges", rt.withAuth(rt.handleCreateChallenge))
+	rt.mux.HandleFunc("POST /api/v1/challenges/{id}/respond", rt.withAuth(rt.handleRespondChallenge))
+	rt.mux.HandleFunc("POST /api/v1/challenges/{id}/cancel", rt.withAuth(rt.handleCancelChallenge))
+	rt.mux.HandleFunc("GET /api/v1/challenges", rt.withAuth(rt.handleListChallenges))
 
 	// WebSockets & Connection Tickets
 	rt.mux.HandleFunc("POST /api/v1/ws/ticket", rt.withAuth(rt.handleCreateWSTicket))
@@ -859,9 +882,9 @@ func (rt *Router) handleGetExternalGames(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	limit := 10
+	limit := 50
 	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 20 {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
 			limit = parsed
 		}
 	}
@@ -1028,6 +1051,7 @@ type createGameReq struct {
 	InitialSeconds int    `json:"initial"`
 	Increment      int    `json:"increment"`
 	OpponentID     string `json:"opponentId,omitempty"`
+	Rated          *bool  `json:"rated,omitempty"`
 }
 
 func (rt *Router) handleCreateGame(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
@@ -1071,7 +1095,12 @@ func (rt *Router) handleCreateGame(w http.ResponseWriter, r *http.Request, claim
 		}
 	}
 
-	ag, err := rt.gameService.CreateGame(whitePlayer, blackPlayer, tc)
+	isRated := true
+	if req.Rated != nil {
+		isRated = *req.Rated
+	}
+
+	ag, err := rt.gameService.CreateGame(whitePlayer, blackPlayer, tc, isRated)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "GAME_CREATE_FAIL", err.Error())
 		return
@@ -2069,4 +2098,396 @@ func (rt *Router) handleReviewGameByID(w http.ResponseWriter, r *http.Request) {
 	_ = rt.gameRepo.SaveReview(r.Context(), gameID, result)
 
 	writeJSON(w, http.StatusOK, result)
+}
+
+// ==============================================================================
+// Friends & Challenges Handlers
+// ==============================================================================
+
+type sendFriendReq struct {
+	Username string `json:"username"`
+}
+
+func (rt *Router) handleSendFriendRequest(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	if rt.friendRepo == nil {
+		writeError(w, http.StatusServiceUnavailable, "FRIEND_UNAVAILABLE", "friends service unavailable")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req sendFriendReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Username) == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "username is required")
+		return
+	}
+
+	targetUsername := strings.TrimSpace(req.Username)
+	if strings.EqualFold(targetUsername, claims.Username) {
+		writeError(w, http.StatusBadRequest, "SELF_FRIEND_PROHIBITED", "cannot send a friend request to yourself")
+		return
+	}
+
+	targetUser, err := rt.userService.FindByUsername(r.Context(), targetUsername)
+	if err != nil || targetUser == nil {
+		writeError(w, http.StatusNotFound, "USER_NOT_FOUND", "user not found")
+		return
+	}
+
+	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	currentUser, _ := rt.userService.FindByID(r.Context(), userOID)
+	currentAvatar := ""
+	if currentUser != nil {
+		currentAvatar = currentUser.Avatar
+	}
+
+	f := &friend.Friendship{
+		RequesterID:       userOID,
+		RequesterUsername: claims.Username,
+		RequesterAvatar:   currentAvatar,
+		AddresseeID:       targetUser.ID,
+		AddresseeUsername: targetUser.Username,
+		AddresseeAvatar:   targetUser.Avatar,
+	}
+
+	if err := rt.friendRepo.SendFriendRequest(r.Context(), f); err != nil {
+		writeError(w, http.StatusBadRequest, "FRIEND_REQUEST_FAILED", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"message": "friend request sent",
+		"status":  f.Status,
+	})
+}
+
+type respondFriendReq struct {
+	RequestID string `json:"requestId"`
+	Accept    bool   `json:"accept"`
+}
+
+func (rt *Router) handleRespondFriendRequest(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	if rt.friendRepo == nil {
+		writeError(w, http.StatusServiceUnavailable, "FRIEND_UNAVAILABLE", "friends service unavailable")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req respondFriendReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RequestID == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "requestId is required")
+		return
+	}
+
+	reqOID, err := primitive.ObjectIDFromHex(req.RequestID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid request id")
+		return
+	}
+
+	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	updated, err := rt.friendRepo.RespondFriendRequest(r.Context(), reqOID, userOID, req.Accept)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "RESPOND_FAILED", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, updated)
+}
+
+func (rt *Router) handleRemoveFriend(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	if rt.friendRepo == nil {
+		writeError(w, http.StatusServiceUnavailable, "FRIEND_UNAVAILABLE", "friends service unavailable")
+		return
+	}
+	friendIDStr := r.PathValue("id")
+	friendOID, err := primitive.ObjectIDFromHex(friendIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid friend id")
+		return
+	}
+
+	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	if err := rt.friendRepo.RemoveFriend(r.Context(), userOID, friendOID); err != nil {
+		writeError(w, http.StatusInternalServerError, "REMOVE_FAILED", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "friend removed"})
+}
+
+func (rt *Router) handleListFriends(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	if rt.friendRepo == nil {
+		writeError(w, http.StatusServiceUnavailable, "FRIEND_UNAVAILABLE", "friends service unavailable")
+		return
+	}
+
+	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	friendships, err := rt.friendRepo.ListFriends(r.Context(), userOID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+		return
+	}
+
+	incoming, outgoing, _ := rt.friendRepo.ListPendingRequests(r.Context(), userOID)
+
+	friendsList := make([]friend.FriendItem, 0, len(friendships))
+	for _, f := range friendships {
+		var fID primitive.ObjectID
+		var fName string
+		var fAvatar string
+		if f.RequesterID == userOID {
+			fID = f.AddresseeID
+			fName = f.AddresseeUsername
+			fAvatar = f.AddresseeAvatar
+		} else {
+			fID = f.RequesterID
+			fName = f.RequesterUsername
+			fAvatar = f.RequesterAvatar
+		}
+
+		fRatVal := rating.DefaultRating
+		if rt.ratingRepo != nil {
+			if rObj, _ := rt.ratingRepo.GetRating(r.Context(), fID, rating.Blitz); rObj != nil {
+				fRatVal = rObj.Rating
+			}
+		}
+
+		friendsList = append(friendsList, friend.FriendItem{
+			ID:           fID.Hex(),
+			FriendshipID: f.ID.Hex(),
+			Username:     fName,
+			Avatar:       fAvatar,
+			Rating:       fRatVal,
+			CreatedAt:    f.CreatedAt,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"friends":  friendsList,
+		"incoming": incoming,
+		"outgoing": outgoing,
+	})
+}
+
+type createChallengeReq struct {
+	ChallengedID string `json:"challengedId"`
+	Initial      int    `json:"initial"`
+	Increment    int    `json:"increment"`
+	Rated        *bool  `json:"rated"`
+	ColorPref    string `json:"colorPref"`
+}
+
+func (rt *Router) handleCreateChallenge(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	if rt.friendRepo == nil {
+		writeError(w, http.StatusServiceUnavailable, "FRIEND_UNAVAILABLE", "challenges unavailable")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req createChallengeReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ChallengedID == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "challengedId is required")
+		return
+	}
+
+	if req.ChallengedID == claims.UserID {
+		writeError(w, http.StatusBadRequest, "SELF_CHALLENGE_PROHIBITED", "cannot challenge yourself")
+		return
+	}
+
+	challengedOID, err := primitive.ObjectIDFromHex(req.ChallengedID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid challenged user id")
+		return
+	}
+
+	challengedUser, err := rt.userService.FindByID(r.Context(), challengedOID)
+	if err != nil || challengedUser == nil {
+		writeError(w, http.StatusNotFound, "USER_NOT_FOUND", "challenged user not found")
+		return
+	}
+
+	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	currentUser, _ := rt.userService.FindByID(r.Context(), userOID)
+
+	challengerAvatar := ""
+	if currentUser != nil {
+		challengerAvatar = currentUser.Avatar
+	}
+
+	initialSec := req.Initial
+	if initialSec <= 0 {
+		initialSec = 300
+	}
+	incSec := req.Increment
+	if incSec < 0 {
+		incSec = 0
+	}
+
+	isRated := true
+	if req.Rated != nil {
+		isRated = *req.Rated
+	}
+
+	colorPref := strings.ToLower(strings.TrimSpace(req.ColorPref))
+	if colorPref != "white" && colorPref != "black" {
+		colorPref = "random"
+	}
+
+	cat := rating.DetermineCategory(initialSec)
+	var cRatVal, dRatVal int = rating.DefaultRating, rating.DefaultRating
+	if rt.ratingRepo != nil {
+		if r1, _ := rt.ratingRepo.GetRating(r.Context(), userOID, cat); r1 != nil {
+			cRatVal = r1.Rating
+		}
+		if r2, _ := rt.ratingRepo.GetRating(r.Context(), challengedOID, cat); r2 != nil {
+			dRatVal = r2.Rating
+		}
+	}
+
+	ch := &friend.Challenge{
+		ChallengerID:       userOID,
+		ChallengerUsername: claims.Username,
+		ChallengerAvatar:   challengerAvatar,
+		ChallengerRating:   cRatVal,
+		ChallengedID:       challengedOID,
+		ChallengedUsername: challengedUser.Username,
+		ChallengedAvatar:   challengedUser.Avatar,
+		ChallengedRating:   dRatVal,
+		InitialSeconds:     initialSec,
+		Increment:          incSec,
+		Rated:              isRated,
+		ColorPref:          colorPref,
+	}
+
+	if err := rt.friendRepo.CreateChallenge(r.Context(), ch); err != nil {
+		writeError(w, http.StatusInternalServerError, "CHALLENGE_CREATE_FAILED", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, ch)
+}
+
+type respondChallengeReq struct {
+	Accept bool `json:"accept"`
+}
+
+func (rt *Router) handleRespondChallenge(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	if rt.friendRepo == nil || rt.gameService == nil {
+		writeError(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "service unavailable")
+		return
+	}
+	chIDStr := r.PathValue("id")
+	chOID, err := primitive.ObjectIDFromHex(chIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid challenge id")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req respondChallengeReq
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	ch, err := rt.friendRepo.GetChallenge(r.Context(), chOID)
+	if err != nil || ch == nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "challenge not found")
+		return
+	}
+
+	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	if ch.ChallengedID != userOID {
+		writeError(w, http.StatusForbidden, "UNAUTHORIZED", "you are not the recipient of this challenge")
+		return
+	}
+
+	if ch.Status != friend.ChallengePending {
+		writeError(w, http.StatusBadRequest, "INVALID_STATE", fmt.Sprintf("challenge is already %s", ch.Status))
+		return
+	}
+
+	if !req.Accept {
+		_ = rt.friendRepo.UpdateChallenge(r.Context(), chOID, friend.ChallengeDeclined, "")
+		writeJSON(w, http.StatusOK, map[string]string{"status": "declined"})
+		return
+	}
+
+	var whitePlayer, blackPlayer game.PlayerInfo
+	challengerInfo := game.PlayerInfo{UserID: ch.ChallengerID.Hex(), Username: ch.ChallengerUsername, Rating: ch.ChallengerRating}
+	challengedInfo := game.PlayerInfo{UserID: ch.ChallengedID.Hex(), Username: ch.ChallengedUsername, Rating: ch.ChallengedRating}
+
+	switch ch.ColorPref {
+	case "white":
+		whitePlayer = challengerInfo
+		blackPlayer = challengedInfo
+	case "black":
+		whitePlayer = challengedInfo
+		blackPlayer = challengerInfo
+	default:
+		if time.Now().UnixNano()%2 == 0 {
+			whitePlayer = challengerInfo
+			blackPlayer = challengedInfo
+		} else {
+			whitePlayer = challengedInfo
+			blackPlayer = challengerInfo
+		}
+	}
+
+	tc := game.TimeControl{InitialSeconds: ch.InitialSeconds, Increment: ch.Increment}
+	ag, err := rt.gameService.CreateGame(whitePlayer, blackPlayer, tc, ch.Rated)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "GAME_CREATE_FAIL", err.Error())
+		return
+	}
+
+	_ = rt.friendRepo.UpdateChallenge(r.Context(), chOID, friend.ChallengeAccepted, ag.ID)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "accepted",
+		"gameId": ag.ID,
+		"game":   ag,
+	})
+}
+
+func (rt *Router) handleCancelChallenge(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	if rt.friendRepo == nil {
+		writeError(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "service unavailable")
+		return
+	}
+	chIDStr := r.PathValue("id")
+	chOID, err := primitive.ObjectIDFromHex(chIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "invalid challenge id")
+		return
+	}
+
+	ch, err := rt.friendRepo.GetChallenge(r.Context(), chOID)
+	if err != nil || ch == nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "challenge not found")
+		return
+	}
+
+	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	if ch.ChallengerID != userOID {
+		writeError(w, http.StatusForbidden, "UNAUTHORIZED", "you can only cancel challenges you created")
+		return
+	}
+
+	_ = rt.friendRepo.UpdateChallenge(r.Context(), chOID, friend.ChallengeCanceled, "")
+	writeJSON(w, http.StatusOK, map[string]string{"status": "canceled"})
+}
+
+func (rt *Router) handleListChallenges(w http.ResponseWriter, r *http.Request, claims *auth.Claims) {
+	if rt.friendRepo == nil {
+		writeError(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "service unavailable")
+		return
+	}
+
+	userOID, _ := primitive.ObjectIDFromHex(claims.UserID)
+	incoming, outgoing, err := rt.friendRepo.ListPendingChallenges(r.Context(), userOID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"incoming": incoming,
+		"outgoing": outgoing,
+	})
 }

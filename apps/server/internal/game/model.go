@@ -141,6 +141,7 @@ type GameDocument struct {
 	Variant     string             `bson:"variant" json:"variant"`
 	TimeControl TimeControl        `bson:"timeControl" json:"timeControl"`
 	Status      Status             `bson:"status" json:"status"`
+	Rated       bool               `bson:"rated" json:"rated"`
 	Result      string             `bson:"result" json:"result"`
 	Outcome     string             `bson:"outcome" json:"outcome"`
 	InitialFEN  string             `bson:"initialFen" json:"initialFen"`
@@ -165,6 +166,7 @@ type ActiveGame struct {
 	Engine      *chess.Game     `json:"engine"`
 	Clock       ClockState      `json:"clock"`
 	TimeControl TimeControl     `json:"timeControl"`
+	Rated       bool            `json:"rated"`
 	Status      Status          `json:"status"`
 	StartedAt   time.Time       `json:"startedAt"`
 	FinishedAt  *time.Time      `json:"finishedAt,omitempty"`
@@ -181,6 +183,7 @@ func NewActiveGame(id string, white, black PlayerInfo, tc TimeControl) *ActiveGa
 		Engine:             chess.NewGame(),
 		Clock:              NewClock(tc),
 		TimeControl:        tc,
+		Rated:              true,
 		Status:             StatusPlaying,
 		StartedAt:          time.Now().UTC(),
 		Moves:              make([]PersistedMove, 0),

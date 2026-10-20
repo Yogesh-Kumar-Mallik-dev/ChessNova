@@ -4,6 +4,7 @@
 	import { authStore } from '$lib/stores/auth';
 	import { appThemeStore } from '$lib/stores/preferences';
 	import Navbar from '$lib/components/ui/Navbar.svelte';
+	import ChallengeNotificationBanner from '$lib/components/friends/ChallengeNotificationBanner.svelte';
 
 	onMount(() => {
 		authStore.init();
@@ -18,6 +19,7 @@
 
 <div class="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-foreground selection:text-background relative overflow-x-hidden">
 	<Navbar />
+	<ChallengeNotificationBanner />
 	<main class="flex-1 flex flex-col min-h-0">
 		<slot />
 	</main>

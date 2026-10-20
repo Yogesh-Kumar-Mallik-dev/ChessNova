@@ -8,8 +8,10 @@
 	import QuickSettings from '$lib/components/ui/QuickSettings.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import UserBadge from '$lib/components/ui/UserBadge.svelte';
+	import FriendsModal from '$lib/components/friends/FriendsModal.svelte';
 
 	let mobileMenuOpen = false;
+	let showFriendsModal = false;
 
 	$: if (typeof document !== 'undefined') {
 		if (mobileMenuOpen) {
@@ -85,7 +87,15 @@
 		{#if $authStore.loading}
 			<div class="w-8 h-8 rounded-lg bg-secondary animate-pulse"></div>
 		{:else if $authStore.user}
-			<div class="flex items-center gap-2 sm:gap-2.5">
+			<div class="flex items-center gap-1.5 sm:gap-2">
+				<button
+					class="p-1.5 sm:p-2 rounded-lg bg-secondary/80 hover:bg-secondary text-foreground transition relative cursor-pointer border border-border"
+					on:click={() => (showFriendsModal = true)}
+					title="Friends & Match Challenges"
+				>
+					<Icon name="users" size={15} />
+				</button>
+
 				<UserBadge
 					username={$authStore.user.username}
 					avatar={$authStore.user.avatar}
@@ -172,6 +182,17 @@
 						className="w-full justify-between"
 					/>
 				</div>
+				<button
+					class="p-2 rounded-lg bg-secondary text-foreground shrink-0 border border-border cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+					on:click={() => {
+						mobileMenuOpen = false;
+						showFriendsModal = true;
+					}}
+					title="Friends & Challenges"
+				>
+					<Icon name="users" size={14} />
+					<span>Friends</span>
+				</button>
 				<Button
 					variant="ghost"
 					size="sm"
@@ -197,3 +218,5 @@
 		{/if}
 	</div>
 {/if}
+
+<FriendsModal isOpen={showFriendsModal} on:close={() => (showFriendsModal = false)} />

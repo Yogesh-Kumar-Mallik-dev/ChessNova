@@ -10,6 +10,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import ChallengeModal from '$lib/components/friends/ChallengeModal.svelte';
 
 	let username = $page.params.username || '';
 	let profileData: any = null;
@@ -18,6 +19,12 @@
 	let loading = true;
 	let loadingExternal = false;
 	let error = '';
+
+	// Friend & Challenge status
+	let friendStatus: 'none' | 'friends' | 'pending_sent' | 'pending_received' = 'none';
+	let friendshipId = '';
+	let friendLoading = false;
+	let showDirectChallengeModal = false;
 
 	// Active navigation tab
 	let activeTab: 'nova-games' | 'external-games' | 'stats' = 'nova-games';
@@ -49,6 +56,74 @@
 		{ id: 'classical', label: 'Classical', icon: 'hourglass' }
 	];
 
+	async function checkFriendStatus() {
+		if (!$authStore.user || isOwnProfile) return;
+		try {
+			const res = await api.friends.list();
+			const fr = (res.friends || []).find((f: any) => f.username.toLowerCase() === username.toLowerCase());
+			if (fr) {
+				friendStatus = 'friends';
+				friendshipId = fr.friendshipId;
+				return;
+			}
+			const outReq = (res.outgoing || []).find((o: any) => o.addresseeUsername.toLowerCase() === username.toLowerCase());
+			if (outReq) {
+				friendStatus = 'pending_sent';
+				friendshipId = outReq.id;
+				return;
+			}
+			const inReq = (res.incoming || []).find((i: any) => i.requesterUsername.toLowerCase() === username.toLowerCase());
+			if (inReq) {
+				friendStatus = 'pending_received';
+				friendshipId = inReq.id;
+				return;
+			}
+			friendStatus = 'none';
+		} catch (e) {
+			console.warn('Failed to check friend status:', e);
+		}
+	}
+
+	async function handleSendFriendRequest() {
+		if (friendLoading) return;
+		friendLoading = true;
+		try {
+			await api.friends.sendRequest(username);
+			friendStatus = 'pending_sent';
+		} catch (e: any) {
+			alert(e.message || 'Failed to send friend request');
+		} finally {
+			friendLoading = false;
+		}
+	}
+
+	async function handleAcceptFriendRequest() {
+		if (friendLoading || !friendshipId) return;
+		friendLoading = true;
+		try {
+			await api.friends.respondRequest(friendshipId, true);
+			friendStatus = 'friends';
+		} catch (e: any) {
+			alert(e.message || 'Failed to accept friend request');
+		} finally {
+			friendLoading = false;
+		}
+	}
+
+	async function handleRemoveFriend() {
+		if (friendLoading || !profileData?.user?.id) return;
+		if (!confirm(`Are you sure you want to remove ${username} from friends?`)) return;
+		friendLoading = true;
+		try {
+			await api.friends.remove(profileData.user.id);
+			friendStatus = 'none';
+		} catch (e: any) {
+			alert(e.message || 'Failed to remove friend');
+		} finally {
+			friendLoading = false;
+		}
+	}
+
 	async function loadProfile() {
 		loading = true;
 		error = '';
@@ -63,6 +138,11 @@
 			if (profileData.user?.chessComUsername || profileData.user?.lichessUsername) {
 				loadExternalData();
 			}
+
+			// Check friend status with this user if authenticated
+			if (!isOwnProfile && !!$authStore.user) {
+				checkFriendStatus();
+			}
 		} catch (err: any) {
 			error = err.message || 'Failed to load profile';
 		} finally {
@@ -75,7 +155,7 @@
 		try {
 			const [stats, games] = await Promise.all([
 				api.users.getExternalStats(username).catch(() => null),
-				api.users.getExternalGames(username, externalPlatformFilter, 15).catch(() => [])
+				api.users.getExternalGames(username, externalPlatformFilter, 50).catch(() => [])
 			]);
 			externalStats = stats;
 			externalGames = games || [];
@@ -263,7 +343,7 @@
 							</p>
 						</div>
 
-						<!-- Profile Owner Controls -->
+						<!-- Profile Owner Controls or Social Action Buttons -->
 						{#if isOwnProfile}
 							<div class="flex items-center justify-center sm:justify-end gap-2 shrink-0">
 								<Button
@@ -284,6 +364,70 @@
 									<Icon name="external-link" size={13} />
 									<span>Link Accounts</span>
 								</Button>
+							</div>
+						{:else if $authStore.user}
+							<div class="flex items-center justify-center sm:justify-end gap-2 shrink-0 flex-wrap">
+								<!-- Direct Challenge Button -->
+								<Button
+									variant="primary"
+									size="sm"
+									className="text-xs"
+									on:click={() => (showDirectChallengeModal = true)}
+								>
+									<Icon name="swords" size={13} />
+									<span>Challenge</span>
+								</Button>
+
+								<!-- Friend Request / Relationship Button -->
+								{#if friendStatus === 'friends'}
+									<Button
+										variant="secondary"
+										size="sm"
+										className="text-xs text-emerald-500 border-emerald-500/30"
+										on:click={handleRemoveFriend}
+										title="Click to remove friend"
+										disabled={friendLoading}
+									>
+										<Icon name="user-check" size={13} />
+										<span>Friends</span>
+									</Button>
+								{:else if friendStatus === 'pending_sent'}
+									<Button
+										variant="secondary"
+										size="sm"
+										className="text-xs text-muted-foreground"
+										disabled={true}
+									>
+										<Icon name="clock" size={13} />
+										<span>Request Sent</span>
+									</Button>
+								{:else if friendStatus === 'pending_received'}
+									<Button
+										variant="primary"
+										size="sm"
+										className="text-xs"
+										on:click={handleAcceptFriendRequest}
+										disabled={friendLoading}
+									>
+										<Icon name="user-check" size={13} />
+										<span>Accept Request</span>
+									</Button>
+								{:else}
+									<Button
+										variant="outline"
+										size="sm"
+										className="text-xs"
+										on:click={handleSendFriendRequest}
+										disabled={friendLoading}
+									>
+										{#if friendLoading}
+											<div class="w-3.5 h-3.5 border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
+										{:else}
+											<Icon name="user-plus" size={13} />
+										{/if}
+										<span>Add Friend</span>
+									</Button>
+								{/if}
 							</div>
 						{/if}
 					</div>
@@ -681,7 +825,7 @@
 												className="text-xs"
 											>
 												<Icon name="search" size={13} />
-												<span>Review</span>
+												<span class="hidden sm:inline">Review</span>
 											</Button>
 										</a>
 
@@ -758,10 +902,14 @@
 												<span>{eg.black}</span>
 												<span class="text-[11px] font-mono text-muted-foreground tabular-nums">({eg.blackRating || '?'})</span>
 											</div>
-											<div class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2">
+											<div class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
 												<span class="capitalize">{eg.timeControl}</span>
 												<span>•</span>
 												<span>{new Date(eg.playedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+												{#if eg.userRating}
+													<span>•</span>
+													<span class="px-1.5 py-0.2 rounded bg-secondary font-mono text-[10px] text-foreground font-bold border border-border">Elo {eg.userRating}</span>
+												{/if}
 											</div>
 										</div>
 									</div>
@@ -779,7 +927,7 @@
 											title="Run Stockfish Game Review on this game"
 										>
 											<Icon name="search" size={13} />
-											<span>Review</span>
+											<span class="hidden sm:inline">Review</span>
 										</Button>
 
 										<a
@@ -984,5 +1132,18 @@
 			</div>
 		</div>
 	</div>
+{/if}
+
+<!-- Direct Challenge Modal -->
+{#if showDirectChallengeModal && profileData?.user}
+	<ChallengeModal
+		isOpen={showDirectChallengeModal}
+		opponentId={profileData.user.id}
+		opponentUsername={profileData.user.username}
+		opponentRating={profileData.ratings?.blitz?.rating || profileData.ratings?.rapid?.rating || 400}
+		opponentAvatar={profileData.user.avatar || ''}
+		on:close={() => (showDirectChallengeModal = false)}
+		on:created={() => {}}
+	/>
 {/if}
 

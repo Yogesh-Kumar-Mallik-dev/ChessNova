@@ -37,6 +37,7 @@ type ExternalGame struct {
 	WhiteRating int       `json:"whiteRating"`
 	Black       string    `json:"black"`
 	BlackRating int       `json:"blackRating"`
+	UserRating  int       `json:"userRating,omitempty"`
 	Result      string    `json:"result"`
 	TimeControl string    `json:"timeControl"`
 	PlayedAt    time.Time `json:"playedAt"`
@@ -131,6 +132,11 @@ func (s *Service) FetchChessComStats(ctx context.Context, username string) (*Pla
 				Rating int `json:"rating"`
 			} `json:"last"`
 		} `json:"chess_rapid"`
+		ChessDaily struct {
+			Last struct {
+				Rating int `json:"rating"`
+			} `json:"last"`
+		} `json:"chess_daily"`
 		Tactics struct {
 			Highest struct {
 				Rating int `json:"rating"`
@@ -146,10 +152,11 @@ func (s *Service) FetchChessComStats(ctx context.Context, username string) (*Pla
 	}
 
 	ratings := &PlatformRatings{
-		Bullet: data.ChessBullet.Last.Rating,
-		Blitz:  data.ChessBlitz.Last.Rating,
-		Rapid:  data.ChessRapid.Last.Rating,
-		Puzzle: data.Tactics.Highest.Rating,
+		Bullet:    data.ChessBullet.Last.Rating,
+		Blitz:     data.ChessBlitz.Last.Rating,
+		Rapid:     data.ChessRapid.Last.Rating,
+		Classical: data.ChessDaily.Last.Rating,
+		Puzzle:    data.Tactics.Highest.Rating,
 	}
 
 	return ratings, nil
@@ -226,8 +233,10 @@ func (s *Service) FetchLichessRecentGames(ctx context.Context, username string, 
 	if err := validateExternalUsername(username); err != nil {
 		return nil, err
 	}
-	if limit <= 0 || limit > 20 {
-		limit = 10
+	if limit <= 0 {
+		limit = 50
+	} else if limit > 100 {
+		limit = 100
 	}
 
 	url := fmt.Sprintf("https://lichess.org/api/games/user/%s?max=%d&pgnInJson=true&clocks=false&evals=false&opening=true", strings.ToLower(username), limit)
@@ -304,6 +313,13 @@ func (s *Service) FetchLichessRecentGames(ctx context.Context, username string, 
 			playedAt = time.Now().UTC()
 		}
 
+		userRating := 0
+		if strings.EqualFold(whiteName, username) {
+			userRating = raw.Players.White.Rating
+		} else if strings.EqualFold(blackName, username) {
+			userRating = raw.Players.Black.Rating
+		}
+
 		games = append(games, ExternalGame{
 			Platform:    "lichess",
 			ID:          raw.ID,
@@ -312,6 +328,7 @@ func (s *Service) FetchLichessRecentGames(ctx context.Context, username string, 
 			WhiteRating: raw.Players.White.Rating,
 			Black:       blackName,
 			BlackRating: raw.Players.Black.Rating,
+			UserRating:  userRating,
 			Result:      resultStr,
 			TimeControl: raw.Speed,
 			PlayedAt:    playedAt,
@@ -322,7 +339,7 @@ func (s *Service) FetchLichessRecentGames(ctx context.Context, username string, 
 	return games, nil
 }
 
-// FetchChessComRecentGames fetches recent games from Chess.com archives
+// FetchChessComRecentGames fetches recent games from Chess.com archives across multiple months
 func (s *Service) FetchChessComRecentGames(ctx context.Context, username string, limit int) ([]ExternalGame, error) {
 	if username == "" {
 		return nil, nil
@@ -330,108 +347,135 @@ func (s *Service) FetchChessComRecentGames(ctx context.Context, username string,
 	if err := validateExternalUsername(username); err != nil {
 		return nil, err
 	}
-	if limit <= 0 || limit > 20 {
-		limit = 10
+	if limit <= 0 {
+		limit = 50
+	} else if limit > 100 {
+		limit = 100
 	}
 
-	now := time.Now().UTC()
-	url := fmt.Sprintf("https://api.chess.com/pub/player/%s/games/%d/%02d", strings.ToLower(username), now.Year(), int(now.Month()))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	// 1. Query the player's full monthly archives list
+	archivesURL := fmt.Sprintf("https://api.chess.com/pub/player/%s/games/archives", strings.ToLower(username))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, archivesURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "ChessPasant-App/1.0 (contact: support@chesspasant.com)")
 
 	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, err
+	var archiveURLs []string
+	if err == nil && resp.StatusCode == http.StatusOK {
+		var archData struct {
+			Archives []string `json:"archives"`
+		}
+		if json.NewDecoder(resp.Body).Decode(&archData) == nil {
+			archiveURLs = archData.Archives
+		}
+		resp.Body.Close()
+	} else if resp != nil {
+		resp.Body.Close()
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
-		// Try previous month if current month has no archive yet
+	// Fallback if archives endpoint returned empty or failed
+	if len(archiveURLs) == 0 {
+		now := time.Now().UTC()
+		archiveURLs = []string{
+			fmt.Sprintf("https://api.chess.com/pub/player/%s/games/%d/%02d", strings.ToLower(username), now.Year(), int(now.Month())),
+		}
 		prev := now.AddDate(0, -1, 0)
-		url = fmt.Sprintf("https://api.chess.com/pub/player/%s/games/%d/%02d", strings.ToLower(username), prev.Year(), int(prev.Month()))
-		req, _ = http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		req.Header.Set("User-Agent", "ChessPasant-App/1.0 (contact: support@chesspasant.com)")
-		resp2, err2 := s.client.Do(req)
-		if err2 != nil || resp2.StatusCode != http.StatusOK {
-			if resp2 != nil {
-				resp2.Body.Close()
+		archiveURLs = append([]string{
+			fmt.Sprintf("https://api.chess.com/pub/player/%s/games/%d/%02d", strings.ToLower(username), prev.Year(), int(prev.Month())),
+		}, archiveURLs...)
+	}
+
+	var allGames []ExternalGame
+
+	// Iterate backwards from newest archive to older until limit is satisfied
+	for i := len(archiveURLs) - 1; i >= 0 && len(allGames) < limit; i-- {
+		u := archiveURLs[i]
+		mReq, mErr := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		if mErr != nil {
+			continue
+		}
+		mReq.Header.Set("User-Agent", "ChessPasant-App/1.0 (contact: support@chesspasant.com)")
+
+		mResp, mErr := s.client.Do(mReq)
+		if mErr != nil || mResp.StatusCode != http.StatusOK {
+			if mResp != nil {
+				mResp.Body.Close()
 			}
-			return nil, nil
-		}
-		resp = resp2
-		defer resp.Body.Close()
-	} else if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("chess.com games api returned %d", resp.StatusCode)
-	}
-
-	var data struct {
-		Games []struct {
-			URL         string `json:"url"`
-			PGN         string `json:"pgn"`
-			TimeControl string `json:"time_control"`
-			EndTime     int64  `json:"end_time"`
-			White       struct {
-				Username string `json:"username"`
-				Rating   int    `json:"rating"`
-				Result   string `json:"result"`
-			} `json:"white"`
-			Black struct {
-				Username string `json:"username"`
-				Rating   int    `json:"rating"`
-				Result   string `json:"result"`
-			} `json:"black"`
-		} `json:"games"`
-	}
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := json.Unmarshal(bodyBytes, &data); err != nil {
-		return nil, err
-	}
-
-	var games []ExternalGame
-	for _, g := range data.Games {
-		resultStr := "*"
-		if g.White.Result == "win" {
-			resultStr = "1-0"
-		} else if g.Black.Result == "win" {
-			resultStr = "0-1"
-		} else {
-			resultStr = "1/2-1/2"
+			continue
 		}
 
-		parts := strings.Split(g.URL, "/")
-		gameID := parts[len(parts)-1]
+		var data struct {
+			Games []struct {
+				URL         string `json:"url"`
+				PGN         string `json:"pgn"`
+				TimeControl string `json:"time_control"`
+				EndTime     int64  `json:"end_time"`
+				White       struct {
+					Username string `json:"username"`
+					Rating   int    `json:"rating"`
+					Result   string `json:"result"`
+				} `json:"white"`
+				Black struct {
+					Username string `json:"username"`
+					Rating   int    `json:"rating"`
+					Result   string `json:"result"`
+				} `json:"black"`
+			} `json:"games"`
+		}
 
-		games = append(games, ExternalGame{
-			Platform:    "chesscom",
-			ID:          gameID,
-			URL:         g.URL,
-			White:       g.White.Username,
-			WhiteRating: g.White.Rating,
-			Black:       g.Black.Username,
-			BlackRating: g.Black.Rating,
-			Result:      resultStr,
-			TimeControl: g.TimeControl,
-			PlayedAt:    time.Unix(g.EndTime, 0),
-			PGN:         g.PGN,
-		})
+		bodyBytes, bErr := io.ReadAll(mResp.Body)
+		mResp.Body.Close()
+		if bErr != nil || json.Unmarshal(bodyBytes, &data) != nil {
+			continue
+		}
+
+		for _, g := range data.Games {
+			resultStr := "*"
+			if g.White.Result == "win" {
+				resultStr = "1-0"
+			} else if g.Black.Result == "win" {
+				resultStr = "0-1"
+			} else {
+				resultStr = "1/2-1/2"
+			}
+
+			parts := strings.Split(g.URL, "/")
+			gameID := parts[len(parts)-1]
+
+			userRating := 0
+			if strings.EqualFold(g.White.Username, username) {
+				userRating = g.White.Rating
+			} else if strings.EqualFold(g.Black.Username, username) {
+				userRating = g.Black.Rating
+			}
+
+			allGames = append(allGames, ExternalGame{
+				Platform:    "chesscom",
+				ID:          gameID,
+				URL:         g.URL,
+				White:       g.White.Username,
+				WhiteRating: g.White.Rating,
+				Black:       g.Black.Username,
+				BlackRating: g.Black.Rating,
+				UserRating:  userRating,
+				Result:      resultStr,
+				TimeControl: g.TimeControl,
+				PlayedAt:    time.Unix(g.EndTime, 0),
+				PGN:         g.PGN,
+			})
+		}
 	}
 
 	// Sort newest first
-	sort.Slice(games, func(i, j int) bool {
-		return games[i].PlayedAt.After(games[j].PlayedAt)
+	sort.Slice(allGames, func(i, j int) bool {
+		return allGames[i].PlayedAt.After(allGames[j].PlayedAt)
 	})
 
-	if len(games) > limit {
-		games = games[:limit]
+	if len(allGames) > limit {
+		allGames = allGames[:limit]
 	}
 
-	return games, nil
+	return allGames, nil
 }

@@ -16,8 +16,9 @@ import (
 	"chess-platform/server/internal/auth"
 	"chess-platform/server/internal/email"
 	"chess-platform/server/internal/engine"
-	"chess-platform/server/internal/game"
 	"chess-platform/server/internal/external"
+	"chess-platform/server/internal/friend"
+	"chess-platform/server/internal/game"
 	internalHttp "chess-platform/server/internal/http"
 	"chess-platform/server/internal/matchmaking"
 	"chess-platform/server/internal/observability"
@@ -172,6 +173,9 @@ func main() {
 	puzzleRepo := puzzle.NewMongoRepository(db)
 	_ = puzzleRepo.SeedInitialPuzzles(context.Background())
 	puzzleService := puzzle.NewService(puzzleRepo)
+
+	friendRepo := friend.NewMongoRepository(db)
+	_ = friendRepo.EnsureIndexes(context.Background())
 
 	// 4. Initialize Domain Services
 	mailer := email.NewMailer(email.Config{
@@ -328,6 +332,7 @@ func main() {
 		corsOrigin,
 	)
 	router.SetAdminSecret(adminSecret)
+	router.SetFriendRepository(friendRepo)
 
 	loggedHandler := observability.HTTPLoggingMiddleware(observability.DefaultLogger, observability.DefaultMetrics, router)
 

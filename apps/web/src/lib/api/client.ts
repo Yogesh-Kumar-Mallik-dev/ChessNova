@@ -198,8 +198,42 @@ export const api = {
 				body: JSON.stringify(data)
 			}),
 		getExternalStats: (username: string) => request<any>(`/users/${username}/external-stats`),
-		getExternalGames: (username: string, platform = 'all', limit = 10) =>
+		getExternalGames: (username: string, platform = 'all', limit = 50) =>
 			request<any[]>(`/users/${username}/external-games?platform=${platform}&limit=${limit}`)
+	},
+	friends: {
+		list: () => request<{ friends: any[]; incoming: any[]; outgoing: any[] }>('/friends'),
+		sendRequest: (username: string) =>
+			request<{ message: string; status: string }>('/friends/request', {
+				method: 'POST',
+				body: JSON.stringify({ username })
+			}),
+		respondRequest: (requestId: string, accept: boolean) =>
+			request<any>('/friends/respond', {
+				method: 'POST',
+				body: JSON.stringify({ requestId, accept })
+			}),
+		remove: (friendId: string) =>
+			request<{ message: string }>(`/friends/${friendId}`, {
+				method: 'DELETE'
+			})
+	},
+	challenges: {
+		list: () => request<{ incoming: any[]; outgoing: any[] }>('/challenges'),
+		create: (data: { challengedId: string; initial: number; increment: number; rated: boolean; colorPref?: string }) =>
+			request<any>('/challenges', {
+				method: 'POST',
+				body: JSON.stringify(data)
+			}),
+		respond: (challengeId: string, accept: boolean) =>
+			request<{ status: string; gameId?: string; game?: any }>(`/challenges/${challengeId}/respond`, {
+				method: 'POST',
+				body: JSON.stringify({ accept })
+			}),
+		cancel: (challengeId: string) =>
+			request<{ status: string }>(`/challenges/${challengeId}/cancel`, {
+				method: 'POST'
+			})
 	},
 	games: {
 		list: (params?: { userId?: string; limit?: number }) => {

@@ -106,9 +106,12 @@ func (s *Service) AddOnGameFinish(cb func(doc *GameDocument)) {
 	s.onGameFinishList = append(s.onGameFinishList, cb)
 }
 
-func (s *Service) CreateGame(white, black PlayerInfo, tc TimeControl) (*ActiveGame, error) {
+func (s *Service) CreateGame(white, black PlayerInfo, tc TimeControl, rated ...bool) (*ActiveGame, error) {
 	id := uuid.New().String()
 	ag := NewActiveGame(id, white, black, tc)
+	if len(rated) > 0 {
+		ag.Rated = rated[0]
+	}
 
 	s.mu.Lock()
 	s.activeGames[id] = ag
@@ -601,7 +604,7 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 	whiteOID, wErr := primitive.ObjectIDFromHex(ag.White.UserID)
 	blackOID, bErr := primitive.ObjectIDFromHex(ag.Black.UserID)
 
-	if wErr == nil && bErr == nil && s.ratingRepo != nil {
+	if ag.Rated && wErr == nil && bErr == nil && s.ratingRepo != nil {
 		wRating, errW := s.ratingRepo.GetRating(ctx, whiteOID, category)
 		if errW != nil || wRating == nil {
 			wRating = &rating.UserRating{
@@ -662,6 +665,7 @@ func (s *Service) finalizeGame(ctx context.Context, ag *ActiveGame) *GameDocumen
 		Black:            ag.Black,
 		Variant:          "standard",
 		TimeControl:      ag.TimeControl,
+		Rated:            ag.Rated,
 		Status:           ag.Status,
 		Result:           ag.Engine.Result(),
 		Outcome:          string(ag.Engine.Outcome),
