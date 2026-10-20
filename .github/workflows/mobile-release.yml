@@ -1,0 +1,187 @@
+name: Mobile Release & Packaging (Android & iOS)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach binaries to (e.g. v0.1.6)'
+        required: true
+        type: string
+        default: 'v0.1.6'
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          yes | sdkmanager --install "ndk;27.0.12077973"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/mobile/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          npm --prefix apps/web ci || npm --prefix apps/web install
+          npm --prefix apps/mobile ci || npm --prefix apps/mobile install
+
+      - name: Build Web Frontend Assets
+        run: npm --prefix apps/web run build
+
+      - name: Initialize Android Project
+        run: npx --prefix apps/mobile tauri android init --ci
+
+      - name: Build Android APK
+        run: npx --prefix apps/mobile tauri android build --apk --ci
+
+      - name: Prepare and Sign APK Binary
+        run: |
+          RAW_TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${RAW_TAG#v}"
+          VERSION="${VERSION:-0.1.6}"
+
+          mkdir -p dist/mobile
+          echo "==> Searching for generated APK files..."
+          find apps/mobile/src-tauri/gen/android/ -name "*.apk" -ls || true
+
+          APK_FILE=$(find apps/mobile/src-tauri/gen/android/ -name "*.apk" | head -n 1)
+          if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
+            echo "==> Found APK: $APK_FILE"
+            cp "$APK_FILE" "dist/mobile/ChessPasant_${VERSION}.apk"
+
+            # Create debug keystore and sign APK so it can be installed on any device
+            keytool -genkeypair -v -keystore /tmp/debug.keystore -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android \
+              -dname "CN=ChessPasant,O=ChessPasant,C=US" || true
+
+            if command -v apksigner &> /dev/null; then
+              apksigner sign --ks /tmp/debug.keystore --ks-pass pass:android --ks-key-alias androiddebugkey "dist/mobile/ChessPasant_${VERSION}.apk" || true
+            fi
+            echo "==> Prepared: dist/mobile/ChessPasant_${VERSION}.apk"
+          else
+            echo "ERROR: No APK generated"
+            exit 1
+          fi
+
+      - name: Upload Android APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: dist/mobile/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chesspasant-android-apk
+          path: dist/mobile/*.apk
+          if-no-files-found: warn
+
+  build-ios:
+    name: Build iOS Application
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,x86_64-apple-ios
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/mobile/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          npm --prefix apps/web ci || npm --prefix apps/web install
+          npm --prefix apps/mobile ci || npm --prefix apps/mobile install
+
+      - name: Build Web Frontend Assets
+        run: npm --prefix apps/web run build
+
+      - name: Initialize iOS Project
+        run: npx --prefix apps/mobile tauri ios init --ci
+
+      - name: Build iOS Application (Unsigned)
+        run: npx --prefix apps/mobile tauri ios build --ci --no-signing
+
+      - name: Package iOS IPA & Application Bundle
+        run: |
+          RAW_TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${RAW_TAG#v}"
+          VERSION="${VERSION:-0.1.6}"
+
+          mkdir -p dist/ios/Payload
+          echo "==> Searching for generated iOS .app bundles..."
+          find apps/mobile/src-tauri/gen/apple/ -name "*.app" -maxdepth 5 || true
+
+          APP_DIR=$(find apps/mobile/src-tauri/gen/apple/ -name "*.app" | head -n 1)
+          if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
+            echo "==> Found iOS App: $APP_DIR"
+            cp -r "$APP_DIR" dist/ios/Payload/
+            cd dist/ios
+            zip -r "ChessPasant_${VERSION}_unsigned.ipa" Payload
+            cd -
+            echo "==> Packaged: dist/ios/ChessPasant_${VERSION}_unsigned.ipa"
+          else
+            echo "WARN: No .app found, archiving build directory"
+            cd apps/mobile/src-tauri/gen/apple/
+            zip -r "$GITHUB_WORKSPACE/dist/ios/ChessPasant_${VERSION}_ios_xcode.zip" .
+            cd -
+          fi
+
+      - name: Upload iOS Assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: |
+            dist/ios/*.ipa
+            dist/ios/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chesspasant-ios-bundle
+          path: dist/ios/
+          if-no-files-found: warn
