@@ -188,6 +188,125 @@
 		isCheck: boolean;
 	} | null = null;
 
+	// Board State History navigation & replay
+	// -1 signifies viewing the active live match position
+	let viewingPly: number = -1;
+
+	// Computed full history array from ply 0 (initial state) to latest move
+	$: boardHistory = (() => {
+		const startFen = $gameStore.initialFen || INITIAL_FEN;
+		const history: {
+			ply: number;
+			fen: string;
+			lastMove: { from: string; to: string; san?: string; isCapture?: boolean; isPromotion?: boolean } | null;
+			turn: Color;
+			san?: string;
+		}[] = [
+			{
+				ply: 0,
+				fen: startFen,
+				lastMove: null,
+				turn: (startFen.split(' ')[1] === 'b' ? 'black' : 'white') as Color,
+				san: 'Start'
+			}
+		];
+
+		let c = new Chess(startFen);
+		const mvs = $gameStore.moves || [];
+		for (let i = 0; i < mvs.length; i++) {
+			const m = mvs[i];
+			let fen = m.fen;
+			if (!fen) {
+				try {
+					c.move(m.san || { from: m.from, to: m.to });
+					fen = c.fen();
+				} catch (_) {
+					fen = c.fen();
+				}
+			} else {
+				try {
+					c = new Chess(fen);
+				} catch (_) {}
+			}
+			history.push({
+				ply: i + 1,
+				fen,
+				lastMove: {
+					from: m.from,
+					to: m.to,
+					san: m.san,
+					isCapture: (m as any).isCapture ?? m.san?.includes('x'),
+					isPromotion: (m as any).isPromotion ?? (m.san?.includes('=') || !!(m as any).promotion)
+				},
+				turn: (fen.split(' ')[1] === 'w' ? 'white' : 'black') as Color,
+				san: m.san
+			});
+		}
+		return history;
+	})();
+
+	// Forceful pull to latest move: whenever either player moves, immediately snap viewingPly to -1 (live)
+	let prevMovesLength = 0;
+	$: if ($gameStore.moves.length !== prevMovesLength) {
+		prevMovesLength = $gameStore.moves.length;
+		viewingPly = -1;
+	}
+
+	$: isLiveView = viewingPly === -1 || viewingPly === boardHistory.length - 1;
+	$: currentHistoryEntry = (viewingPly >= 0 && viewingPly < boardHistory.length)
+		? boardHistory[viewingPly]
+		: null;
+
+	$: displayFen = currentHistoryEntry ? currentHistoryEntry.fen : $gameStore.fen;
+	$: displayLastMove = currentHistoryEntry ? currentHistoryEntry.lastMove : $gameStore.lastMove;
+	$: displayTurn = currentHistoryEntry ? currentHistoryEntry.turn : $gameStore.turn;
+
+	function jumpToPly(targetPly: number) {
+		if (targetPly < 0 || targetPly >= boardHistory.length - 1) {
+			viewingPly = -1;
+		} else {
+			viewingPly = targetPly;
+		}
+	}
+
+	function goToFirst() {
+		jumpToPly(0);
+	}
+
+	function goToPrevious() {
+		const current = viewingPly === -1 ? boardHistory.length - 1 : viewingPly;
+		if (current > 0) {
+			jumpToPly(current - 1);
+		}
+	}
+
+	function goToNext() {
+		if (viewingPly === -1) return;
+		if (viewingPly < boardHistory.length - 1) {
+			jumpToPly(viewingPly + 1);
+		} else {
+			viewingPly = -1;
+		}
+	}
+
+	function goToLive() {
+		viewingPly = -1;
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		const target = e.target as HTMLElement | null;
+		if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+			return;
+		}
+		if (e.key === 'ArrowLeft') {
+			e.preventDefault();
+			goToPrevious();
+		} else if (e.key === 'ArrowRight') {
+			e.preventDefault();
+			goToNext();
+		}
+	}
+
 	async function getResolvedUser(): Promise<any> {
 		if ($authStore.user) return $authStore.user;
 		if (!$authStore.loading) return null;
@@ -206,6 +325,7 @@
 
 		if (typeof window !== 'undefined') {
 			window.addEventListener('beforeunload', handleBeforeUnload);
+			window.addEventListener('keydown', handleKeydown);
 		}
 
 		try {
@@ -232,7 +352,8 @@
 			gameStore.update((s) => ({
 				...s,
 				gameId: info.id,
-				fen: info.fen || info.initialFen,
+				initialFen: info.initialFen || INITIAL_FEN,
+				fen: info.fen || info.initialFen || INITIAL_FEN,
 				turn: info.turn || 'white',
 				whitePlayer: info.white,
 				blackPlayer: info.black,
@@ -279,6 +400,7 @@
 	onDestroy(() => {
 		if (typeof window !== 'undefined') {
 			window.removeEventListener('beforeunload', handleBeforeUnload);
+			window.removeEventListener('keydown', handleKeydown);
 		}
 		if (countdownInterval) {
 			clearInterval(countdownInterval);
@@ -295,6 +417,9 @@
 	});
 
 	function handleMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
+		// Forcefully pull to latest move on any move attempt
+		viewingPly = -1;
+
 		const { from, to, promotion } = event.detail;
 
 		// Only active players on their turn can submit moves
@@ -507,7 +632,7 @@
 								</span>
 							</div>
 						{/if}
-						<CapturedPieces fen={$gameStore.fen} forColor={topColor} />
+						<CapturedPieces fen={displayFen} forColor={topColor} />
 					</div>
 
 					<GameClock timeMs={topTimeMs} isActive={isTopTurn} />
@@ -515,15 +640,16 @@
 
 				<!-- Chess Board -->
 				<ChessBoard
-					fen={$gameStore.fen}
+					fen={displayFen}
 					orientation={currentOrientation}
-					turn={$gameStore.turn}
-					playerColor={isPlayer ? myPlayerColor : null}
-					selectedSquare={$gameStore.selectedSquare}
-					legalMoves={$gameStore.legalMoves}
-					lastMove={$gameStore.lastMove}
-					isCheck={$gameStore.isCheck}
-					interactive={isPlayer && $gameStore.status === 'playing'}
+					turn={displayTurn}
+					playerColor={isPlayer && isLiveView ? myPlayerColor : null}
+					selectedSquare={isLiveView ? $gameStore.selectedSquare : null}
+					legalMoves={isLiveView ? $gameStore.legalMoves : []}
+					lastMove={displayLastMove}
+					isCheck={isLiveView ? $gameStore.isCheck : false}
+					interactive={isLiveView && isPlayer && $gameStore.status === 'playing'}
+					animateMoves={isLiveView}
 					gameOver={$gameStore.status === 'finished'}
 					gameResult={$gameStore.result || ''}
 					gameOutcome={$gameStore.outcome || ''}
@@ -556,10 +682,72 @@
 								</span>
 							</div>
 						{/if}
-						<CapturedPieces fen={$gameStore.fen} forColor={bottomColor} />
+						<CapturedPieces fen={displayFen} forColor={bottomColor} />
 					</div>
 
 					<GameClock timeMs={bottomTimeMs} isActive={isBottomTurn} />
+				</div>
+
+				<!-- Board State History Navigation & Live Pull Bar -->
+				<div class="w-full flex items-center justify-between gap-1.5 sm:gap-2 mt-2 px-2.5 py-1.5 bg-card/90 border border-border rounded-xl shadow-xs backdrop-blur-xs select-none">
+					<div class="flex items-center gap-1">
+						<button
+							type="button"
+							class="p-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+							on:click={goToFirst}
+							disabled={boardHistory.length <= 1 || viewingPly === 0}
+							title="Start position (ply 0)"
+						>
+							<Icon name="chevrons-left" size={15} />
+						</button>
+						<button
+							type="button"
+							class="p-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+							on:click={goToPrevious}
+							disabled={boardHistory.length <= 1 || viewingPly === 0}
+							title="Previous move (Left arrow)"
+						>
+							<Icon name="chevron-left" size={15} />
+						</button>
+						<button
+							type="button"
+							class="p-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+							on:click={goToNext}
+							disabled={boardHistory.length <= 1 || isLiveView}
+							title="Next move (Right arrow)"
+						>
+							<Icon name="chevron-right" size={15} />
+						</button>
+						<button
+							type="button"
+							class="p-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+							on:click={goToLive}
+							disabled={boardHistory.length <= 1 || isLiveView}
+							title="Current live position"
+						>
+							<Icon name="chevrons-right" size={15} />
+						</button>
+					</div>
+
+					<!-- Status indicator: Live vs Historical Move -->
+					<div class="flex items-center gap-2">
+						{#if isLiveView}
+							<div class="flex items-center gap-1.5 text-xs font-semibold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+								<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+								<span class="text-[11px] font-bold tracking-wide">LIVE</span>
+							</div>
+						{:else}
+							<button
+								type="button"
+								class="flex items-center gap-1.5 text-xs font-bold text-amber-500 hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/30 transition shadow-xs cursor-pointer animate-pulse"
+								on:click={goToLive}
+								title="Click to jump to live position"
+							>
+								<Icon name="rotate-ccw" size={12} />
+								<span class="text-[11px]">Move {viewingPly} / {boardHistory.length - 1} &bull; Return to Live</span>
+							</button>
+						{/if}
+					</div>
 				</div>
 
 				<!-- Mobile Quick Action Bar -->
@@ -701,8 +889,10 @@
 			<div class="flex-1 overflow-hidden p-1">
 				<MoveList
 					moves={$gameStore.moves}
+					activePly={viewingPly === -1 ? boardHistory.length - 1 : viewingPly}
 					whiteName={$gameStore.whitePlayer?.username || 'White'}
 					blackName={$gameStore.blackPlayer?.username || 'Black'}
+					on:selectPly={(e) => jumpToPly(e.detail)}
 				/>
 			</div>
 
@@ -869,8 +1059,13 @@
 	<div class="max-h-72 overflow-y-auto p-1">
 		<MoveList
 			moves={$gameStore.moves}
+			activePly={viewingPly === -1 ? boardHistory.length - 1 : viewingPly}
 			whiteName={$gameStore.whitePlayer?.username || 'White'}
 			blackName={$gameStore.blackPlayer?.username || 'Black'}
+			on:selectPly={(e) => {
+				jumpToPly(e.detail);
+				showMobileMoves = false;
+			}}
 		/>
 	</div>
 </Modal>

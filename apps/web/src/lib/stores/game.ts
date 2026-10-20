@@ -17,6 +17,7 @@ export interface GameMoveRecord {
 
 export interface GameState {
 	gameId: string | null;
+	initialFen?: string;
 	fen: string;
 	turn: Color;
 	whitePlayer: PlayerInfo | null;
@@ -45,6 +46,7 @@ export interface GameState {
 
 const initialGameState: GameState = {
 	gameId: null,
+	initialFen: INITIAL_FEN,
 	fen: INITIAL_FEN,
 	turn: 'white',
 	whitePlayer: null,

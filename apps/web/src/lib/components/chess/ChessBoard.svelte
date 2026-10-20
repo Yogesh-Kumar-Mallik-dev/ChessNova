@@ -31,6 +31,7 @@
 	export let lastMove: { from: string; to: string; san?: string; isCapture?: boolean; isPromotion?: boolean } | null = null;
 	export let isCheck: boolean = false;
 	export let interactive = true;
+	export let animateMoves = true;
 	export let showSoundToggle = false;
 	export let gameOver = false;
 	export let gameResult = '';
@@ -73,7 +74,7 @@
 	let losingKingReason: 'checkmate' | 'resignation' | 'timeout' = 'checkmate';
 
 	// Animation state for multi-piece sliding (e.g. King + Rook in Castling)
-	let prevLastMoveKey = '';
+	let prevProcessedMoveId = '';
 	let animatingMap = new Map<string, { dx: number; dy: number }>();
 	let isSliding = false;
 
@@ -189,13 +190,19 @@
 
 	// Trigger animation & sound on lastMove change
 	$: if (lastMove) {
-		const key = `${lastMove.from}-${lastMove.to}-${fen}`;
-		if (key !== prevLastMoveKey) {
-			prevLastMoveKey = key;
-			triggerMoveEffects(lastMove.from, lastMove.to, prevFen, lastMove.san, lastMove.isCapture, lastMove.isPromotion);
+		const moveId = `${lastMove.from}-${lastMove.to}-${lastMove.san || ''}`;
+		if (moveId !== prevProcessedMoveId) {
+			prevProcessedMoveId = moveId;
+			if (animateMoves) {
+				triggerMoveEffects(lastMove.from, lastMove.to, prevFen, lastMove.san, lastMove.isCapture, lastMove.isPromotion);
+			}
+			prevFen = fen;
+		} else {
+			// Authoritative server FEN reconciliation or duplicate notification: do not re-animate or double-sound
 			prevFen = fen;
 		}
 	} else {
+		prevProcessedMoveId = '';
 		prevFen = fen;
 	}
 

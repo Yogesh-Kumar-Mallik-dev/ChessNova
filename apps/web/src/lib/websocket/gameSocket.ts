@@ -184,21 +184,6 @@ export class GameSocket {
 						}
 					}
 
-					// Sound effect for move event (skip if already played locally during optimistic update)
-					if (data.status === 'playing' && !isOptimisticMatch) {
-						if (data.isCheck) {
-							soundEffects.playCheck();
-						} else if (data.san?.includes('x')) {
-							soundEffects.playCapture();
-						} else if (data.san?.startsWith('O-O')) {
-							soundEffects.playCastle();
-						} else if (data.san?.includes('=')) {
-							soundEffects.playPromotion();
-						} else {
-							soundEffects.playNormalMove();
-						}
-					}
-
 					return {
 						...s,
 						fen: data.fen,

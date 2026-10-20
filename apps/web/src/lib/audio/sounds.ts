@@ -13,6 +13,8 @@ class ChessSoundPlayer {
 	private buffers = new Map<string, AudioBuffer>();
 	private audioCache = new Map<string, HTMLAudioElement[]>();
 	private unlocked = false;
+	private lastPlayedKey = '';
+	private lastPlayedTime = 0;
 
 	constructor() {
 		if (typeof window !== 'undefined') {
@@ -108,15 +110,25 @@ class ChessSoundPlayer {
 
 	private play(key: string, volume = 0.85) {
 		if (!this.enabled || typeof window === 'undefined') return;
+
+		// Deduplicate identical sound calls triggered within 80ms
+		const now = Date.now();
+		if (this.lastPlayedKey === key && now - this.lastPlayedTime < 80) {
+			return;
+		}
+		this.lastPlayedKey = key;
+		this.lastPlayedTime = now;
+
 		const finalVol = Math.max(0, Math.min(1, volume * this.masterVolume));
 
-		// 0. Native Desktop Fallback: In Tauri desktop environment, invoke native Rust audio (pw-play / system audio)
+		// 0. Native Desktop Audio: In Tauri desktop environment, invoke native Rust audio (pw-play / system audio)
 		if ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) {
 			import('@tauri-apps/api/core')
 				.then(({ invoke }) => {
 					invoke('native_play_sound', { name: key }).catch(() => {});
 				})
 				.catch(() => {});
+			return;
 		}
 
 		// 1. Primary Strategy: Web Audio API (Hardware-direct, 0ms latency, bypasses GStreamer URI routing)
