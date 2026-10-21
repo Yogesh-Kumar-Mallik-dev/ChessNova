@@ -37,6 +37,19 @@
 	let activeOngoingGame: any = null;
 
 	onMount(async () => {
+		const urlParams = new URLSearchParams(window.location.search);
+		const initParam = urlParams.get('initial');
+		const incParam = urlParams.get('increment');
+		const autostart = urlParams.get('autostart');
+		if (initParam) {
+			const found = presets.find(
+				(p) => p.initial === parseInt(initParam) && (incParam === null || p.increment === parseInt(incParam))
+			);
+			if (found) {
+				selectedPreset = found;
+			}
+		}
+
 		if ($authStore.user) {
 			try {
 				const ag = await api.games.getActive();
@@ -44,6 +57,10 @@
 					activeOngoingGame = ag;
 				}
 			} catch (_) {}
+
+			if (autostart === '1' && !activeOngoingGame) {
+				startMatchmaking();
+			}
 		}
 	});
 

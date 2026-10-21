@@ -51,17 +51,18 @@
 	$: navItems = isApp ? allNavItems.filter((item) => item.href !== '/download') : allNavItems;
 </script>
 
-<header class="h-14 sm:h-16 bg-card/95 border-b border-border px-3 sm:px-6 flex items-center justify-between sticky top-0 z-40 select-none shadow-2xs backdrop-blur-xs">
-	<div class="flex items-center gap-6 lg:gap-8">
-		<!-- Brand Logo -->
-		<a href="/" class="flex items-center gap-2.5 text-foreground font-bold text-base sm:text-lg tracking-tight group">
-			<div class="w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center p-1.5 shadow-xs group-hover:opacity-90 transition-opacity overflow-hidden">
-				<img src="/logo.png" alt="ChessPasant" class="w-full h-full object-contain invert dark:invert-0" />
-			</div>
-			<span class="font-extrabold tracking-tight">
-				ChessPasant
-			</span>
-		</a>
+<header class="sticky top-0 z-40 select-none bg-card/95 border-b border-border shadow-2xs backdrop-blur-xs pt-[env(safe-area-inset-top,0px)]">
+	<div class="h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between w-full">
+		<div class="flex items-center gap-6 lg:gap-8">
+			<!-- Brand Logo -->
+			<a href="/" class="flex items-center gap-2.5 text-foreground font-bold text-base sm:text-lg tracking-tight group">
+				<div class="w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center p-1.5 shadow-xs group-hover:opacity-90 transition-opacity overflow-hidden">
+					<img src="/logo.png" alt="ChessPasant" class="w-full h-full object-contain invert dark:invert-0" />
+				</div>
+				<span class="font-extrabold tracking-tight">
+					ChessPasant
+				</span>
+			</a>
 
 		<!-- Desktop Navigation -->
 		<nav class="hidden md:flex items-center gap-1">
@@ -139,6 +140,7 @@
 			<Icon name={mobileMenuOpen ? 'x' : 'menu'} size={18} />
 		</button>
 	</div>
+	</div>
 </header>
 
 <!-- Mobile Navigation Drawer -->
@@ -147,13 +149,13 @@
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
 	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div
-		class="md:hidden fixed inset-0 top-14 sm:top-16 z-30 bg-black/60 backdrop-blur-2xs animate-in fade-in duration-150"
+		class="md:hidden fixed inset-0 top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:top-16 z-30 bg-black/60 backdrop-blur-2xs animate-in fade-in duration-150"
 		on:click={() => (mobileMenuOpen = false)}
 	></div>
 
 	<div
 		data-mobile-menu="true"
-		class="md:hidden fixed inset-x-0 top-14 sm:top-16 z-40 bg-card border-b border-border p-3 shadow-2xl flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-150 max-h-[calc(100dvh-4rem)] overflow-y-auto"
+		class="md:hidden fixed inset-x-0 top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:top-16 z-40 bg-card border-b border-border p-3 shadow-2xl flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-150 max-h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))] overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
 	>
 		{#each navItems as item}
 			{@const active = currentPath === item.href}

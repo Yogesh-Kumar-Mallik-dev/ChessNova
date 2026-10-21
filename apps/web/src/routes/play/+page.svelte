@@ -219,6 +219,18 @@
 
 	onMount(() => {
 		if (typeof window !== 'undefined') {
+			const urlParams = new URLSearchParams(window.location.search);
+			const modeParam = urlParams.get('mode');
+			if (modeParam === 'pass_and_play' || modeParam === 'vs_computer') {
+				gameMode = modeParam;
+			}
+			const levelParam = urlParams.get('level');
+			if (levelParam) {
+				const lvl = parseInt(levelParam);
+				if (lvl >= 1 && lvl <= 5) {
+					botLevel = lvl;
+				}
+			}
 			window.addEventListener('keydown', handleKeydown);
 		}
 	});
