@@ -73,27 +73,29 @@ jobs:
         run: npm --prefix apps/web run build
 
       - name: Initialize Android Project
+        working-directory: apps/mobile
         run: |
-          if [ ! -d "apps/mobile/src-tauri/gen/android" ]; then
-            npx --prefix apps/mobile tauri android init --ci
-          fi
+          npx tauri android init --ci
 
       - name: Configure Android Signing Keystore
+        working-directory: apps/mobile
         run: |
-          keytool -genkey -v -keystore /tmp/release.jks -keyalg RSA -keysize 2048 -validity 10000 \
+          mkdir -p src-tauri/gen/android
+          keytool -genkeypair -v -keystore /tmp/release.jks -keyalg RSA -keysize 2048 -validity 10000 \
             -alias release -storepass chesspasant -keypass chesspasant \
             -dname "CN=ChessPasant,O=ChessPasant,C=US"
 
-          cat <<EOF > apps/mobile/src-tauri/gen/android/keystore.properties
+          cat <<EOF > src-tauri/gen/android/keystore.properties
           password=chesspasant
           keyAlias=release
           storeFile=/tmp/release.jks
           EOF
 
       - name: Build Android APK
+        working-directory: apps/mobile
         run: |
-          npx --prefix apps/mobile tauri android build --apk --ci --target aarch64 || \
-          npx --prefix apps/mobile tauri android build --apk --ci -d --target aarch64
+          npx tauri android build --apk --ci --target aarch64 || \
+          npx tauri android build --apk --ci -d --target aarch64
 
       - name: Prepare and Verify APK Binary
         run: |
@@ -166,16 +168,16 @@ jobs:
         run: npm --prefix apps/web run build
 
       - name: Initialize iOS Project
+        working-directory: apps/mobile
         run: |
-          if [ ! -d "apps/mobile/src-tauri/gen/apple" ]; then
-            npx --prefix apps/mobile tauri ios init --ci
-          fi
+          npx tauri ios init --ci
 
       - name: Build iOS Application
+        working-directory: apps/mobile
         continue-on-error: true
         run: |
-          npx --prefix apps/mobile tauri ios build --ci --debug --target aarch64-apple-ios-sim || \
-          npx --prefix apps/mobile tauri ios build --ci --debug || \
+          npx tauri ios build --ci --debug --target aarch64-apple-ios-sim || \
+          npx tauri ios build --ci --debug || \
           echo "iOS build initialized Xcode workspace"
 
       - name: Package iOS IPA & Application Bundle
