@@ -10,7 +10,7 @@ on:
         description: 'Release tag to attach binaries to (e.g. v0.1.6)'
         required: true
         type: string
-        default: 'v0.1.6'
+        default: 'v0.1.7'
 
 permissions:
   contents: write
@@ -101,7 +101,7 @@ jobs:
         run: |
           RAW_TAG="${{ github.event.inputs.tag || github.ref_name }}"
           VERSION="${RAW_TAG#v}"
-          VERSION="${VERSION:-0.1.6}"
+          VERSION="${VERSION:-0.1.7}"
 
           mkdir -p dist/mobile
           echo "==> Searching for generated APK files..."
@@ -184,7 +184,7 @@ jobs:
         run: |
           RAW_TAG="${{ github.event.inputs.tag || github.ref_name }}"
           VERSION="${RAW_TAG#v}"
-          VERSION="${VERSION:-0.1.6}"
+          VERSION="${VERSION:-0.1.7}"
 
           mkdir -p dist/ios/Payload
           echo "==> Searching for generated iOS .app bundles..."

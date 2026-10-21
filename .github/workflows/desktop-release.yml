@@ -100,6 +100,8 @@ jobs:
             | <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/windows11.svg" width="16" height="16" valign="middle" /> **Windows** | `ChessPasant_${{ github.ref_name }}_x64-setup.exe` | x64 | Windows 10 & 11 Setup |
             | <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/windows11.svg" width="16" height="16" valign="middle" /> **Windows** | `ChessPasant_${{ github.ref_name }}_x64_en-US.msi` | x64 | Enterprise MSI Installer |
             | <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/apple.svg" width="16" height="16" valign="middle" /> **macOS** | `ChessPasant_${{ github.ref_name }}_universal.dmg` | Universal Binary | Apple Silicon (M1/M2/M3/M4) & Intel |
+            | <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/android.svg" width="16" height="16" valign="middle" /> **Android** | `ChessPasant_${{ github.ref_name }}.apk` | arm64-v8a / aarch64 | Direct APK Installer |
+            | <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/apple.svg" width="16" height="16" valign="middle" /> **iOS** | `ChessPasant_${{ github.ref_name }}_unsigned.ipa` | arm64 | Sideload / AltStore / TrollStore |
 
             ---
 
@@ -118,6 +120,8 @@ jobs:
             - **Linux DEB**: Run `sudo dpkg -i chesspasant_*.deb` or double-click to install via your software center.
             - **Windows**: Launch the `.exe` or `.msi`. If Windows Defender SmartScreen displays a warning, click **More info** -> **Run anyway**.
             - **macOS**: Mount the `.dmg` and drag ChessPasant into your `Applications` folder. On first launch, right-click (or Control-click) and select **Open** to approve the Gatekeeper security prompt.
+            - **Android**: Download `ChessPasant_*.apk` and tap to install on your Android device (allow "Install unknown apps" if prompted).
+            - **iOS**: Sideload `ChessPasant_*_unsigned.ipa` using AltStore, SideStore, Sideloadly, TrollStore, or install via Xcode.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
