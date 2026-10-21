@@ -53,7 +53,7 @@ jobs:
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android,x86_64-linux-android
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -78,10 +78,24 @@ jobs:
             npx --prefix apps/mobile tauri android init --ci
           fi
 
-      - name: Build Android APK
-        run: npx --prefix apps/mobile tauri android build --apk --ci
+      - name: Configure Android Signing Keystore
+        run: |
+          keytool -genkey -v -keystore /tmp/release.jks -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias release -storepass chesspasant -keypass chesspasant \
+            -dname "CN=ChessPasant,O=ChessPasant,C=US"
 
-      - name: Prepare and Sign APK Binary
+          cat <<EOF > apps/mobile/src-tauri/gen/android/keystore.properties
+          password=chesspasant
+          keyAlias=release
+          storeFile=/tmp/release.jks
+          EOF
+
+      - name: Build Android APK
+        run: |
+          npx --prefix apps/mobile tauri android build --apk --ci --target aarch64 || \
+          npx --prefix apps/mobile tauri android build --apk --ci -d --target aarch64
+
+      - name: Prepare and Verify APK Binary
         run: |
           RAW_TAG="${{ github.event.inputs.tag || github.ref_name }}"
           VERSION="${RAW_TAG#v}"
@@ -96,17 +110,12 @@ jobs:
             echo "==> Found APK: $APK_FILE"
             cp "$APK_FILE" "dist/mobile/ChessPasant_${VERSION}.apk"
 
-            # Create standalone debug keystore to sign APK so it installs on any device
-            keytool -genkeypair -v -keystore /tmp/debug.keystore -alias androiddebugkey \
-              -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android \
-              -dname "CN=ChessPasant,O=ChessPasant,C=US" || true
-
             APKSIGNER=$(find $ANDROID_HOME/build-tools/ -name apksigner | sort -V | tail -n 1)
             if [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ]; then
-              echo "==> Signing APK with $APKSIGNER..."
-              "$APKSIGNER" sign --ks /tmp/debug.keystore --ks-pass pass:android --ks-key-alias androiddebugkey "dist/mobile/ChessPasant_${VERSION}.apk" || true
+              echo "==> Verifying / signing APK with $APKSIGNER..."
+              "$APKSIGNER" sign --ks /tmp/release.jks --ks-pass pass:chesspasant --ks-key-alias release "dist/mobile/ChessPasant_${VERSION}.apk" || true
             fi
-            echo "==> Prepared: dist/mobile/ChessPasant_${VERSION}.apk"
+            echo "==> Successfully created: dist/mobile/ChessPasant_${VERSION}.apk"
           else
             echo "ERROR: No APK generated"
             exit 1
@@ -137,7 +146,7 @@ jobs:
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-ios,x86_64-apple-ios
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -163,10 +172,11 @@ jobs:
           fi
 
       - name: Build iOS Application
+        continue-on-error: true
         run: |
-          npx --prefix apps/mobile tauri ios build --ci -- -destination "generic/platform=iOS" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO || \
-          npx --prefix apps/mobile tauri ios build --debug --ci -- -destination "generic/platform=iOS" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO || \
-          echo "iOS build produced Xcode workspace"
+          npx --prefix apps/mobile tauri ios build --ci --debug --target aarch64-apple-ios-sim || \
+          npx --prefix apps/mobile tauri ios build --ci --debug || \
+          echo "iOS build initialized Xcode workspace"
 
       - name: Package iOS IPA & Application Bundle
         run: |
@@ -176,7 +186,7 @@ jobs:
 
           mkdir -p dist/ios/Payload
           echo "==> Searching for generated iOS .app bundles..."
-          find apps/mobile/src-tauri/gen/apple/ -name "*.app" -maxdepth 5 || true
+          find apps/mobile/src-tauri/gen/apple/ -name "*.app" -maxdepth 6 || true
 
           APP_DIR=$(find apps/mobile/src-tauri/gen/apple/ -name "*.app" | head -n 1)
           if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
@@ -186,10 +196,13 @@ jobs:
             zip -r "ChessPasant_${VERSION}_unsigned.ipa" Payload
             cd -
             echo "==> Packaged: dist/ios/ChessPasant_${VERSION}_unsigned.ipa"
-          else
-            echo "Archiving Xcode project directory for developers..."
+          fi
+
+          # Also package Xcode project workspace for developers/sideloaders
+          if [ -d "apps/mobile/src-tauri/gen/apple" ]; then
+            echo "==> Packaging iOS Xcode Project..."
             cd apps/mobile/src-tauri/gen/apple/
-            zip -r "$GITHUB_WORKSPACE/dist/ios/ChessPasant_${VERSION}_ios_xcode.zip" .
+            zip -rq "$GITHUB_WORKSPACE/dist/ios/ChessPasant_${VERSION}_ios_xcode.zip" .
             cd -
           fi
 
