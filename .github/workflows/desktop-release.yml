@@ -140,6 +140,9 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
+          name: 'ChessPasant ${{ github.ref_name }}'
+          body_path: .github/release-notes.md
           files: |
             apps/desktop/src-tauri/target/release/bundle/arch/*.pkg.tar.zst
             apps/desktop/src-tauri/target/release/bundle/arch/*.tar.gz
