@@ -11,8 +11,9 @@ on:
     inputs:
       tag:
         description: 'Tag to update release notes for'
-        default: 'v0.1.7'
         required: true
+        type: string
+        default: 'v0.1.7'
 
 jobs:
   publish-release-notes:
@@ -27,8 +28,8 @@ jobs:
       - name: Update GitHub Release Body & Notes
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag || 'v0.1.7' }}
-          name: 'ChessPasant ${{ github.event.inputs.tag || 'v0.1.7' }}'
+          tag_name: ${{ inputs.tag || 'v0.1.7' }}
+          name: 'ChessPasant ${{ inputs.tag || 'v0.1.7' }}'
           body_path: .github/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
